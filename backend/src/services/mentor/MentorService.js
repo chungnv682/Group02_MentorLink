@@ -1,0 +1,130 @@
+import { instance } from '../../api/axios';
+
+class MentorService {
+    // Get all mentors with filters and pagination
+    static async getMentors(params = {}) {
+        try {
+            const queryParams = new URLSearchParams();
+
+            if (params.keyword) queryParams.append('keyword', params.keyword);
+            if (params.sort) queryParams.append('sort', params.sort);
+            if (params.page !== undefined) queryParams.append('page', params.page);
+            if (params.size) queryParams.append('size', params.size);
+            if (params.gender) queryParams.append('gender', params.gender);
+            if (params.location) queryParams.append('location', params.location);
+            if (params.minRating) queryParams.append('minRating', params.minRating);
+            if (params.approvedCountry) queryParams.append('approvedCountry', params.approvedCountry);
+
+            const url = `/api/mentors${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+            const response = await instance.get(url);
+
+            return response;
+        } catch (error) {
+            console.error('Error fetching mentors:', error);
+            throw error;
+        }
+    }
+
+    // Get mentor by ID
+    static async getMentorById(id) {
+        try {
+            const response = await instance.get(`/api/mentors/${id}`);
+            return response;
+        } catch (error) {
+            console.error('Error fetching mentor detail:', error);
+            throw error;
+        }
+    }
+
+    // Search mentors by keyword
+    static async searchMentors(keyword, options = {}) {
+        try {
+            const params = {
+                keyword,
+                ...options
+            };
+            return await this.getMentors(params);
+        } catch (error) {
+            console.error('Error searching mentors:', error);
+            throw error;
+        }
+    }
+
+    // Get featured mentors (high rating, many bookings)
+    static async getFeaturedMentors(limit = 6) {
+        try {
+            const params = {
+                sort: 'rating:desc',
+                size: limit,
+                page: 0
+            };
+            return await this.getMentors(params);
+        } catch (error) {
+            console.error('Error fetching featured mentors:', error);
+            throw error;
+        }
+    }
+
+    // Get mentors by location
+    static async getMentorsByLocation(location, options = {}) {
+        try {
+            const params = {
+                location,
+                ...options
+            };
+            return await this.getMentors(params);
+        } catch (error) {
+            console.error('Error fetching mentors by location:', error);
+            throw error;
+        }
+    }
+
+    // Get mentors by rating range
+    static async getMentorsByRating(minRating, options = {}) {
+        try {
+            const params = {
+                minRating,
+                ...options
+            };
+            return await this.getMentors(params);
+        } catch (error) {
+            console.error('Error fetching mentors by rating:', error);
+            throw error;
+        }
+    }
+
+    // Book a mentor (placeholder for future implementation)
+    static async bookMentor(mentorId, bookingData) {
+        try {
+            const response = await instance.post(`/api/mentors/${mentorId}/book`, bookingData);
+            return response;
+        } catch (error) {
+            console.error('Error booking mentor:', error);
+            throw error;
+        }
+    }
+
+    // Add mentor to favorites (placeholder for future implementation)
+    static async addToFavorites(mentorId) {
+        try {
+            const response = await instance.post(`/api/mentors/${mentorId}/favorite`);
+            return response;
+        } catch (error) {
+            console.error('Error adding mentor to favorites:', error);
+            throw error;
+        }
+    }
+
+    // Remove mentor from favorites (placeholder for future implementation)
+    static async removeFromFavorites(mentorId) {
+        try {
+            const response = await instance.delete(`/api/mentors/${mentorId}/favorite`);
+            return response;
+        } catch (error) {
+            console.error('Error removing mentor from favorites:', error);
+            throw error;
+        }
+    }
+}
+
+export default MentorService;
