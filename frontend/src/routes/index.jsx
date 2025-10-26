@@ -26,6 +26,8 @@ import {
   HomePage,
   NotFoundPage
 } from '../pages/common';
+import { ProfilePage } from '../pages/common';
+import { BlogsPage, BlogDetailPage, FAQsPage, FAQDetailPage, CreateFaqPage } from '../pages/common';
 
 import { Layout } from '../components/layout';
 import { ProtectedRoute } from '../components/auth';
@@ -73,6 +75,31 @@ const routes = createBrowserRouter([
       </ProtectedRoute>
     </Layout>,
   },
+
+  {
+    path: "/blogs",
+    element: <Layout><BlogsPage /></Layout>,
+  },
+  {
+    path: "/blogs/:id",
+    element: <Layout><BlogDetailPage /></Layout>,
+  },
+  {
+    path: "/faqs",
+    element: <Layout><FAQsPage /></Layout>,
+  },
+  {
+    path: "/faqs/new",
+    element: <Layout>
+      <ProtectedRoute>
+        <CreateFaqPage />
+      </ProtectedRoute>
+    </Layout>
+  },
+  {
+    path: "/faqs/:id",
+    element: <Layout><FAQDetailPage /></Layout>,
+  },
   {
     path: "/find-mentor",
     element: <Layout><MentorListPage /></Layout>,
@@ -82,6 +109,14 @@ const routes = createBrowserRouter([
     element: <Layout><MentorDetailPage /></Layout>,
   },
 
+  {
+    path: "/profile",
+    element: <Layout>
+      <ProtectedRoute>
+        <ProfilePage />
+      </ProtectedRoute>
+    </Layout>,
+  },
   {
     path: "*",
     element: <Layout><NotFoundPage /></Layout>,

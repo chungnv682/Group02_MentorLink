@@ -689,9 +689,7 @@ const RegisterMentorPage = () => {
                                     <i className="bi bi-arrow-left me-2"></i> Quay lại
                                 </Button>
                                 <div>
-                                    <Button variant="light" className="me-3 fw-bold shadow-sm">
-                                        <i className="bi bi-eye me-2"></i> Xem thử
-                                    </Button>
+
                                     <Button
                                         type="submit"
                                         variant={hasPolicyAccepted ? "success" : "primary"}

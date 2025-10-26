@@ -2,6 +2,7 @@ import React from 'react';
 import { Container, Row, Col, Button } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import '../../styles/components/HomePage.css';
+import BannerCarousel from '../../components/common/BannerCarousel';
 
 const HomePage = () => {
     return (
@@ -21,6 +22,7 @@ const HomePage = () => {
                                 <Button as={Link} to="/register-mentor" variant="outline-primary" size="lg" className="secondary-button">
                                     Trở thành Cố vấn
                                 </Button>
+                            
                             </div>
                         </Col>
                         <Col lg={6} className="text-center">
@@ -34,6 +36,9 @@ const HomePage = () => {
                     </Row>
                 </Container>
             </section>
+
+            {/* Banner carousel placed above the features section */}
+            <BannerCarousel />
 
             <section className="features-section py-5">
                 <Container>
