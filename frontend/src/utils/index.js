@@ -7,8 +7,8 @@ export const API_ENDPOINTS = {
         LOGOUT: '/auth/logout',
     },
     USERS: {
-        PROFILE: '/users/profile',
-        UPDATE: '/users/update',
+        PROFILE: '/api/profile',
+        UPDATE: '/api/profile',
     },
     MENTORS: {
         LIST: '/api/mentors',
