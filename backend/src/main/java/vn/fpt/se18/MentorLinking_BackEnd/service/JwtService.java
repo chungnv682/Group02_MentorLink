@@ -2,10 +2,8 @@ package vn.fpt.se18.MentorLinking_BackEnd.service;
 
 
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.stereotype.Service;
 import vn.fpt.se18.MentorLinking_BackEnd.util.TokenType;
 
-@Service
 public interface JwtService {
 
     String generateToken(UserDetails user);

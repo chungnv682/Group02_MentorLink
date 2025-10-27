@@ -5,6 +5,7 @@ import { AuthLoader } from "./components/auth";
 import routes from "./routes";
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './styles/theme.css';
+import { ToastProvider } from './contexts/ToastContext';
 
 const queryClient = new QueryClient();
 
@@ -24,7 +25,9 @@ function App() {
     <AuthProvider>
       <ThemeProvider>
         <QueryClientProvider client={queryClient}>
-          <AppContent />
+          <ToastProvider>
+            <AppContent />
+          </ToastProvider>
         </QueryClientProvider>
       </ThemeProvider>
     </AuthProvider>
