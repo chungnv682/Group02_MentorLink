@@ -256,97 +256,9 @@ const MentorListPage = () => {
                                     </Form.Select>
                                 </Form.Group>
                             </Col>
-
-                            <Col md={12} lg={4}>
-                                <div className="d-flex gap-2 justify-content-md-end">
-                                    <Button
-                                        variant="outline-secondary"
-                                        onClick={() => setShowFilters(!showFilters)}
-                                    >
-                                        <FaFilter className="me-1" />
-                                        Bộ lọc {showFilters && <FaTimes className="ms-1" />}
-                                    </Button>
-
-                                    {(filters.keyword || filters.sort !== 'numberOfBooking:desc' || filters.gender || filters.minRating || filters.location || filters.approvedCountry) && (
-                                        <Button variant="outline-danger" onClick={clearFilters}>
-                                            <FaTimes className="me-1" />
-                                            Xóa bộ lọc
-                                        </Button>
-                                    )}
-                                </div>
-                            </Col>
                         </Row>
 
-                        {/* Extended Filters */}
-                        {showFilters && (
-                            <Row className="mt-3 pt-3 border-top">
-                                <Col md={3}>
-                                    <Form.Group>
-                                        <Form.Label>Giới tính</Form.Label>
-                                        <Form.Select
-                                            value={filters.gender}
-                                            onChange={(e) => handleFilterChange('gender', e.target.value)}
-                                        >
-                                            <option value="">Tất cả</option>
-                                            <option value="M">Nam</option>
-                                            <option value="F">Nữ</option>
-                                        </Form.Select>
-                                    </Form.Group>
-                                </Col>
 
-                                <Col md={3}>
-                                    <Form.Group>
-                                        <Form.Label>Đánh giá tối thiểu</Form.Label>
-                                        <Form.Select
-                                            value={filters.minRating}
-                                            onChange={(e) => handleFilterChange('minRating', e.target.value)}
-                                        >
-                                            <option value="">Tất cả</option>
-                                            <option value="4.5">4.5+ sao</option>
-                                            <option value="4">4+ sao</option>
-                                            <option value="3.5">3.5+ sao</option>
-                                            <option value="3">3+ sao</option>
-                                        </Form.Select>
-                                    </Form.Group>
-                                </Col>
-
-                                <Col md={3}>
-                                    <Form.Group>
-                                        <Form.Label>Địa điểm</Form.Label>
-                                        <Form.Control
-                                            type="text"
-                                            placeholder="Thành phố..."
-                                            value={filters.location}
-                                            onChange={(e) => handleFilterChange('location', e.target.value)}
-                                        />
-                                    </Form.Group>
-                                </Col>
-
-                                <Col md={3}>
-                                    <Form.Group>
-                                        <Form.Label>Nước hỗ trợ du học</Form.Label>
-                                        <Form.Select
-                                            value={filters.approvedCountry}
-                                            onChange={(e) => handleFilterChange('approvedCountry', e.target.value)}
-                                        >
-                                            <option value="">Tất cả các nước</option>
-                                            <option value="Mỹ">Mỹ</option>
-                                            <option value="Canada">Canada</option>
-                                            <option value="Úc">Úc</option>
-                                            <option value="Anh">Anh</option>
-                                            <option value="Nhật">Nhật Bản</option>
-                                            <option value="Hàn">Hàn Quốc</option>
-                                            <option value="Đức">Đức</option>
-                                            <option value="Pháp">Pháp</option>
-                                            <option value="Singapore">Singapore</option>
-                                            <option value="Thụy Điển">Thụy Điển</option>
-                                            <option value="Hà Lan">Hà Lan</option>
-                                            <option value="New Zealand">New Zealand</option>
-                                        </Form.Select>
-                                    </Form.Group>
-                                </Col>
-                            </Row>
-                        )}
                     </div>
                 </Card.Body>
             </Card>

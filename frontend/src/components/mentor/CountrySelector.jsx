@@ -13,27 +13,31 @@ import {
 import { FaPlus, FaTimes, FaGlobeAmericas, FaCheck } from 'react-icons/fa';
 
 const CountrySelector = ({ selectedCountries = [], onCountriesChange, disabled = false }) => {
-    // Danh sách các nước phổ biến cho du học
-    const popularCountries = [
-        { code: 'USA', name: 'Mỹ', flag: '🇺🇸' },
-        { code: 'CAN', name: 'Canada', flag: '🇨🇦' },
-        { code: 'AUS', name: 'Úc', flag: '🇦🇺' },
-        { code: 'GBR', name: 'Anh', flag: '🇬🇧' },
-        { code: 'DEU', name: 'Đức', flag: '🇩🇪' },
-        { code: 'FRA', name: 'Pháp', flag: '🇫🇷' },
-        { code: 'JPN', name: 'Nhật Bản', flag: '🇯🇵' },
-        { code: 'KOR', name: 'Hàn Quốc', flag: '🇰🇷' },
-        { code: 'SGP', name: 'Singapore', flag: '🇸🇬' },
-        { code: 'NLD', name: 'Hà Lan', flag: '🇳🇱' },
-        { code: 'SWE', name: 'Thụy Điển', flag: '🇸🇪' },
-        { code: 'NZL', name: 'New Zealand', flag: '🇳🇿' },
-        { code: 'CHE', name: 'Thụy Sĩ', flag: '🇨🇭' },
-        { code: 'NOR', name: 'Na Uy', flag: '🇳🇴' },
-        { code: 'FIN', name: 'Phần Lan', flag: '🇫🇮' },
-        { code: 'ITA', name: 'Ý', flag: '🇮🇹' },
-        { code: 'ESP', name: 'Tây Ban Nha', flag: '🇪🇸' },
-        { code: 'IRL', name: 'Ireland', flag: '🇮🇪' }
-    ];
+    // Danh sách các nước phổ biến (lấy từ API /api/mentor-countries/approved)
+    const [popularCountries, setPopularCountries] = useState([]);
+
+    useEffect(() => {
+        let mounted = true;
+        const fetchApproved = async () => {
+            try {
+                const resp = await fetch('http://localhost:8080/api/mentor-countries/approved');
+                const json = await resp.json();
+                // Response wrapper: { data: [ { country: { code, name, flagUrl } } ] }
+                const items = json.data || json;
+                if (!mounted) return;
+                const mapped = (items || []).map(it => ({
+                    code: it.country?.code || it.country?.name?.slice(0, 3).toUpperCase() || '',
+                    name: it.country?.name || it.country?.description || '',
+                    flag: it.country?.flagUrl || ''
+                }));
+                setPopularCountries(mapped);
+            } catch (err) {
+                console.error('Failed to load mentor countries', err);
+            }
+        };
+        fetchApproved();
+        return () => { mounted = false; };
+    }, []);
 
     const [showCustomModal, setShowCustomModal] = useState(false);
     const [customCountry, setCustomCountry] = useState({ name: '', description: '' });
@@ -141,7 +145,8 @@ const CountrySelector = ({ selectedCountries = [], onCountriesChange, disabled =
                                 <div className="d-flex flex-wrap gap-2">
                                     {selectedCountries.map((country, index) => {
                                         const countryName = typeof country === 'string' ? country : country.name;
-                                        const countryFlag = typeof country === 'string' ? '🌍' : (country.flag || '🌍');
+                                        const countryFlagRaw = typeof country === 'string' ? null : (country.flag || null);
+                                        const countryFlagEmoji = typeof country === 'string' ? '🌍' : (!countryFlagRaw ? '🌍' : null);
                                         const isPending = typeof country === 'object' && country.isPending;
 
                                         return (
@@ -151,7 +156,7 @@ const CountrySelector = ({ selectedCountries = [], onCountriesChange, disabled =
                                                 className="px-3 py-2 d-flex align-items-center"
                                                 style={{ fontSize: '0.85rem' }}
                                             >
-                                                <span className="me-2">{countryFlag}</span>
+
                                                 {countryName}
                                                 {isPending && (
                                                     <small className="ms-1">(chờ duyệt)</small>
@@ -179,17 +184,22 @@ const CountrySelector = ({ selectedCountries = [], onCountriesChange, disabled =
                                 {popularCountries.map((country) => {
                                     const selected = isCountrySelected(country);
                                     return (
-                                        <Col key={country.code} xs={6} md={4} lg={3} className="mb-2">
+                                        <Col key={country.code + country.name} xs={6} md={4} lg={3} className="mb-2">
                                             <Button
                                                 variant={selected ? "primary" : "outline-secondary"}
                                                 size="sm"
-                                                className={`w-100 d-flex align-items-center justify-content-between ${selected ? 'selected-country' : ''
-                                                    }`}
+                                                className={`w-100 d-flex align-items-center justify-content-between ${selected ? 'selected-country' : ''}`}
                                                 onClick={() => handleCountrySelect(country)}
                                                 disabled={disabled}
                                             >
-                                                <span>
-                                                    <span className="me-2">{country.flag}</span>
+                                                <span className="d-flex align-items-center">
+                                                    <span className="me-2">
+                                                        {country.flag ? (
+                                                            <img src={country.flag} alt={country.name} style={{ width: 20, height: 'auto', borderRadius: 3 }} />
+                                                        ) : (
+                                                            <span>🌍</span>
+                                                        )}
+                                                    </span>
                                                     <small>{country.name}</small>
                                                 </span>
                                                 {selected && <FaCheck size={12} />}

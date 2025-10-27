@@ -79,10 +79,12 @@ const handleTokenRefresh = async () => {
       }
     });
 
-    if (response.data.accessToken && response.data.refreshToken) {
-      localStorage.setItem('accessToken', response.data.accessToken);
-      localStorage.setItem('refreshToken', response.data.refreshToken);
-      return response.data.accessToken;
+    // authInstance's response interceptor returns response.data, but handle both shapes
+    const resData = response?.data || response;
+    if (resData && resData.accessToken && resData.refreshToken) {
+      localStorage.setItem('accessToken', resData.accessToken);
+      localStorage.setItem('refreshToken', resData.refreshToken);
+      return resData.accessToken;
     } else {
       throw new Error('Invalid refresh response');
     }
@@ -105,11 +107,12 @@ instance.interceptors.response.use(
     const originalRequest = error.config;
 
     // Kiểm tra nếu lỗi là token expired (respCode: "08")
-    if (error.response &&
-      error.response.data &&
-      error.response.data.respCode === "08" &&
-      !originalRequest._retry) {
+    const status = error.response?.status;
+    const respCode = error.response?.data?.respCode;
 
+    // Trigger refresh on custom respCode or HTTP 401, but avoid retry loops
+    if ((respCode === "08" || status === 401)) {
+      //  && !originalRequest._retry && !originalRequest.url.includes('/api/auth/refresh-token')
       if (isRefreshing) {
         // Nếu đang trong quá trình refresh, đợi kết quả
         return new Promise((resolve, reject) => {
