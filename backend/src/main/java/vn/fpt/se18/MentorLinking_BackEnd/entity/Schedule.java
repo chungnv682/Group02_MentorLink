@@ -39,4 +39,7 @@ public class Schedule extends AbstractEntity<Long> {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "updated_by")
     private User updatedBy;
+
+    @Column(name = "is_booked", columnDefinition = "boolean default false")
+    private Boolean isBooked = false;
 }
