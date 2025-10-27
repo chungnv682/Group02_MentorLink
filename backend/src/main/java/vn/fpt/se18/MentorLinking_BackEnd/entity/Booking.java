@@ -13,12 +13,9 @@ import java.util.List;
 @Builder
 @Table(name = "booking",
         uniqueConstraints = {
-                @UniqueConstraint(
-                        name = "uk_booking_mentor_datetime",
-                        columnNames = {"mentor_id", "date", "time_slot_id"}
-                )
-        }
-) // Ngăn double booking
+                @UniqueConstraint(name = "uk_booking_schedule", columnNames = {"schedule_id"}),
+                @UniqueConstraint(name = "uk_booking_mentor_schedule", columnNames = {"mentor_id", "schedule_id"})
+        })
 public class Booking extends AbstractEntity<Long> {
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -33,12 +30,9 @@ public class Booking extends AbstractEntity<Long> {
     @JoinColumn(name = "customer_id", nullable = false)
     private User customer;
 
-    @Column(name = "date", nullable = false)
-    private java.time.LocalDate date;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "time_slot_id", nullable = false)
-    private TimeSlot timeSlot;
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "schedule_id", nullable = false)
+    private Schedule schedule;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by")
