@@ -42,8 +42,8 @@ const Header = () => {
                             <Nav.Link as={Link} to="/services" className="nav-link">Dịch vụ</Nav.Link>
                             <Nav.Link as={Link} to="/find-mentor" className="nav-link">Tìm Cố vấn</Nav.Link>
                             <Nav.Link as={Link} to="/become-mentor" className="nav-link">Trở thành Cố vấn</Nav.Link>
-                            <Nav.Link as={Link} to="/blog" className="nav-link">Blog</Nav.Link>
-
+                            <Nav.Link as={Link} to="/blogs" className="nav-link">Xem Blogs</Nav.Link>
+                            <Nav.Link as={Link} to="/faqs" className="nav-link">Xem FAQs</Nav.Link>
                             {isLoggedIn ? (
                                 <NavDropdown
                                     title={
