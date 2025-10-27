@@ -33,6 +33,7 @@ import {
 } from 'react-icons/fa';
 import MentorService from '../../services/mentor/MentorService';
 import ImageModal from '../../components/common/ImageModal';
+import MentorSchedule from '../../components/mentor/MentorSchedule';
 import { getCountryName, getCountryFlagUrl } from '../../utils/mentorUtils';
 import '../../styles/components/MentorDetail.css'; const MentorDetailPage = () => {
     const { id } = useParams();
@@ -339,6 +340,16 @@ import '../../styles/components/MentorDetail.css'; const MentorDetailPage = () =
                             Giới thiệu về mentor
                         </h5>
                         <p className="mentor-intro-text">{mentor.intro}</p>
+                    </Card.Body>
+                </Card>
+
+                {/* Schedule Section - Moved above tabs */}
+                <Card className="mb-4 shadow-sm border-0">
+                    <Card.Body>
+                        <MentorSchedule
+                            mentorId={mentor.id}
+                            mentorName={mentor.fullname}
+                        />
                     </Card.Body>
                 </Card>
 

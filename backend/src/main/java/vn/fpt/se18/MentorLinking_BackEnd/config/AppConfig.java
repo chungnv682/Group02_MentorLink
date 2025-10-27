@@ -48,6 +48,7 @@ public class AppConfig {
                                 "/mentor-policies/**", "/customer-policies/**"
                                 , "/banners/**", "/blogs/**"
                                 , "/mentor-countries/**","/faqs/**"
+                                ,"/schedules/**"
                         )
                         .permitAll()
                         .requestMatchers("/auth/**","/profile/**")
