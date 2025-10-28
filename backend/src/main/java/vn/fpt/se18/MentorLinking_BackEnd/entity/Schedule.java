@@ -40,6 +40,12 @@ public class Schedule extends AbstractEntity<Long> {
     @JoinColumn(name = "updated_by")
     private User updatedBy;
 
+    // New: flag persisted in DB to indicate schedule is booked
     @Column(name = "is_booked", columnDefinition = "boolean default false")
     private Boolean isBooked = false;
+
+    // Explicit getter to avoid naming ambiguity (Lombok may generate isBooked()/getIsBooked())
+    public Boolean getIsBooked() {
+        return this.isBooked;
+    }
 }

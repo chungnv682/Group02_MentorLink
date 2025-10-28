@@ -10,7 +10,8 @@ import {
     Modal,
     ListGroup,
     Tabs,
-    Tab
+    Tab,
+    Form
 } from 'react-bootstrap';
 import {
     FaCalendarAlt,
@@ -23,6 +24,7 @@ import {
     FaArrowRight
 } from 'react-icons/fa';
 import useSchedule from '../../hooks/useSchedule';
+import { createBookingAndGetPaymentUrl } from '../../services/booking/bookingApi';
 import '../../styles/components/MentorSchedule.css';
 
 /**
@@ -58,6 +60,8 @@ const MentorSchedule = ({ mentorId, mentorName = 'Mentor' }) => {
     const [bookingLoading, setBookingLoading] = useState(false);
     const [bookingError, setBookingError] = useState(null);
     const [bookingSuccess, setBookingSuccess] = useState(false);
+    const [description, setDescription] = useState('');
+    const [descriptionError, setDescriptionError] = useState(null);
 
     // Initialize selectedDate on first load
     React.useEffect(() => {
@@ -73,45 +77,72 @@ const MentorSchedule = ({ mentorId, mentorName = 'Mentor' }) => {
     );
 
     /**
-     * Handle schedule booking (entire schedule with all time slots)
+     * Check if schedule is booked (has a completed payment booking)
+     * A schedule is considered booked if it exists in the schedules list with a booking completed
+     * This is determined by backend - we just check if it appears in the list
      */
-    const handleBookSchedule = (schedule) => {
-        setSelectedSchedule(schedule);
-        setShowBookingModal(true);
-        setBookingError(null);
+    const isScheduleBooked = (schedule) => {
+        // Schedule is booked if it has a completed payment booking
+        // Since multiple people can book same schedule, we show "Đã đặt" only if someone paid successfully
+        // For now, we assume backend will handle this - frontend just displays status
+        return schedule.isBooked === true;
     };
 
     /**
-     * Confirm booking entire schedule
+     * Handle schedule booking (entire schedule with all time slots)
+     */
+    const handleBookSchedule = (schedule) => {
+        // Check if already booked
+        if (isScheduleBooked(schedule)) {
+            setBookingError('Lịch này đã được đặt bởi người khác. Vui lòng chọn lịch khác.');
+            setShowBookingModal(false);
+            return;
+        }
+
+        setSelectedSchedule(schedule);
+        setShowBookingModal(true);
+        setBookingError(null);
+        setDescriptionError(null);
+        setDescription('');
+    };
+
+    /**
+     * Confirm booking entire schedule with VNPay payment
      */
     const handleConfirmBooking = async () => {
         if (!selectedSchedule) return;
 
+        // Validate description
+        if (!description.trim() || description.trim().length < 10) {
+            setDescriptionError('Nội dung muốn hỏi phải có ít nhất 10 ký tự');
+            return;
+        }
+
         setBookingLoading(true);
         setBookingError(null);
+        setDescriptionError(null);
 
         try {
-            const response = await bookSlot(
+            // Call VNPay booking endpoint
+            const response = await createBookingAndGetPaymentUrl(
                 selectedSchedule.scheduleId,
-                null, // null = book entire schedule (all slots)
-                {
-                    notes: '' // Add any additional booking notes if needed
-                }
+                description
             );
 
-            setBookingSuccess(true);
+            console.log('Booking response:', response);
 
-            // Close modal and reset after 2 seconds
-            setTimeout(() => {
-                setShowBookingModal(false);
-                setBookingSuccess(false);
-                setSelectedSchedule(null);
-                // Refresh schedules
-                fetchUpcomingSchedules();
-            }, 2000);
+            if (response && response.respCode === "0" && response.data) {
+                // Redirect to VNPay payment URL
+                window.location.href = response.data;
+            } else if (response && response.respCode === "1") {
+                setBookingError(response.description || 'Không thể tạo yêu cầu thanh toán');
+            } else {
+                setBookingError('Lỗi không xác định. Vui lòng thử lại.');
+                console.error('Unexpected response:', response);
+            }
         } catch (err) {
-            setBookingError(err.message || 'Đặt lịch thất bại. Vui lòng thử lại.');
             console.error('Booking error:', err);
+            setBookingError(err?.description || err?.message || 'Đặt lịch thất bại. Vui lòng thử lại.');
         } finally {
             setBookingLoading(false);
         }
@@ -360,7 +391,7 @@ const MentorSchedule = ({ mentorId, mentorName = 'Mentor' }) => {
                             <FaCheckCircle className="success-icon text-success mb-3" size={48} />
                             <h6 className="text-success mb-2">Đặt lịch thành công!</h6>
                             <p className="text-muted small">
-                                Thông tin cuộc hẹn đã được gửi đến email của bạn
+                                Bạn sẽ được chuyển hướng đến trang thanh toán
                             </p>
                         </div>
                     ) : (
@@ -373,44 +404,73 @@ const MentorSchedule = ({ mentorId, mentorName = 'Mentor' }) => {
                             )}
 
                             {selectedSchedule && (
-                                <ListGroup variant="flush">
-                                    <ListGroup.Item className="border-0 px-0 py-2">
-                                        <strong className="text-muted">Cố vấn:</strong>
-                                        <div className="mt-1">{mentorName}</div>
-                                    </ListGroup.Item>
+                                <>
+                                    <ListGroup variant="flush" className="mb-4">
+                                        <ListGroup.Item className="border-0 px-0 py-2">
+                                            <strong className="text-muted">Cố vấn:</strong>
+                                            <div className="mt-1">{mentorName}</div>
+                                        </ListGroup.Item>
 
-                                    <ListGroup.Item className="border-0 px-0 py-2">
-                                        <strong className="text-muted">📅 Ngày:</strong>
-                                        <div className="mt-1">
-                                            {getDateLabel(selectedDate)} ({selectedDate})
-                                        </div>
-                                    </ListGroup.Item>
+                                        <ListGroup.Item className="border-0 px-0 py-2">
+                                            <strong className="text-muted">📅 Ngày:</strong>
+                                            <div className="mt-1">
+                                                {getDateLabel(selectedDate)} ({selectedDate})
+                                            </div>
+                                        </ListGroup.Item>
 
-                                    <ListGroup.Item className="border-0 px-0 py-2">
-                                        <strong className="text-muted">🕒 Các khung giờ:</strong>
-                                        <div className="mt-2 d-flex flex-wrap gap-2">
-                                            {getSortedTimeSlots(selectedSchedule).map((timeSlot) => (
-                                                <Badge
-                                                    key={timeSlot.timeSlotId}
-                                                    bg="primary"
-                                                    className="time-slot-badge-modal"
-                                                >
-                                                    {formatTimeSlot(timeSlot.timeStart, timeSlot.timeEnd)}
-                                                </Badge>
-                                            ))}
-                                        </div>
-                                    </ListGroup.Item>
+                                        <ListGroup.Item className="border-0 px-0 py-2">
+                                            <strong className="text-muted">🕒 Các khung giờ:</strong>
+                                            <div className="mt-2 d-flex flex-wrap gap-2">
+                                                {getSortedTimeSlots(selectedSchedule).map((timeSlot) => (
+                                                    <Badge
+                                                        key={timeSlot.timeSlotId}
+                                                        bg="primary"
+                                                        className="time-slot-badge-modal"
+                                                    >
+                                                        {formatTimeSlot(timeSlot.timeStart, timeSlot.timeEnd)}
+                                                    </Badge>
+                                                ))}
+                                            </div>
+                                        </ListGroup.Item>
 
-                                    <ListGroup.Item className="border-0 px-0 py-2">
-                                        <strong className="text-muted">💰 Giá:</strong>
-                                        <div className="mt-1 text-success fw-bold fs-5">
-                                            {formatPrice(selectedSchedule.price)}
-                                        </div>
+                                        <ListGroup.Item className="border-0 px-0 py-2">
+                                            <strong className="text-muted">💰 Giá:</strong>
+                                            <div className="mt-1 text-success fw-bold fs-5">
+                                                {formatPrice(selectedSchedule.price)}
+                                            </div>
+                                            <small className="text-muted d-block mt-1">
+                                                (bao gồm tất cả các khung giờ trên)
+                                            </small>
+                                        </ListGroup.Item>
+                                    </ListGroup>
+
+                                    {/* Description Input */}
+                                    <Form.Group className="mb-3">
+                                        <Form.Label className="fw-semibold">
+                                            Nội dung muốn hỏi <span className="text-danger">*</span>
+                                        </Form.Label>
+                                        <Form.Control
+                                            as="textarea"
+                                            rows={4}
+                                            placeholder="Nhập nội dung bạn muốn trao đổi với cố vấn (tối thiểu 10 ký tự)"
+                                            value={description}
+                                            onChange={(e) => {
+                                                setDescription(e.target.value);
+                                                if (descriptionError) setDescriptionError(null);
+                                            }}
+                                            isInvalid={!!descriptionError}
+                                            disabled={bookingLoading}
+                                        />
+                                        {descriptionError && (
+                                            <Form.Control.Feedback type="invalid" className="d-block">
+                                                {descriptionError}
+                                            </Form.Control.Feedback>
+                                        )}
                                         <small className="text-muted d-block mt-1">
-                                            (bao gồm tất cả các khung giờ trên)
+                                            {description.length}/10 ký tự tối thiểu
                                         </small>
-                                    </ListGroup.Item>
-                                </ListGroup>
+                                    </Form.Group>
+                                </>
                             )}
                         </>
                     )}
