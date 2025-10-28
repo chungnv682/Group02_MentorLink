@@ -22,7 +22,6 @@ import vn.fpt.se18.MentorLinking_BackEnd.service.UserService;
 import static org.springframework.security.config.http.SessionCreationPolicy.STATELESS;
 import org.springframework.http.HttpMethod;
 
-
 @Configuration
 @Profile("!prod")
 @RequiredArgsConstructor
@@ -41,20 +40,18 @@ public class AppConfig {
     public SecurityFilterChain configure(@NonNull HttpSecurity http) throws Exception {
         http.cors(cors -> cors.configurationSource(corsConfigurationSource)) // Thêm cấu hình CORS
                 .csrf(AbstractHttpConfigurer::disable)
+                .headers(headers -> headers.frameOptions(frameOptions -> frameOptions.sameOrigin()))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.GET,
                                 "/mentors", "/mentors/**",
                                 "/blogs", "/blogs/**",
-                                "/mentor-policies/**", "/customer-policies/**"
-                                , "/banners/**", "/blogs/**"
-                                , "/mentor-countries/**","/faqs/**"
-                                ,"/schedules/**"
-                        )
+                                "/mentor-policies/**", "/customer-policies/**", "/banners/**", "/blogs/**",
+                                "/mentor-countries/**", "/faqs/**", "/schedules/**")
                         .permitAll()
-                        .requestMatchers("/auth/**","/profile/**")
+                        .requestMatchers("/auth/**", "/profile/**", "/bookings/**", "/payments/**", "/comments/**",
+                                "/ratings/**")
                         .permitAll()
-                        .anyRequest().authenticated()
-                )
+                        .anyRequest().authenticated())
                 .sessionManagement(manager -> manager.sessionCreationPolicy(STATELESS))
                 .authenticationProvider(provider())
                 .addFilterBefore(preFilter, UsernamePasswordAuthenticationFilter.class);
@@ -64,9 +61,9 @@ public class AppConfig {
 
     @Bean
     public WebSecurityCustomizer webSecurityCustomizer() {
-        return webSecurity ->
-                webSecurity.ignoring()
-                        .requestMatchers("/actuator/**", "/v3/**", "/webjars/**", "/swagger-ui*/*swagger-initializer.js", "/swagger-ui*/**");
+        return webSecurity -> webSecurity.ignoring()
+                .requestMatchers("/actuator/**", "/v3/**", "/webjars/**", "/swagger-ui*/*swagger-initializer.js",
+                        "/swagger-ui*/**");
     }
 
     @Bean

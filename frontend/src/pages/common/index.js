@@ -7,3 +7,5 @@ export { default as BlogDetailPage } from './BlogDetailPage';
 export { default as FAQsPage } from './FAQsPage';
 export { default as FAQDetailPage } from './FAQDetailPage';
 export { default as CreateFaqPage } from './CreateFaqPage';
+export { default as BookingSuccessPage } from './BookingSuccessPage';
+export { default as BookingFailedPage } from './BookingFailedPage';
