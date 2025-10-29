@@ -14,6 +14,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import vn.fpt.se18.MentorLinking_BackEnd.dto.request.CreateBookingRequest;
 import vn.fpt.se18.MentorLinking_BackEnd.dto.response.BaseResponse;
+import vn.fpt.se18.MentorLinking_BackEnd.dto.response.BookingResponse;
 import vn.fpt.se18.MentorLinking_BackEnd.entity.User;
 import vn.fpt.se18.MentorLinking_BackEnd.repository.UserRepository;
 import vn.fpt.se18.MentorLinking_BackEnd.service.BookingService;
@@ -21,6 +22,7 @@ import vn.fpt.se18.MentorLinking_BackEnd.service.VNPayService;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -143,6 +145,35 @@ public class BookingController {
                     .requestDateTime(LocalDateTime.now().toString())
                     .respCode("1")
                     .description("Lỗi khi dọn dẹp: " + e.getMessage())
+                    .build();
+        }
+    }
+
+    /**
+     * Get bookings for the authenticated user filtered by paymentProcess values
+     */
+    @GetMapping("/mine")
+    @Operation(summary = "Get bookings of current user with paymentProcess in (COMPLETED, REFUNDED, WAIT_REFUND)")
+    public BaseResponse<List<BookingResponse>> getMyBookings(Authentication authentication) {
+        try {
+            UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+            User user = userRepository.findByEmail(userDetails.getUsername())
+                    .orElseThrow(() -> new RuntimeException("User không tồn tại"));
+
+            List<BookingResponse> bookings = bookingService.getBookingsByCustomerAndPaymentProcesses(user.getId());
+
+            return BaseResponse.<List<BookingResponse>>builder()
+                    .requestDateTime(LocalDateTime.now().toString())
+                    .respCode("0")
+                    .description("Lấy danh sách booking thành công")
+                    .data(bookings)
+                    .build();
+        } catch (Exception e) {
+            log.error("Error getting user bookings", e);
+            return BaseResponse.<List<BookingResponse>>builder()
+                    .requestDateTime(LocalDateTime.now().toString())
+                    .respCode("1")
+                    .description(e.getMessage())
                     .build();
         }
     }
