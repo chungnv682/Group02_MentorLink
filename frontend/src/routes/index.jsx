@@ -28,6 +28,7 @@ import {
 } from '../pages/common';
 import { ProfilePage } from '../pages/common';
 import { BlogsPage, BlogDetailPage, FAQsPage, FAQDetailPage, CreateFaqPage } from '../pages/common';
+import { BookingSuccessPage, BookingFailedPage } from '../pages/common';
 
 import { Layout } from '../components/layout';
 import { ProtectedRoute } from '../components/auth';
@@ -116,6 +117,14 @@ const routes = createBrowserRouter([
         <ProfilePage />
       </ProtectedRoute>
     </Layout>,
+  },
+  {
+    path: "/booking-success",
+    element: <Layout><BookingSuccessPage /></Layout>,
+  },
+  {
+    path: "/booking-failed",
+    element: <Layout><BookingFailedPage /></Layout>,
   },
   {
     path: "*",
