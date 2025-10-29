@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
     Container,
     Row,
@@ -15,9 +16,12 @@ import {
 import { FaSearch, FaFilter, FaTimes } from 'react-icons/fa';
 import useMentors from '../../hooks/useMentors';
 import MentorCard from '../../components/mentor/MentorCard';
+import { useToast } from '../../contexts/ToastContext';
 import '../../styles/components/MentorList.css';
 
 const MentorListPage = () => {
+    const location = useLocation();
+    const { showToast } = useToast();
     const { mentors, loading, error, pagination, fetchMentors } = useMentors();
 
     const [filters, setFilters] = useState({
@@ -35,6 +39,16 @@ const MentorListPage = () => {
     const [showFilters, setShowFilters] = useState(false);
     const [searchTimeout, setSearchTimeout] = useState(null);
     const [isSearching, setIsSearching] = useState(false);
+
+    // Check if payment failed and show toast
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        if (params.get('bookingSuccess') === 'false') {
+            showToast('Đặt lịch chưa thành công. Vui lòng thử lại!', 'error');
+            // Clean up URL param
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    }, [location.search, showToast]);
 
     // Fetch mentors khi component mount hoặc filters thay đổi
     useEffect(() => {

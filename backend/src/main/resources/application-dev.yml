@@ -38,3 +38,10 @@ logging:
 
 jwt:
   secretKey: 123acv
+
+vnpay:
+  tmnCode: LY9UB66C
+  hashSecret: MAZ53KRR5M5XB4QPXP51LDBQH4ETJY34
+  apiUrl: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
+  returnUrl: http://localhost:8080/api/bookings/vnpay-return
+

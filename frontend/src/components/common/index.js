@@ -6,3 +6,4 @@ export { Loading, ErrorAlert, NoData } from './FeedbackComponents';
 export { default as ImageModal } from './ImageModal';
 export { default as MentorPolicyModal } from './MentorPolicyModal';
 export { default as CustomerPolicyModal } from './CustomerPolicyModal';
+export { default as BookingModal } from './BookingModal';

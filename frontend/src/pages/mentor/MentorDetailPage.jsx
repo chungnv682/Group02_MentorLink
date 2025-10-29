@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
     Container,
     Row,
@@ -31,6 +31,7 @@ import {
     FaExternalLinkAlt,
     FaGlobe
 } from 'react-icons/fa';
+import { Toast } from 'react-bootstrap';
 import MentorService from '../../services/mentor/MentorService';
 import ImageModal from '../../components/common/ImageModal';
 import MentorSchedule from '../../components/mentor/MentorSchedule';
@@ -38,13 +39,28 @@ import { getCountryName, getCountryFlagUrl } from '../../utils/mentorUtils';
 import '../../styles/components/MentorDetail.css'; const MentorDetailPage = () => {
     const { id } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
     const [mentor, setMentor] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [showImageModal, setShowImageModal] = useState(false);
-    const [selectedImage, setSelectedImage] = useState({ src: '', title: '', description: '' }); useEffect(() => {
+    const [selectedImage, setSelectedImage] = useState({ src: '', title: '', description: '' });
+    const [showBookingSuccess, setShowBookingSuccess] = useState(false);
+
+    useEffect(() => {
         fetchMentorDetail();
-    }, [id]);
+
+        // Check if booking was successful and show toast
+        const params = new URLSearchParams(location.search);
+        if (params.get('bookingSuccess') === 'true') {
+            setShowBookingSuccess(true);
+            // Auto hide after 5 seconds
+            const timer = setTimeout(() => setShowBookingSuccess(false), 5000);
+            // Clean up URL param
+            window.history.replaceState({}, document.title, window.location.pathname);
+            return () => clearTimeout(timer);
+        }
+    }, [id, location.search]);
 
     const fetchMentorDetail = async () => {
         try {
@@ -169,6 +185,29 @@ import '../../styles/components/MentorDetail.css'; const MentorDetailPage = () =
 
     return (
         <div className="mentor-detail-page">
+            {/* Booking Success Toast */}
+            <div style={{
+                position: 'fixed',
+                top: '20px',
+                right: '20px',
+                zIndex: 9999
+            }}>
+                <Toast
+                    show={showBookingSuccess}
+                    onClose={() => setShowBookingSuccess(false)}
+                    delay={5000}
+                    autohide
+                    className="shadow"
+                >
+                    <Toast.Header className="bg-success text-white">
+                        <strong className="me-auto">✅ Thành công</strong>
+                    </Toast.Header>
+                    <Toast.Body className="bg-light">
+                        Đã đặt lịch thành công! Mentor sẽ xác nhận sớm.
+                    </Toast.Body>
+                </Toast>
+            </div>
+
             <Container className="py-4">
                 {/* Back Button */}
                 <Button
