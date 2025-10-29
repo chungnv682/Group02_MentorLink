@@ -17,6 +17,8 @@ import vn.fpt.se18.MentorLinking_BackEnd.util.PaymentProcess;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -249,6 +251,7 @@ public class BookingServiceImpl implements BookingService {
 
             return BookingResponse.builder()
                     .bookingId(b.getId())
+                    .mentorId(b.getMentor() != null ? b.getMentor().getId() : null)
                     .description(b.getDescription())
                     .comment(b.getComment())
                     .paymentProcess(b.getPaymentProcess() != null ? b.getPaymentProcess().name() : null)
@@ -257,5 +260,69 @@ public class BookingServiceImpl implements BookingService {
                     .schedule(scheduleResponse)
                     .build();
         }).collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public void cancelBooking(Long customerId, Long bookingId) throws Exception {
+        log.info("Request to cancel booking: {} by customer: {}", bookingId, customerId);
+
+        // Load booking
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new RuntimeException("Booking không tồn tại"));
+
+        // Check ownership
+        if (booking.getCustomer() == null || !booking.getCustomer().getId().equals(customerId)) {
+            throw new RuntimeException("Bạn không có quyền hủy booking này");
+        }
+
+        // Check payment process - must be COMPLETED
+        if (booking.getPaymentProcess() != PaymentProcess.COMPLETED) {
+            throw new RuntimeException("Chỉ có thể hủy khi paymentProcess là COMPLETED");
+        }
+
+        // Compute earliest timeStart among schedule time slots
+        Schedule schedule = booking.getSchedule();
+        if (schedule == null) {
+            throw new RuntimeException("Schedule của booking không tồn tại");
+        }
+
+        if (schedule.getTimeSlots() == null || schedule.getTimeSlots().isEmpty()) {
+            throw new RuntimeException("Schedule chưa có time slot để xác định thời gian hủy");
+        }
+
+        int earliestHour = schedule.getTimeSlots().stream()
+                .map(TimeSlot::getTimeStart)
+                .min(Comparator.naturalOrder())
+                .orElseThrow(() -> new RuntimeException("Không thể xác định time slot"));
+
+        LocalDateTime slotStartDateTime = schedule.getDate().atTime(LocalTime.of(earliestHour, 0));
+
+        LocalDateTime now = LocalDateTime.now();
+
+        // Must cancel at least 3 hours before the earliest slot
+        LocalDateTime cutoff = slotStartDateTime.minusHours(3);
+        if (!now.isBefore(cutoff)) {
+            throw new RuntimeException("Không thể hủy trong vòng 3 giờ trước khi buổi học bắt đầu");
+        }
+
+        // Get CANCELED status
+        Status canceledStatus = statusRepository.findByCode("CANCELED")
+                .orElseThrow(() -> new RuntimeException("Status CANCELED không tồn tại"));
+
+        // Update booking status and payment process
+        booking.setStatus(canceledStatus);
+        booking.setPaymentProcess(PaymentProcess.WAIT_REFUND);
+        bookingRepository.save(booking);
+
+        // Create history record for audit
+        History history = History.builder()
+                .booking(booking)
+                .description("Customer canceled booking before start time")
+                .createdBy(booking.getCustomer())
+                .build();
+        historyRepository.save(history);
+
+        log.info("Booking {} canceled and paymentProcess set to WAIT_REFUND", bookingId);
     }
 }

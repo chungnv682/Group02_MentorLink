@@ -146,17 +146,8 @@ const MentorCard = ({ mentor }) => {
                 <div className="mentor-card-footer mt-auto">
                     <div className="d-grid gap-2">
                         <div className="row g-2">
-                            <div className="col-6">
-                                <Button
-                                    variant="success"
-                                    onClick={handleBookNow}
-                                    className="fw-semibold w-100"
-                                    size="sm"
-                                >
-                                    Đặt lịch ngay
-                                </Button>
-                            </div>
-                            <div className="col-6">
+                    
+                            <div className="col-12">
                                 <Button
                                     variant="outline-primary"
                                     onClick={handleViewDetails}
