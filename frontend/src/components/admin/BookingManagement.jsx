@@ -187,6 +187,21 @@ const BookingManagement = () => {
         }).format(amount);
     };
 
+    // Kiểm tra xem schedule có booking COMPLETED không
+    const getScheduleStatus = (schedule) => {
+        const completedBooking = bookings.find(booking =>
+            booking.mentorId === schedule.mentorId &&
+            booking.date === schedule.date &&
+            booking.timeSlot === schedule.timeSlot &&
+            booking.status === 'COMPLETED'
+        );
+        return {
+            isBooked: completedBooking ? true : schedule.isBooked,
+            bookingId: completedBooking ? completedBooking.id : schedule.bookingId,
+            isCompleted: !!completedBooking
+        };
+    };
+
     return (
         <div className="booking-management">
             {/* Header */}
@@ -452,42 +467,57 @@ const BookingManagement = () => {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {schedules.map((schedule) => (
-                                            <tr key={schedule.id}>
-                                                <td>
-                                                    <div className="d-flex align-items-center">
-                                                        <FaUser className="me-2 text-muted" />
-                                                        <span className="fw-medium">{schedule.mentorName}</span>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <span className="fw-medium">{schedule.date}</span>
-                                                </td>
-                                                <td>
-                                                    <span>{schedule.timeSlotText}</span>
-                                                </td>
-                                                <td>
-                                                    <Badge bg={schedule.isBooked ? 'danger' : 'success'}>
-                                                        {schedule.isBooked ? 'Đã đặt' : 'Trống'}
-                                                    </Badge>
-                                                </td>
-                                                <td>
-                                                    {schedule.isBooked ? (
-                                                        <div>
-                                                            <small className="text-muted">
-                                                                Booking ID: #{schedule.bookingId}
-                                                            </small>
-                                                            <br />
-                                                            <Button variant="outline-info" size="sm">
-                                                                Xem chi tiết
-                                                            </Button>
+                                        {schedules.map((schedule) => {
+                                            const scheduleStatus = getScheduleStatus(schedule);
+                                            return (
+                                                <tr key={schedule.id}>
+                                                    <td>
+                                                        <div className="d-flex align-items-center">
+                                                            <FaUser className="me-2 text-muted" />
+                                                            <span className="fw-medium">{schedule.mentorName}</span>
                                                         </div>
-                                                    ) : (
-                                                        <span className="text-muted">Chưa có đặt lịch</span>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        ))}
+                                                    </td>
+                                                    <td>
+                                                        <span className="fw-medium">{schedule.date}</span>
+                                                    </td>
+                                                    <td>
+                                                        <span>{schedule.timeSlotText}</span>
+                                                    </td>
+                                                    <td>
+                                                        <Badge bg={scheduleStatus.isBooked ? 'danger' : 'success'}>
+                                                            {scheduleStatus.isBooked ? 'Đã có người đặt' : 'Trống'}
+                                                        </Badge>
+                                                        {scheduleStatus.isCompleted && (
+                                                            <Badge bg="dark" className="ms-2">
+                                                                Đã hoàn thành
+                                                            </Badge>
+                                                        )}
+                                                    </td>
+                                                    <td>
+                                                        {scheduleStatus.isBooked ? (
+                                                            <div>
+                                                                <small className="text-muted">
+                                                                    Booking ID: #{scheduleStatus.bookingId}
+                                                                </small>
+                                                                <br />
+                                                                <Button variant="outline-info" size="sm">
+                                                                    Xem chi tiết
+                                                                </Button>
+                                                                {scheduleStatus.isCompleted && (
+                                                                    <div className="mt-2">
+                                                                        <Alert variant="success" className="mb-0 p-2">
+                                                                            <small>Buổi này đã hoàn thành - không thể đặt lại</small>
+                                                                        </Alert>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-muted">Chưa có đặt lịch</span>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
                                     </tbody>
                                 </Table>
                             </Card.Body>

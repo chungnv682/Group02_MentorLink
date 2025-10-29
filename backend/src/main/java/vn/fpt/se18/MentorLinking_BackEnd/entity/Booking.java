@@ -2,6 +2,7 @@ package vn.fpt.se18.MentorLinking_BackEnd.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import vn.fpt.se18.MentorLinking_BackEnd.util.PaymentProcess;
 
 import java.util.List;
 
@@ -11,11 +12,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Table(name = "booking",
-        uniqueConstraints = {
-                @UniqueConstraint(name = "uk_booking_schedule", columnNames = {"schedule_id"}),
-                @UniqueConstraint(name = "uk_booking_mentor_schedule", columnNames = {"mentor_id", "schedule_id"})
-        })
+@Table(name = "booking")
 public class Booking extends AbstractEntity<Long> {
 
     @Column(name = "description", columnDefinition = "TEXT")
@@ -28,6 +25,11 @@ public class Booking extends AbstractEntity<Long> {
     @JoinColumn(name = "status_id", nullable = false)
     private Status status;
 
+    // Persist enum as string in DB
+    @Column(name = "payment_process")
+//    @Enumerated(EnumType.STRING)
+    private PaymentProcess paymentProcess;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "mentor_id", nullable = false)
     private User mentor;
@@ -36,7 +38,7 @@ public class Booking extends AbstractEntity<Long> {
     @JoinColumn(name = "customer_id", nullable = false)
     private User customer;
 
-    @OneToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "schedule_id", nullable = false)
     private Schedule schedule;
 
