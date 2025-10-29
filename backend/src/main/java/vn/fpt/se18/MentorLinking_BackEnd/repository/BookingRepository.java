@@ -31,4 +31,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     // condition check)
     boolean existsBySchedule_IdAndPaymentProcessAndIdNot(Long scheduleId, PaymentProcess paymentProcess,
             Long bookingId);
+
+    // Find bookings for a given customer filtered by a list of payment processes
+    List<Booking> findByCustomer_IdAndPaymentProcessIn(Long customerId, List<PaymentProcess> processes);
 }

@@ -6,6 +6,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.fpt.se18.MentorLinking_BackEnd.dto.request.CreateBookingRequest;
+import vn.fpt.se18.MentorLinking_BackEnd.dto.response.BookingResponse;
+import vn.fpt.se18.MentorLinking_BackEnd.dto.response.ScheduleResponse;
+import vn.fpt.se18.MentorLinking_BackEnd.dto.response.TimeSlotResponse;
 import vn.fpt.se18.MentorLinking_BackEnd.entity.*;
 import vn.fpt.se18.MentorLinking_BackEnd.repository.*;
 import vn.fpt.se18.MentorLinking_BackEnd.service.BookingService;
@@ -14,6 +17,9 @@ import vn.fpt.se18.MentorLinking_BackEnd.util.PaymentProcess;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -203,5 +209,53 @@ public class BookingServiceImpl implements BookingService {
             log.error("Error during cleanup of unpaid bookings", e);
             throw e;
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<BookingResponse> getBookingsByCustomerAndPaymentProcesses(Long customerId) throws Exception {
+        // Define the payment processes we want to include
+        List<PaymentProcess> includedProcesses = List.of(
+                PaymentProcess.COMPLETED,
+                PaymentProcess.REFUNDED,
+                PaymentProcess.WAIT_REFUND
+        );
+
+        List<Booking> bookings = bookingRepository.findByCustomer_IdAndPaymentProcessIn(customerId, includedProcesses);
+
+        if (bookings == null || bookings.isEmpty()) {
+            return List.of();
+        }
+
+        // Map bookings to BookingResponse
+        return bookings.stream().map(b -> {
+            Schedule s = b.getSchedule();
+
+            Set<TimeSlotResponse> timeSlotResponses = s.getTimeSlots() == null ? Set.of()
+                    : s.getTimeSlots().stream().map(ts -> TimeSlotResponse.builder()
+                            .timeSlotId(ts.getId())
+                            .timeStart(ts.getTimeStart())
+                            .timeEnd(ts.getTimeEnd())
+                            .build()).collect(Collectors.toSet());
+
+            ScheduleResponse scheduleResponse = ScheduleResponse.builder()
+                    .scheduleId(s.getId())
+                    .date(s.getDate())
+                    .timeSlots(timeSlotResponses)
+                    .price(s.getPrice())
+                    .emailMentor(s.getUser() != null ? s.getUser().getEmail() : null)
+                    .isBooked(s.getIsBooked())
+                    .build();
+
+            return BookingResponse.builder()
+                    .bookingId(b.getId())
+                    .description(b.getDescription())
+                    .comment(b.getComment())
+                    .paymentProcess(b.getPaymentProcess() != null ? b.getPaymentProcess().name() : null)
+                    .statusName(b.getStatus() != null ? b.getStatus().getName() : null)
+                    .emailMentor(b.getMentor() != null ? b.getMentor().getEmail() : null)
+                    .schedule(scheduleResponse)
+                    .build();
+        }).collect(Collectors.toList());
     }
 }
