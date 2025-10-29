@@ -1,16 +1,21 @@
 package vn.fpt.se18.MentorLinking_BackEnd.dto.response;
 
-import jakarta.persistence.*;
-import vn.fpt.se18.MentorLinking_BackEnd.entity.Schedule;
-import vn.fpt.se18.MentorLinking_BackEnd.entity.Status;
-import vn.fpt.se18.MentorLinking_BackEnd.entity.User;
 
+import lombok.*;
+
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class BookingResponse {
     private Long bookingId;
 
     private String description;
 
     private String comment;
+
+    private String paymentProcess; // COMPLETED, REFUNDED, WAIT_REFUND
 
     private String statusName; // Approved, Pending, Rejected
 

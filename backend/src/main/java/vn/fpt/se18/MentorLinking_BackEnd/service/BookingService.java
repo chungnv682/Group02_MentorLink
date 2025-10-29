@@ -2,6 +2,9 @@ package vn.fpt.se18.MentorLinking_BackEnd.service;
 
 import jakarta.servlet.http.HttpServletRequest;
 import vn.fpt.se18.MentorLinking_BackEnd.dto.request.CreateBookingRequest;
+import vn.fpt.se18.MentorLinking_BackEnd.dto.response.BookingResponse;
+
+import java.util.List;
 
 public interface BookingService {
     /**
@@ -29,4 +32,12 @@ public interface BookingService {
      * Clean up unpaid bookings - delete bookings without payment history older than 15 minutes
      */
     void cleanupUnpaidBookings() throws Exception;
+
+    /**
+     * Get bookings for a customer filtered by provided payment processes
+     *
+     * @param customerId id of the customer
+     * @return list of BookingResponse
+     */
+    List<BookingResponse> getBookingsByCustomerAndPaymentProcesses(Long customerId) throws Exception;
 }
