@@ -55,7 +55,7 @@ const BannerCarousel = () => {
     if (!banners || banners.length === 0) return null;
 
     return (
-        <div className="banner-carousel container my-4">
+        <div className="banner-carousel my-4">
             <Slider {...settings}>
                 {banners.map((b) => (
                     <div key={b.bannerId || b.id || b.title} className="banner-slide">

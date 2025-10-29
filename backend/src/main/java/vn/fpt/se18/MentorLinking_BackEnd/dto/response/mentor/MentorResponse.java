@@ -19,7 +19,6 @@ public class MentorResponse implements Serializable {
 
     private String email;
 
-    private String password;
 
     private Role role;
 
