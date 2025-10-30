@@ -79,7 +79,7 @@ const BlogsPage = () => {
                             onChange={(e) => setKeyword(e.target.value)}
                         />
                         <Button type="submit">Tìm</Button>
-                        <Button variant="outline-secondary" onClick={handleClear}>Clear</Button>
+                        <Button variant="outline-secondary" onClick={handleClear}>Xóa</Button>
                     </Form>
                 </Col>
                 <Col md={4} className="d-flex justify-content-end">

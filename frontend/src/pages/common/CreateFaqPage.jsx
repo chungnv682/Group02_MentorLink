@@ -54,9 +54,9 @@ const CreateFaqPage = () => {
                         <Form.Group className="mb-3">
                             <Form.Label>Độ ưu tiên</Form.Label>
                             <Form.Select value={urgency} onChange={(e) => setUrgency(e.target.value)}>
-                                <option value="LOW">Low</option>
-                                <option value="MEDIUM">Medium</option>
-                                <option value="HIGH">High</option>
+                                <option value="LOW">Thấp</option>
+                                <option value="MEDIUM">Trung bình</option>
+                                <option value="HIGH">Cao</option>
                             </Form.Select>
                         </Form.Group>
                         <div className="d-flex gap-2">
