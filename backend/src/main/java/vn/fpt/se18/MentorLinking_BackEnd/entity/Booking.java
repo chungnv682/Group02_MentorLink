@@ -27,7 +27,7 @@ public class Booking extends AbstractEntity<Long> {
 
     // Persist enum as string in DB
     @Column(name = "payment_process")
-//    @Enumerated(EnumType.STRING)
+    @Enumerated(EnumType.STRING)
     private PaymentProcess paymentProcess;
 
     @ManyToOne(fetch = FetchType.LAZY)

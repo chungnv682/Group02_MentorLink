@@ -24,11 +24,13 @@ import {
 // Common pages and components
 import {
   HomePage,
-  NotFoundPage
+  NotFoundPage,
+  AboutPage,
+  BecomeACounselorPage
 } from '../pages/common';
 import { ProfilePage } from '../pages/common';
 import { BlogsPage, BlogDetailPage, FAQsPage, FAQDetailPage, CreateFaqPage } from '../pages/common';
-import { BookingSuccessPage, BookingFailedPage } from '../pages/common';
+import { BookingSuccessPage, BookingFailedPage, BookingHistoryPage } from '../pages/common';
 
 import { Layout } from '../components/layout';
 import { ProtectedRoute } from '../components/auth';
@@ -39,6 +41,14 @@ const routes = createBrowserRouter([
   {
     path: "/",
     element: <Layout><HomePage /></Layout>,
+  },
+  {
+    path: "/about",
+    element: <Layout><AboutPage /></Layout>,
+  },
+  {
+    path: "/become-mentor",
+    element: <Layout><BecomeACounselorPage /></Layout>,
   },
   {
     path: "/login",
@@ -115,6 +125,14 @@ const routes = createBrowserRouter([
     element: <Layout>
       <ProtectedRoute>
         <ProfilePage />
+      </ProtectedRoute>
+    </Layout>,
+  },
+  {
+    path: "/booking-history",
+    element: <Layout>
+      <ProtectedRoute>
+        <BookingHistoryPage />
       </ProtectedRoute>
     </Layout>,
   },

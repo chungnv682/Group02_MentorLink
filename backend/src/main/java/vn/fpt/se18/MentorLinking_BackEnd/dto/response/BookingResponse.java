@@ -11,13 +11,15 @@ import lombok.*;
 public class BookingResponse {
     private Long bookingId;
 
+    private Long mentorId;
+
     private String description;
 
     private String comment;
 
     private String paymentProcess; // COMPLETED, REFUNDED, WAIT_REFUND
 
-    private String statusName; // Approved, Pending, Rejected
+    private String statusName; // Approved, Pending, Rejected,CANCELED
 
     private String emailMentor;
 

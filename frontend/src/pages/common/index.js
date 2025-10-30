@@ -9,3 +9,6 @@ export { default as FAQDetailPage } from './FAQDetailPage';
 export { default as CreateFaqPage } from './CreateFaqPage';
 export { default as BookingSuccessPage } from './BookingSuccessPage';
 export { default as BookingFailedPage } from './BookingFailedPage';
+export { default as BookingHistoryPage } from './BookingHistoryPage';
+export { default as AboutPage } from './AboutPage';
+export { default as BecomeACounselorPage } from './BecomeACounselorPage';

@@ -21,7 +21,6 @@ import vn.fpt.se18.MentorLinking_BackEnd.service.BookingService;
 import vn.fpt.se18.MentorLinking_BackEnd.service.VNPayService;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -174,6 +173,34 @@ public class BookingController {
                     .requestDateTime(LocalDateTime.now().toString())
                     .respCode("1")
                     .description(e.getMessage())
+                    .build();
+        }
+    }
+
+    /**
+     * Cancel a booking by the authenticated customer (only if rules satisfied)
+     */
+    @PostMapping("/{id}/cancel")
+    @Operation(summary = "Cancel a booking (customer only). Must be at least 3 hours before earliest time slot and paymentProcess must be COMPLETED")
+    public BaseResponse<String> cancelBooking(@PathVariable("id") Long bookingId, Authentication authentication) {
+        try {
+            UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+            User user = userRepository.findByEmail(userDetails.getUsername())
+                    .orElseThrow(() -> new RuntimeException("User không tồn tại"));
+
+            bookingService.cancelBooking(user.getId(), bookingId);
+
+            return BaseResponse.<String>builder()
+                    .requestDateTime(LocalDateTime.now().toString())
+                    .respCode("0")
+                    .description("Hủy booking thành công")
+                    .build();
+        } catch (Exception e) {
+            log.error("Error cancelling booking {}", bookingId, e);
+            return BaseResponse.<String>builder()
+                    .requestDateTime(LocalDateTime.now().toString())
+                    .respCode("1")
+                    .description("Lỗi khi hủy booking: " + e.getMessage())
                     .build();
         }
     }

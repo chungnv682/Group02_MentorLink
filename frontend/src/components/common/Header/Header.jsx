@@ -61,6 +61,9 @@ const Header = () => {
                                     <NavDropdown.Item as={Link} to="/profile">
                                         <i className="bi bi-person me-2"></i>Hồ sơ
                                     </NavDropdown.Item>
+                                    <NavDropdown.Item as={Link} to="/booking-history">
+                                        <i className="bi bi-calendar-check me-2"></i>Lịch sử đặt lịch
+                                    </NavDropdown.Item>
                                     <NavDropdown.Item as={Link} to="/settings">
                                         <i className="bi bi-gear me-2"></i>Cài đặt
                                     </NavDropdown.Item>
