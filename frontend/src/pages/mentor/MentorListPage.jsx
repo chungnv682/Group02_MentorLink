@@ -196,13 +196,13 @@ const MentorListPage = () => {
                 <Col>
                     <div className="d-flex justify-content-between align-items-center">
                         <div>
-                            <h2 className="mb-0">Tìm Mentor</h2>
+                            <h2 className="mb-0">Tìm cố vấn</h2>
                             <p className="text-muted mb-0">
-                                Khám phá và kết nối với các mentor phù hợp với bạn
+                                Khám phá và kết nối với các cố vấn phù hợp với bạn
                             </p>
                         </div>
                         <Badge bg="info" className="fs-6">
-                            {pagination.totalElements} mentors
+                            {pagination.totalElements} cố vấn
                         </Badge>
                     </div>
                 </Col>
@@ -264,7 +264,7 @@ const MentorListPage = () => {
                                     >
                                         {pageSizeOptions.map(size => (
                                             <option key={size} value={size}>
-                                                {size} mentors
+                                                {size} cố vấn
                                             </option>
                                         ))}
                                     </Form.Select>
@@ -298,14 +298,15 @@ const MentorListPage = () => {
                 </Alert>
             ) : (
                 <>
-                    {/* Mentor Grid */}
-                    <Row>
+                    {/* Mentor Horizontal List */}
+                    <div className="mentor-rows-list">
                         {mentors.map((mentor) => (
-                            <Col key={mentor.id} lg={3} md={4} sm={6} className="mb-4">
-                                <MentorCard mentor={mentor} />
-                            </Col>
+                            <div key={mentor.id} className="mentor-row-item">
+                                {/* Use a horizontal row layout similar to bookingcare */}
+                                <MentorCard mentor={mentor} horizontal={true} />
+                            </div>
                         ))}
-                    </Row>
+                    </div>
 
                     {/* Pagination */}
                     {pagination.totalPages > 1 && (
@@ -320,7 +321,7 @@ const MentorListPage = () => {
                                 <div className="text-center text-muted mt-2">
                                     Hiển thị {pagination.pageNumber * pagination.pageSize + 1} - {' '}
                                     {Math.min((pagination.pageNumber + 1) * pagination.pageSize, pagination.totalElements)} {' '}
-                                    trong tổng số {pagination.totalElements} mentors
+                                    trong tổng số {pagination.totalElements} cố vấn
                                 </div>
                             </Col>
                         </Row>
