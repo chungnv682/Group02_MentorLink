@@ -32,6 +32,8 @@ public class MentorController {
     @GetMapping("/{id}")
     public BaseResponse<MentorDetailResponse> getMentorById(@PathVariable Long id) {
         log.info("Getting mentor by id: {}", id);
+        // dele mentor
+        // get id mentor
         return BaseResponse.<MentorDetailResponse>builder()
                 .data(mentorService.getMentorById(id))
                 .build();
