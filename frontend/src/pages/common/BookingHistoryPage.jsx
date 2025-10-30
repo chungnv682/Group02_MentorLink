@@ -146,13 +146,13 @@ const BookingHistoryPage = () => {
                                     <Table hover className="booking-history-table">
                                         <thead className="table-light">
                                             <tr>
-                                                <th style={{ width: '5%' }}>STT</th>
-                                                <th style={{ width: '15%' }}>Trạng thái</th>
-                                                <th style={{ width: '17%' }}>TT Thanh toán</th>
+                                                <th style={{ width: '5%' }}>STT</th>                                       
                                                 <th style={{ width: '15%' }}>Cố vấn</th>
-                                                <th style={{ width: '10%' }}>Ngày</th>
-                                                <th style={{ width: '12%' }}>Giá</th>
+                                                <th style={{ width: '10%' }}>Ngày</th>                                              
                                                 <th style={{ width: '16%' }}>Thời gian</th>
+                                                <th style={{ width: '12%' }}>Giá</th>
+                                                <th style={{ width: '10%' }}>Trạng thái</th>
+                                                <th style={{ width: '17%' }}>TT Thanh toán</th>
                                                 <th style={{ width: '10%' }}>Hành động</th>
                                             </tr>
                                         </thead>
@@ -160,12 +160,7 @@ const BookingHistoryPage = () => {
                                             {bookings.map((booking, index) => (
                                                 <tr key={booking.bookingId} className="booking-row">
                                                     <td className="stt-cell">{index + 1}</td>
-                                                    <td>
-                                                        {getStatusBadge(booking.statusName)}
-                                                    </td>
-                                                    <td>
-                                                        {getPaymentBadge(booking.paymentProcess)}
-                                                    </td>
+                                                    
                                                     <td>
                                                         <Button
                                                             variant="link"
@@ -181,13 +176,20 @@ const BookingHistoryPage = () => {
                                                             ? formatDate(booking.schedule.date)
                                                             : '-'}
                                                     </td>
-                                                    <td className="price-cell">
-                                                        {booking.schedule ? formatPrice(booking.schedule.price) : '-'}
-                                                    </td>
+                                                    
                                                     <td>
                                                         {booking.schedule && booking.schedule.timeSlots
                                                             ? renderTimeSlots(booking.schedule.timeSlots)
                                                             : '-'}
+                                                    </td>
+                                                    <td className="price-cell">
+                                                        {booking.schedule ? formatPrice(booking.schedule.price) : '-'}
+                                                    </td>
+                                                    <td>
+                                                        {getStatusBadge(booking.statusName)}
+                                                    </td>
+                                                    <td>
+                                                        {getPaymentBadge(booking.paymentProcess)}
                                                     </td>
                                                     <td>
                                                         <Button
