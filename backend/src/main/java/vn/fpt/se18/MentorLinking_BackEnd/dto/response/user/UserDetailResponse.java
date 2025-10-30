@@ -5,6 +5,7 @@ import lombok.Getter;
 import vn.fpt.se18.MentorLinking_BackEnd.util.UserStatus;
 
 import java.io.Serializable;
+import java.time.LocalDateTime;
 import java.util.Date;
 
 @Builder
@@ -14,7 +15,11 @@ public class UserDetailResponse implements Serializable {
 
     private String email;
 
-    private String username;
+    private String fullName;
 
-    private UserStatus status;
+    private String roleName;
+
+    private String status;
+
+    private LocalDateTime createTime;
 }
