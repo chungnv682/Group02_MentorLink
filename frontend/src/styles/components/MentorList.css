@@ -422,6 +422,32 @@
     overflow: hidden;
 }
 
+/* Horizontal list styles */
+.mentor-horizontal-list {
+    display: flex;
+    gap: 20px;
+    overflow-x: auto;
+    padding: 10px 4px 20px 4px;
+    -webkit-overflow-scrolling: touch;
+}
+
+.mentor-horizontal-item {
+    flex: 0 0 320px; /* fixed card width */
+    max-width: 320px;
+}
+
+/* Improve appearance of scrollbar for webkit */
+.mentor-horizontal-list::-webkit-scrollbar {
+    height: 10px;
+}
+.mentor-horizontal-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+.mentor-horizontal-list::-webkit-scrollbar-thumb {
+    background: rgba(0,0,0,0.15);
+    border-radius: 10px;
+}
+
 .mentor-card::before {
     content: '';
     position: absolute;
@@ -464,5 +490,81 @@
     to {
         opacity: 1;
         transform: translateY(0);
+    }
+}
+
+@media (max-width: 576px) {
+    .mentor-horizontal-item {
+        flex: 0 0 260px;
+        max-width: 260px;
+    }
+}
+
+/* Row layout styles (bookingcare-like) */
+.mentor-row-card {
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid #e9ecef;
+}
+
+.mentor-row-left {
+    width: 260px;
+    min-width: 200px;
+    max-width: 320px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    border-right: 1px solid #f1f3f4;
+}
+
+.mentor-avatar-row {
+    width: 120px;
+    height: 120px;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 4px solid #fff;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+}
+
+.mentor-row-right {
+    padding-left: 16px;
+}
+
+.mentor-row-intro {
+    max-width: 100%;
+}
+
+.country-badge-row {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid #0d6efd;
+    color: #0d6efd;
+    background-color: transparent;
+}
+
+.country-badge-row img {
+    display: inline-block;
+    vertical-align: middle;
+}
+
+@media (max-width: 768px) {
+    .mentor-row-left {
+        width: 180px;
+        min-width: 140px;
+    }
+
+    .mentor-avatar-row {
+        width: 90px;
+        height: 90px;
+    }
+}
+
+@media (max-width: 576px) {
+    .mentor-row-card .d-flex.align-items-stretch {
+        flex-direction: column;
+    }
+
+    .mentor-row-left {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid #f1f3f4;
     }
 }

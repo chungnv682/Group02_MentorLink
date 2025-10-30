@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Container, Row, Col, Card, Form, Button, Spinner, Image } from 'react-bootstrap';
+import { Container, Row, Col, Card, Form, Button, Spinner, Image, Badge } from 'react-bootstrap';
+import { FaUser, FaEnvelope, FaPhone, FaBirthdayCake, FaMapMarkerAlt, FaImage, FaUniversity, FaCreditCard, FaSave, FaEdit } from 'react-icons/fa';
 import { instance } from '../../api/axios';
 import { API_ENDPOINTS, USER_ROLES } from '../../utils';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
+import '../../styles/components/Profile.css';
 
 const allowedFieldsForCustomer = [
     'username', 'email', 'fullname', 'dob', 'phone', 'gender', 'address', 'avatarUrl', 'bankAccountNumber', 'bankName'
@@ -105,90 +107,262 @@ const ProfilePage = () => {
     }
 
     const isCustomer = (user?.role || '').toUpperCase() === USER_ROLES.CUSTOMER;
+    const avatarUrl = form.avatarUrl || '/images/default-avatar.png';
 
     return (
-        <Container className="py-5">
-            <Row>
-                <Col md={8} className="mx-auto">
-                    <Card>
-                        <Card.Header>
-                            <h4>Hồ sơ cá nhân</h4>
-                        </Card.Header>
-                        <Card.Body>
-                            <Form onSubmit={handleSubmit}>
-                                {/* Avatar preview */}
-                                {form.avatarUrl && (
-                                    <div className="mb-3 text-center">
-                                        <Image src={form.avatarUrl} roundedCircle width={120} height={120} alt="avatar" />
-                                    </div>
-                                )}
+        <div className="profile-page">
+            {/* Header Background */}
+            <div className="profile-header-bg"></div>
 
-                                <Form.Group className="mb-3" controlId="username">
-                                    <Form.Label>Username</Form.Label>
-                                    <Form.Control name="username" value={form.username || ''} onChange={handleChange} />
-                                </Form.Group>
+            <Container className="py-5">
+                <div className="profile-container">
+                    {/* Avatar & User Card */}
+                    <Row className="mb-5">
+                        <Col lg={12} className="mx-auto">
+                            <Card className="profile-card shadow-lg">
+                                <Card.Body>
+                                    <Row>
+                                        {/* Avatar Section */}
+                                        <Col lg={4} md={5} className="text-center profile-avatar-section">
+                                            <div className="profile-avatar-wrapper">
+                                                <Image
+                                                    src={avatarUrl}
+                                                    onError={(e) => {
+                                                        e.target.src = '/images/default-avatar.png';
+                                                    }}
+                                                    roundedCircle
+                                                    className="profile-avatar"
+                                                    alt={form.fullname || 'User Avatar'}
+                                                />
+                                                <div className="avatar-overlay">
+                                                    <FaEdit className="avatar-edit-icon" />
+                                                </div>
+                                            </div>
+                                            <h4 className="mt-4 fw-bold text-secondary">{form.fullname || 'Người dùng'}</h4>
+                                            <p className="text-muted">
+                                                <Badge bg="info" className="me-2">
+                                                    {isCustomer ? 'Khách hàng' : 'Cố vấn'}
+                                                </Badge>
+                                            </p>
+                                            <div className="profile-stats mt-4">
+                                                {profile?.numberOfBooking && (
+                                                    <div className="stat-item">
+                                                        <h6 className="text-muted">Booking</h6>
+                                                        <h5 className="fw-bold text-primary">{profile.numberOfBooking || 0}</h5>
+                                                    </div>
+                                                )}
+                                                {profile?.rating && (
+                                                    <div className="stat-item">
+                                                        <h6 className="text-muted">Đánh giá</h6>
+                                                        <h5 className="fw-bold text-warning">{profile.rating || 0}⭐</h5>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </Col>
 
-                                <Form.Group className="mb-3" controlId="email">
-                                    <Form.Label>Email</Form.Label>
-                                    <Form.Control name="email" value={form.email || ''} disabled />
-                                </Form.Group>
+                                        {/* Form Section */}
+                                        <Col lg={8} md={7}>
+                                            <Form onSubmit={handleSubmit} className="profile-form">
+                                                {/* Row 1: Username & Email */}
+                                                <Row className="mb-4">
+                                                    <Col md={6}>
+                                                        <Form.Group controlId="username">
+                                                            <Form.Label className="form-label-custom">
+                                                                <FaUser className="me-2 text-primary" /> Username
+                                                            </Form.Label>
+                                                            <Form.Control
+                                                                className="form-control-custom"
+                                                                name="username"
+                                                                value={form.username || ''}
+                                                                onChange={handleChange}
+                                                                placeholder="Nhập username"
+                                                            />
+                                                        </Form.Group>
+                                                    </Col>
+                                                    <Col md={6}>
+                                                        <Form.Group controlId="email">
+                                                            <Form.Label className="form-label-custom">
+                                                                <FaEnvelope className="me-2 text-primary" /> Email
+                                                            </Form.Label>
+                                                            <Form.Control
+                                                                className="form-control-custom"
+                                                                name="email"
+                                                                value={form.email || ''}
+                                                                disabled
+                                                                placeholder="Email"
+                                                            />
+                                                        </Form.Group>
+                                                    </Col>
+                                                </Row>
 
-                                <Form.Group className="mb-3" controlId="fullname">
-                                    <Form.Label>Họ và tên</Form.Label>
-                                    <Form.Control name="fullname" value={form.fullname || ''} onChange={handleChange} />
-                                </Form.Group>
+                                                {/* Row 2: Fullname & Phone */}
+                                                <Row className="mb-4">
+                                                    <Col md={6}>
+                                                        <Form.Group controlId="fullname">
+                                                            <Form.Label className="form-label-custom">
+                                                                <FaUser className="me-2 text-primary" /> Họ và tên
+                                                            </Form.Label>
+                                                            <Form.Control
+                                                                className="form-control-custom"
+                                                                name="fullname"
+                                                                value={form.fullname || ''}
+                                                                onChange={handleChange}
+                                                                placeholder="Họ và tên"
+                                                            />
+                                                        </Form.Group>
+                                                    </Col>
+                                                    <Col md={6}>
+                                                        <Form.Group controlId="phone">
+                                                            <Form.Label className="form-label-custom">
+                                                                <FaPhone className="me-2 text-primary" /> Điện thoại
+                                                            </Form.Label>
+                                                            <Form.Control
+                                                                className="form-control-custom"
+                                                                name="phone"
+                                                                value={form.phone || ''}
+                                                                onChange={handleChange}
+                                                                placeholder="Số điện thoại"
+                                                            />
+                                                        </Form.Group>
+                                                    </Col>
+                                                </Row>
 
-                                <Form.Group className="mb-3" controlId="dob">
-                                    <Form.Label>Ngày sinh</Form.Label>
-                                    <Form.Control type="date" name="dob" value={form.dob ? form.dob.split('T')?.[0] : ''} onChange={handleChange} />
-                                </Form.Group>
+                                                {/* Row 3: DOB & Gender */}
+                                                <Row className="mb-4">
+                                                    <Col md={6}>
+                                                        <Form.Group controlId="dob">
+                                                            <Form.Label className="form-label-custom">
+                                                                <FaBirthdayCake className="me-2 text-primary" /> Ngày sinh
+                                                            </Form.Label>
+                                                            <Form.Control
+                                                                className="form-control-custom"
+                                                                type="date"
+                                                                name="dob"
+                                                                value={form.dob ? form.dob.split('T')?.[0] : ''}
+                                                                onChange={handleChange}
+                                                            />
+                                                        </Form.Group>
+                                                    </Col>
+                                                    <Col md={6}>
+                                                        <Form.Group controlId="gender">
+                                                            <Form.Label className="form-label-custom">Giới tính</Form.Label>
+                                                            <Form.Select
+                                                                className="form-control-custom"
+                                                                name="gender"
+                                                                value={form.gender || ''}
+                                                                onChange={handleChange}
+                                                            >
+                                                                <option value="">-- Chọn giới tính --</option>
+                                                                <option value="MALE">Nam</option>
+                                                                <option value="FEMALE">Nữ</option>
+                                                                <option value="OTHER">Khác</option>
+                                                            </Form.Select>
+                                                        </Form.Group>
+                                                    </Col>
+                                                </Row>
 
-                                <Form.Group className="mb-3" controlId="phone">
-                                    <Form.Label>Điện thoại</Form.Label>
-                                    <Form.Control name="phone" value={form.phone || ''} onChange={handleChange} />
-                                </Form.Group>
+                                                {/* Row 4: Address & Avatar URL */}
+                                                <Row className="mb-4">
+                                                    <Col md={6}>
+                                                        <Form.Group controlId="address">
+                                                            <Form.Label className="form-label-custom">
+                                                                <FaMapMarkerAlt className="me-2 text-primary" /> Địa chỉ
+                                                            </Form.Label>
+                                                            <Form.Control
+                                                                className="form-control-custom"
+                                                                name="address"
+                                                                value={form.address || ''}
+                                                                onChange={handleChange}
+                                                                placeholder="Địa chỉ"
+                                                            />
+                                                        </Form.Group>
+                                                    </Col>
+                                                    <Col md={6}>
+                                                        <Form.Group controlId="avatarUrl">
+                                                            <Form.Label className="form-label-custom">
+                                                                <FaImage className="me-2 text-primary" /> Avatar URL
+                                                            </Form.Label>
+                                                            <Form.Control
+                                                                className="form-control-custom"
+                                                                name="avatarUrl"
+                                                                value={form.avatarUrl || ''}
+                                                                onChange={handleChange}
+                                                                placeholder="URL ảnh đại diện"
+                                                            />
+                                                        </Form.Group>
+                                                    </Col>
+                                                </Row>
 
-                                <Form.Group className="mb-3" controlId="gender">
-                                    <Form.Label>Giới tính</Form.Label>
-                                    <Form.Select name="gender" value={form.gender || ''} onChange={handleChange}>
-                                        <option value="">-- Chọn --</option>
-                                        <option value="MALE">Nam</option>
-                                        <option value="FEMALE">Nữ</option>
-                                        <option value="OTHER">Khác</option>
-                                    </Form.Select>
-                                </Form.Group>
+                                                {/* Row 5: Bank & Degree */}
+                                                <Row className="mb-4">
+                                                    <Col md={6}>
+                                                        <Form.Group controlId="bankAccountNumber">
+                                                            <Form.Label className="form-label-custom">
+                                                                <FaCreditCard className="me-2 text-primary" /> Số tài khoản
+                                                            </Form.Label>
+                                                            <Form.Control
+                                                                className="form-control-custom"
+                                                                name="bankAccountNumber"
+                                                                value={form.bankAccountNumber || ''}
+                                                                onChange={handleChange}
+                                                                placeholder="Số tài khoản"
+                                                            />
+                                                        </Form.Group>
+                                                    </Col>
+                                                    <Col md={6}>
+                                                        <Form.Group controlId="bankName">
+                                                            <Form.Label className="form-label-custom">
+                                                                <FaCreditCard className="me-2 text-primary" /> Ngân hàng
+                                                            </Form.Label>
+                                                            <Form.Control
+                                                                className="form-control-custom"
+                                                                name="bankName"
+                                                                value={form.bankName || ''}
+                                                                onChange={handleChange}
+                                                                placeholder="Tên ngân hàng"
+                                                            />
+                                                        </Form.Group>
+                                                    </Col>
+                                                </Row>
 
-                                <Form.Group className="mb-3" controlId="address">
-                                    <Form.Label>Địa chỉ</Form.Label>
-                                    <Form.Control name="address" value={form.address || ''} onChange={handleChange} />
-                                </Form.Group>
-
-                                <Form.Group className="mb-3" controlId="avatarUrl">
-                                    <Form.Label>Avatar URL</Form.Label>
-                                    <Form.Control name="avatarUrl" value={form.avatarUrl || ''} onChange={handleChange} />
-                                </Form.Group>
-
-                                <Form.Group className="mb-3" controlId="bankAccountNumber">
-                                    <Form.Label>Số tài khoản</Form.Label>
-                                    <Form.Control name="bankAccountNumber" value={form.bankAccountNumber || ''} onChange={handleChange} />
-                                </Form.Group>
-
-                                <Form.Group className="mb-3" controlId="bankName">
-                                    <Form.Label>Ngân hàng</Form.Label>
-                                    <Form.Control name="bankName" value={form.bankName || ''} onChange={handleChange} />
-                                </Form.Group>
-
-                                <div className="d-flex justify-content-end">
-                                    <Button variant="primary" type="submit" disabled={saving}>
-                                        {saving ? (<><Spinner animation="border" size="sm" />{' '}Đang lưu</>) : 'Lưu thay đổi'}
-                                    </Button>
-                                </div>
-                            </Form>
-                        </Card.Body>
-                    </Card>
-                </Col>
-            </Row>
-        </Container>
+                                                {/* Action Buttons */}
+                                                <Row className="mt-5">
+                                                    <Col className="d-flex justify-content-end gap-3">
+                                                        <Button
+                                                            variant="outline-secondary"
+                                                            className="btn-cancel"
+                                                            onClick={() => window.history.back()}
+                                                        >
+                                                            Hủy
+                                                        </Button>
+                                                        <Button
+                                                            type="submit"
+                                                            disabled={saving}
+                                                            className="btn-save-profile"
+                                                        >
+                                                            {saving ? (
+                                                                <>
+                                                                    <Spinner animation="border" size="sm" className="me-2" />
+                                                                    Đang lưu...
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <FaSave className="me-2" /> Lưu thay đổi
+                                                                </>
+                                                            )}
+                                                        </Button>
+                                                    </Col>
+                                                </Row>
+                                            </Form>
+                                        </Col>
+                                    </Row>
+                                </Card.Body>
+                            </Card>
+                        </Col>
+                    </Row>
+                </div>
+            </Container>
+        </div>
     );
 };
 
