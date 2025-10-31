@@ -1,12 +1,15 @@
-import { Container, Row, Col, Form, Button, Card, InputGroup, Alert } from 'react-bootstrap';
+import { Container, Row, Col, Form, Button, Card, InputGroup, Alert, Spinner } from 'react-bootstrap';
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import 'bootstrap-icons/font/bootstrap-icons.css';
 import CountrySelector from '../../components/mentor/CountrySelector';
 import { MentorPolicyModal } from '../../components/common';
+import { AuthService } from '../../services';
 import '../../styles/components/MentorRegister.css';
 
 const RegisterMentorPage = () => {
+    const navigate = useNavigate();
+    
     // State for form data
     const [formData, setFormData] = useState({
         personalInfo: {
@@ -19,6 +22,7 @@ const RegisterMentorPage = () => {
             phone: '',
             title: '',
             education: '',
+            linkedinUrl: '',
             bio: ''
         }
     });
@@ -26,9 +30,17 @@ const RegisterMentorPage = () => {
     // State for approved countries
     const [selectedCountries, setSelectedCountries] = useState([]);
 
+    // State for avatar
+    const [avatar, setAvatar] = useState(null);
+
     // State for policy modal
     const [showPolicyModal, setShowPolicyModal] = useState(false);
     const [hasPolicyAccepted, setHasPolicyAccepted] = useState(false);
+    
+    // State for loading and error
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [error, setError] = useState(null);
+    const [success, setSuccess] = useState(null);
 
     // State for form sections
     const [educations, setEducations] = useState([{
@@ -132,46 +144,117 @@ const RegisterMentorPage = () => {
     };
 
     // Handle form submission
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
+        
+        // Clear previous messages
+        setError(null);
+        setSuccess(null);
 
         // Validate passwords match
         if (formData.personalInfo.password !== formData.personalInfo.confirmPassword) {
-            alert('Mật khẩu không khớp. Vui lòng kiểm tra lại!');
+            setError('Mật khẩu không khớp. Vui lòng kiểm tra lại!');
             return;
         }
 
         // Validate password strength
-        if (formData.personalInfo.password.length < 6) {
-            alert('Mật khẩu phải có ít nhất 6 ký tự!');
+        if (formData.personalInfo.password.length < 8) {
+            setError('Mật khẩu phải có ít nhất 8 ký tự!');
             return;
         }
 
         // Validate selected countries
         if (selectedCountries.length === 0) {
-            alert('Vui lòng chọn ít nhất một nước bạn có thể hỗ trợ du học!');
+            setError('Vui lòng chọn ít nhất một nước bạn có thể hỗ trợ du học!');
             return;
         }
 
         // Check if policy has been accepted
         if (!hasPolicyAccepted) {
-            alert('Vui lòng đọc và chấp nhận chính sách mentor trước khi đăng ký!');
+            setError('Vui lòng đọc và chấp nhận chính sách mentor trước khi đăng ký!');
             setShowPolicyModal(true);
             return;
         }
 
-        // Here you would typically send the data to your API
-        const mentorData = {
-            personalInfo: formData.personalInfo,
-            educations,
-            experiences,
-            testScores,
-            approvedCountries: selectedCountries
-        };
+        // Prepare FormData to send files to API
+        const formDataToSend = new FormData();
+        
+        // Append personal info as JSON string or individual fields
+        formDataToSend.append('personalInfo', JSON.stringify(formData.personalInfo));
+        
+        // Append avatar file
+        if (avatar) {
+            formDataToSend.append('avatar', avatar);
+        }
+        
+        // Append educations with certificates
+        educations.forEach((edu, index) => {
+            formDataToSend.append(`educations[${index}][school]`, edu.school || '');
+            formDataToSend.append(`educations[${index}][major]`, edu.major || '');
+            formDataToSend.append(`educations[${index}][startDate]`, edu.startDate || '');
+            formDataToSend.append(`educations[${index}][endDate]`, edu.endDate || '');
+            if (edu.certificate) {
+                formDataToSend.append(`educationCertificates[${index}]`, edu.certificate);
+            }
+        });
+        
+        // Append experiences with proofs
+        experiences.forEach((exp, index) => {
+            formDataToSend.append(`experiences[${index}][company]`, exp.company || '');
+            formDataToSend.append(`experiences[${index}][position]`, exp.position || '');
+            formDataToSend.append(`experiences[${index}][startDate]`, exp.startDate || '');
+            formDataToSend.append(`experiences[${index}][endDate]`, exp.endDate || '');
+            if (exp.proof) {
+                formDataToSend.append(`experienceProofs[${index}]`, exp.proof);
+            }
+        });
+        
+        // Append test scores with certificates
+        testScores.forEach((test, index) => {
+            formDataToSend.append(`testScores[${index}][testName]`, test.testName || '');
+            formDataToSend.append(`testScores[${index}][score]`, test.score || '');
+            if (test.certificate) {
+                formDataToSend.append(`testScoreCertificates[${index}]`, test.certificate);
+            }
+        });
+        
+        // Append approved countries
+        selectedCountries.forEach((country, index) => {
+            formDataToSend.append(`approvedCountries[${index}]`, country);
+        });
 
-        console.log('Form submitted:', mentorData);
-        // You would call your API here
-        // authService.registerMentor(mentorData)...
+        console.log('Form submitted with FormData');
+
+        try {
+            setIsSubmitting(true);
+            
+            // Call API to register mentor
+            const result = await AuthService.registerMentor(formDataToSend);
+            
+            console.log('Registration result:', result);
+            
+            if (result.success) {
+                setSuccess('Đăng ký thành công! Đang chuyển hướng...');
+                
+                // Redirect to appropriate page after 2 seconds
+                setTimeout(() => {
+                    const user = AuthService.getCurrentUser();
+                    if (user) {
+                        navigate(AuthService.getRouteByRole(user.role));
+                    } else {
+                        navigate('/login');
+                    }
+                }, 2000);
+            } else {
+                console.error('Registration failed:', result);
+                setError(result.error || result.description || 'Đăng ký thất bại. Vui lòng thử lại!');
+            }
+        } catch (err) {
+            console.error('Submit error:', err);
+            setError('Có lỗi xảy ra khi đăng ký. Vui lòng thử lại!');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     // Policy modal handlers
@@ -298,7 +381,11 @@ const RegisterMentorPage = () => {
                                                     </InputGroup.Text>
                                                     <Form.Control
                                                         type="date"
+                                                        name="birthDate"
+                                                        value={formData.personalInfo.birthDate}
+                                                        onChange={handlePersonalInfoChange}
                                                         className="bg-light border-0 py-2"
+                                                        required
                                                     />
                                                 </InputGroup>
                                             </Form.Group>
@@ -312,8 +399,12 @@ const RegisterMentorPage = () => {
                                                     </InputGroup.Text>
                                                     <Form.Control
                                                         type="text"
+                                                        name="location"
+                                                        value={formData.personalInfo.location}
+                                                        onChange={handlePersonalInfoChange}
                                                         placeholder="Ví dụ như 'Hanoi, Vietnam,' 'New York, NY'"
                                                         className="bg-light border-0 py-2"
+                                                        required
                                                     />
                                                 </InputGroup>
                                             </Form.Group>
@@ -330,8 +421,12 @@ const RegisterMentorPage = () => {
                                                     </InputGroup.Text>
                                                     <Form.Control
                                                         type="text"
+                                                        name="phone"
+                                                        value={formData.personalInfo.phone}
+                                                        onChange={handlePersonalInfoChange}
                                                         placeholder="Số điện thoại liên lạc"
                                                         className="bg-light border-0 py-2"
+                                                        required
                                                     />
                                                 </InputGroup>
                                             </Form.Group>
@@ -345,8 +440,12 @@ const RegisterMentorPage = () => {
                                                     </InputGroup.Text>
                                                     <Form.Control
                                                         type="text"
+                                                        name="title"
+                                                        value={formData.personalInfo.title}
+                                                        onChange={handlePersonalInfoChange}
                                                         placeholder="Ví dụ như 'Web Developer, Mara Technology'"
                                                         className="bg-light border-0 py-2"
+                                                        required
                                                     />
                                                 </InputGroup>
                                             </Form.Group>
@@ -357,8 +456,14 @@ const RegisterMentorPage = () => {
                                         <Col md={6}>
                                             <Form.Group className="mb-3">
                                                 <Form.Label>Trình độ học vấn cao nhất <span className="text-danger">*</span></Form.Label>
-                                                <Form.Select className="bg-light border-0 py-2">
-                                                    <option>Chọn trình độ học vấn</option>
+                                                <Form.Select 
+                                                    name="education"
+                                                    value={formData.personalInfo.education}
+                                                    onChange={handlePersonalInfoChange}
+                                                    className="bg-light border-0 py-2"
+                                                    required
+                                                >
+                                                    <option value="">Chọn trình độ học vấn</option>
                                                     <option value="HIGH_SCHOOL">Phổ thông</option>
                                                     <option value="BACHELOR">Đại học</option>
                                                     <option value="MASTER">Thạc sĩ</option>
@@ -375,6 +480,9 @@ const RegisterMentorPage = () => {
                                                     </InputGroup.Text>
                                                     <Form.Control
                                                         type="text"
+                                                        name="linkedinUrl"
+                                                        value={formData.personalInfo.linkedinUrl || ''}
+                                                        onChange={handlePersonalInfoChange}
                                                         placeholder="URL trang LinkedIn của bạn"
                                                         className="bg-light border-0 py-2"
                                                     />
@@ -392,7 +500,13 @@ const RegisterMentorPage = () => {
                                     <Form.Group className="mb-4">
                                         <Form.Label>Ảnh đại diện <span className="text-danger">*</span></Form.Label>
                                         <InputGroup>
-                                            <Form.Control type="file" className="bg-light border-0 py-2" />
+                                            <Form.Control 
+                                                type="file" 
+                                                onChange={(e) => setAvatar(e.target.files[0])}
+                                                className="bg-light border-0 py-2"
+                                                accept="image/*"
+                                                required
+                                            />
                                         </InputGroup>
                                         <Form.Text className="text-muted">
                                             Hãy chọn ảnh đại diện chuyên nghiệp để tạo ấn tượng tốt với học viên
@@ -403,9 +517,13 @@ const RegisterMentorPage = () => {
                                         <Form.Label>Giới thiệu bản thân <span className="text-danger">*</span></Form.Label>
                                         <Form.Control
                                             as="textarea"
+                                            name="bio"
+                                            value={formData.personalInfo.bio}
+                                            onChange={handlePersonalInfoChange}
                                             rows={5}
                                             placeholder="Viết giới thiệu ngắn gọn về bản thân, kinh nghiệm và lý do bạn muốn trở thành mentor..."
                                             className="bg-light border-0"
+                                            required
                                         />
                                     </Form.Group>
 
@@ -478,8 +596,11 @@ const RegisterMentorPage = () => {
                                                         <Form.Label>Trường <span className="text-danger">*</span></Form.Label>
                                                         <Form.Control
                                                             type="text"
+                                                            value={edu.school || ''}
+                                                            onChange={(e) => handleEducationChange(index, 'school', e.target.value)}
                                                             placeholder="Tên trường học"
                                                             className="bg-light border-0 py-2"
+                                                            required
                                                         />
                                                     </Form.Group>
                                                 </Col>
@@ -488,8 +609,11 @@ const RegisterMentorPage = () => {
                                                         <Form.Label>Chuyên ngành <span className="text-danger">*</span></Form.Label>
                                                         <Form.Control
                                                             type="text"
+                                                            value={edu.major || ''}
+                                                            onChange={(e) => handleEducationChange(index, 'major', e.target.value)}
                                                             placeholder="Chuyên ngành học"
                                                             className="bg-light border-0 py-2"
+                                                            required
                                                         />
                                                     </Form.Group>
                                                 </Col>
@@ -500,7 +624,10 @@ const RegisterMentorPage = () => {
                                                         <Form.Label>Ngày bắt đầu <span className="text-danger">*</span></Form.Label>
                                                         <Form.Control
                                                             type="date"
+                                                            value={edu.startDate || ''}
+                                                            onChange={(e) => handleEducationChange(index, 'startDate', e.target.value)}
                                                             className="bg-light border-0 py-2"
+                                                            required
                                                         />
                                                     </Form.Group>
                                                 </Col>
@@ -509,6 +636,8 @@ const RegisterMentorPage = () => {
                                                         <Form.Label>Ngày kết thúc</Form.Label>
                                                         <Form.Control
                                                             type="date"
+                                                            value={edu.endDate || ''}
+                                                            onChange={(e) => handleEducationChange(index, 'endDate', e.target.value)}
                                                             className="bg-light border-0 py-2"
                                                         />
                                                         <Form.Text className="text-muted">
@@ -521,6 +650,7 @@ const RegisterMentorPage = () => {
                                                 <Form.Label>Ảnh bằng cấp</Form.Label>
                                                 <Form.Control
                                                     type="file"
+                                                    onChange={(e) => handleEducationChange(index, 'certificate', e.target.files[0])}
                                                     className="bg-light border-0 py-2"
                                                 />
                                             </Form.Group>
@@ -566,8 +696,11 @@ const RegisterMentorPage = () => {
                                                         <Form.Label>Tên bài thi <span className="text-danger">*</span></Form.Label>
                                                         <Form.Control
                                                             type="text"
+                                                            value={test.testName || ''}
+                                                            onChange={(e) => handleTestScoreChange(index, 'testName', e.target.value)}
                                                             placeholder="Ví dụ: IELTS, TOEFL, SAT, ACT, GRE, GMAT"
                                                             className="bg-light border-0 py-2"
+                                                            required
                                                         />
                                                     </Form.Group>
                                                 </Col>
@@ -576,8 +709,11 @@ const RegisterMentorPage = () => {
                                                         <Form.Label>Điểm số <span className="text-danger">*</span></Form.Label>
                                                         <Form.Control
                                                             type="text"
+                                                            value={test.score || ''}
+                                                            onChange={(e) => handleTestScoreChange(index, 'score', e.target.value)}
                                                             placeholder="Điểm số của bạn"
                                                             className="bg-light border-0 py-2"
+                                                            required
                                                         />
                                                     </Form.Group>
                                                 </Col>
@@ -586,6 +722,7 @@ const RegisterMentorPage = () => {
                                                 <Form.Label>Ảnh chứng chỉ</Form.Label>
                                                 <Form.Control
                                                     type="file"
+                                                    onChange={(e) => handleTestScoreChange(index, 'certificate', e.target.files[0])}
                                                     className="bg-light border-0 py-2"
                                                 />
                                             </Form.Group>
@@ -631,8 +768,11 @@ const RegisterMentorPage = () => {
                                                         <Form.Label>Công ty <span className="text-danger">*</span></Form.Label>
                                                         <Form.Control
                                                             type="text"
+                                                            value={exp.company || ''}
+                                                            onChange={(e) => handleExperienceChange(index, 'company', e.target.value)}
                                                             placeholder="Tên công ty"
                                                             className="bg-light border-0 py-2"
+                                                            required
                                                         />
                                                     </Form.Group>
                                                 </Col>
@@ -641,8 +781,11 @@ const RegisterMentorPage = () => {
                                                         <Form.Label>Vị trí <span className="text-danger">*</span></Form.Label>
                                                         <Form.Control
                                                             type="text"
+                                                            value={exp.position || ''}
+                                                            onChange={(e) => handleExperienceChange(index, 'position', e.target.value)}
                                                             placeholder="Vị trí công việc"
                                                             className="bg-light border-0 py-2"
+                                                            required
                                                         />
                                                     </Form.Group>
                                                 </Col>
@@ -653,7 +796,10 @@ const RegisterMentorPage = () => {
                                                         <Form.Label>Ngày bắt đầu <span className="text-danger">*</span></Form.Label>
                                                         <Form.Control
                                                             type="date"
+                                                            value={exp.startDate || ''}
+                                                            onChange={(e) => handleExperienceChange(index, 'startDate', e.target.value)}
                                                             className="bg-light border-0 py-2"
+                                                            required
                                                         />
                                                     </Form.Group>
                                                 </Col>
@@ -662,6 +808,8 @@ const RegisterMentorPage = () => {
                                                         <Form.Label>Ngày kết thúc</Form.Label>
                                                         <Form.Control
                                                             type="date"
+                                                            value={exp.endDate || ''}
+                                                            onChange={(e) => handleExperienceChange(index, 'endDate', e.target.value)}
                                                             className="bg-light border-0 py-2"
                                                         />
                                                         <Form.Text className="text-muted">
@@ -674,6 +822,7 @@ const RegisterMentorPage = () => {
                                                 <Form.Label>Ảnh minh chứng kinh nghiệm</Form.Label>
                                                 <Form.Control
                                                     type="file"
+                                                    onChange={(e) => handleExperienceChange(index, 'proof', e.target.files[0])}
                                                     className="bg-light border-0 py-2"
                                                 />
                                             </Form.Group>
@@ -683,20 +832,53 @@ const RegisterMentorPage = () => {
                             </Card.Body>
                         </Card>
 
+                        {/* Error Alert */}
+                        {error && (
+                            <Alert variant="danger" dismissible onClose={() => setError(null)} className="mt-3">
+                                <i className="bi bi-exclamation-triangle-fill me-2"></i>
+                                {error}
+                            </Alert>
+                        )}
+
+                        {/* Success Alert */}
+                        {success && (
+                            <Alert variant="success" className="mt-3">
+                                <i className="bi bi-check-circle-fill me-2"></i>
+                                {success}
+                            </Alert>
+                        )}
+
                         <div className="action-buttons-container">
                             <div className="d-flex justify-content-between">
-                                <Button variant="light" className="fw-bold shadow-sm">
+                                <Button 
+                                    variant="light" 
+                                    className="fw-bold shadow-sm"
+                                    onClick={() => navigate(-1)}
+                                    disabled={isSubmitting}
+                                >
                                     <i className="bi bi-arrow-left me-2"></i> Quay lại
                                 </Button>
                                 <div>
-
                                     <Button
                                         type="submit"
                                         variant={hasPolicyAccepted ? "success" : "primary"}
                                         className="mentor-submit-btn"
                                         onClick={handleSubmit}
+                                        disabled={isSubmitting}
                                     >
-                                        {hasPolicyAccepted ? (
+                                        {isSubmitting ? (
+                                            <>
+                                                <Spinner
+                                                    as="span"
+                                                    animation="border"
+                                                    size="sm"
+                                                    role="status"
+                                                    aria-hidden="true"
+                                                    className="me-2"
+                                                />
+                                                Đang xử lý...
+                                            </>
+                                        ) : hasPolicyAccepted ? (
                                             <>
                                                 <i className="bi bi-check-circle me-2"></i>
                                                 Đăng ký <i className="bi bi-arrow-right ms-2"></i>
@@ -713,8 +895,6 @@ const RegisterMentorPage = () => {
                     </Col>
                 </Row>
             </Container>
-
-            {/* Mentor Policy Modal */}
             <MentorPolicyModal
                 show={showPolicyModal}
                 onHide={() => setShowPolicyModal(false)}
