@@ -20,4 +20,12 @@ public interface BlogRepository extends JpaRepository<Blog, Long> {
                                                     Pageable pageable);
 
     Page<Blog> findByStatus_NameAndIsPublished(String statusName, Boolean isPublished, Pageable pageable);
+
+    // Admin methods for comprehensive blog management
+    @Query("SELECT b FROM Blog b JOIN b.author a LEFT JOIN b.status s " +
+            "WHERE (:keyword IS NULL OR LOWER(b.title) LIKE :keyword OR LOWER(a.fullname) LIKE :keyword OR LOWER(a.username) LIKE :keyword) " +
+            "AND (:statusName IS NULL OR s.name = :statusName)")
+    Page<Blog> findAllBlogsForAdmin(@Param("keyword") String keyword,
+                                   @Param("statusName") String statusName,
+                                   Pageable pageable);
 }
