@@ -15,6 +15,18 @@ jwt:
   refreshKey: 9k1jJAWAKQCnCEz1pwcPNegbHoLugf9hgEnn6sz5pFc=
   resetKey: 2OeEeG48CvIcH1K0UAXbSo/7gPj3QLJ7MnQZuscRirQ=
 
+# Qdrant Vector Database Configuration
+qdrant:
+  host: ${QDRANT_HOST:4df83e44-84fa-4101-b143-22c8743255cd.europe-west3-0.gcp.cloud.qdrant.io}
+  port: ${QDRANT_PORT:6334}
+  api-key: ${QDRANT_API_KEY:eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIn0.D_jAvVkeUiItiRmRq4fnJwh403JwXgZnXv1gY3V_ock}
+  tls: ${QDRANT_TLS:true}
+
+# Google Generative AI (Gemini) Configuration
+gemini:
+  api-key: ${GEMINI_API_KEY:AIzaSyA79tAvF3XlXwVHsxp0oyTtATaWinMWiVI}
+  model: ${GEMINI_MODEL:gemini-1.5-flash}
+
 management:
   endpoints:
     web:

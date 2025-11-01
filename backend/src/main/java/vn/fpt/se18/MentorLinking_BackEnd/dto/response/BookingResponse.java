@@ -1,7 +1,11 @@
 package vn.fpt.se18.MentorLinking_BackEnd.dto.response;
 
 
+import jakarta.persistence.Column;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import lombok.*;
+import vn.fpt.se18.MentorLinking_BackEnd.util.BookingService;
 
 @Getter
 @Setter
@@ -22,6 +26,12 @@ public class BookingResponse {
     private String statusName; // Approved, Pending, Rejected,CANCELED
 
     private String emailMentor;
+
+    private String service;
+
+    private String linkMeeting;
+
+    private boolean isRead = false;
 
     private ScheduleResponse schedule;
 }

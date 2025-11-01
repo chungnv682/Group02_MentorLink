@@ -14,6 +14,10 @@ class AuthService {
             const response = await authInstance.post('/api/auth/access-token', {
                 email,
                 password
+            }, {
+                headers: {
+                    'Content-Type': 'application/json'
+                }
             });
 
             if (response.accessToken && response.refreshToken) {
@@ -124,7 +128,6 @@ class AuthService {
         }
     }
 
-    // Lấy thông tin user từ token hiện tại
     getCurrentUser() {
         const token = localStorage.getItem('accessToken');
         if (!token || this.isTokenExpired(token)) {
@@ -134,30 +137,25 @@ class AuthService {
         return this.decodeToken(token);
     }
 
-    // Logout
     logout() {
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('authState');
     }
 
-    // Kiểm tra đã đăng nhập chưa
     isAuthenticated() {
         const token = localStorage.getItem('accessToken');
         return token && !this.isTokenExpired(token);
     }
 
-    // Lấy access token
     getAccessToken() {
         return localStorage.getItem('accessToken');
     }
 
-    // Lấy refresh token
     getRefreshToken() {
         return localStorage.getItem('refreshToken');
     }
 
-    // Navigate based on role
     getRouteByRole(role) {
         const routes = {
             'CUSTOMER': '/',
@@ -167,6 +165,130 @@ class AuthService {
         };
 
         return routes[role.toUpperCase()] || '/';
+    }
+
+    // Đăng ký mentor
+    async registerMentor(formDataFromPage) {
+        try {
+            // Check if data is FormData or regular object
+            const isFormData = formDataFromPage instanceof FormData;
+            
+            if (isFormData) {
+                // ✅ GỬI TRỰC TIẾP FormData từ component (không tạo mới)
+                console.log('=== Sending FormData directly to backend ===');
+                for (let [key, value] of formDataFromPage.entries()) {
+                    console.log(key, ':', value instanceof File ? `[File: ${value.name}]` : value);
+                }
+                
+                // ✅ Axios sẽ tự động set Content-Type: multipart/form-data khi detect FormData
+                // KHÔNG set header manually để tránh bị thiếu boundary parameter
+                const response = await authInstance.post('/api/auth/mentor-signup', formDataFromPage);
+                
+                console.log('Mentor signup response:', response);
+                
+                // Handle response
+                return this.handleAuthResponse(response);
+                
+            } else {
+                // Old format - regular object (fallback)
+                requestData = {
+                    fullName: formDataFromPage.personalInfo.name,
+                    email: formDataFromPage.personalInfo.email,
+                    password: formDataFromPage.personalInfo.password,
+                    confirmPassword: formDataFromPage.personalInfo.confirmPassword,
+                    dob: formDataFromPage.personalInfo.birthDate || null,
+                    address: formDataFromPage.personalInfo.location || '',
+                    phone: formDataFromPage.personalInfo.phone || '',
+                    title: formDataFromPage.personalInfo.title || '',
+                    levelOfEducation: formDataFromPage.personalInfo.education || '',
+                    linkedUrl: formDataFromPage.personalInfo.linkedinUrl || '', 
+                    introduceYourself: formDataFromPage.personalInfo.bio || '',
+                    
+                    mentorEducations: (formDataFromPage.educations || []).map(edu => ({
+                        schoolName: edu.school,
+                        major: edu.major,
+                        startDate: edu.startDate || null,
+                        endDate: edu.endDate || null
+                    })),
+                    
+                    experiences: (formDataFromPage.experiences || []).map(exp => ({
+                        company: exp.company,
+                        position: exp.position,
+                        startDate: exp.startDate || null,
+                        endDate: exp.endDate || null
+                    })),
+                    
+                    certificates: (formDataFromPage.testScores || []).map(test => ({
+                        certificateName: test.testName,
+                        score: test.score
+                    })),
+                    
+                    mentorCountries: (formDataFromPage.approvedCountries || []).map(country => {
+                        if (typeof country === 'object' && country.id) {
+                            return {
+                                countryId: country.id,
+                                description: country.description || ''
+                            };
+                        } else {
+                            const countryName = typeof country === 'string' ? country : country.name;
+                            return {
+                                countryName: countryName,
+                                countryCode: country.code || null,
+                                description: country.description || ''
+                            };
+                        }
+                    })
+                };
+                
+                const baseRequest = {
+                    requestDateTime: new Date().toISOString(),
+                    data: requestData
+                };
+                
+                const response = await authInstance.post('/api/auth/mentor-signup', baseRequest, {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                // Handle response for non-FormData
+                return this.handleAuthResponse(response);
+            }
+        } catch (error) {
+            console.error('Register mentor error:', error);
+            return {
+                success: false,
+                error: error.response?.data?.description || error.message || 'Đăng ký thất bại'
+            };
+        }
+    }
+    
+    // Helper method to handle authentication response
+    handleAuthResponse(response) {
+        // authInstance interceptor already returns response.data
+        // response = { respCode, description, data: { accessToken, refreshToken, userId } }
+        if (response && response.respCode === '0') {
+            const tokenResponse = response.data;
+            
+            // Save tokens
+            if (tokenResponse && tokenResponse.accessToken && tokenResponse.refreshToken) {
+                localStorage.setItem('accessToken', tokenResponse.accessToken);
+                localStorage.setItem('refreshToken', tokenResponse.refreshToken);
+            }
+
+            return {
+                success: true,
+                message: response.description || 'Đăng ký thành công!',
+                data: tokenResponse
+            };
+        } else {
+            // Return error object instead of throwing
+            return {
+                success: false,
+                error: response.description || response.message || 'Đăng ký thất bại',
+                respCode: response.respCode
+            };
+        }
     }
 }
 
