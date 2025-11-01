@@ -19,6 +19,7 @@ public enum ErrorCode {
     JWT_MALFORMED("10", "JWT token is malformed", HttpStatus.UNAUTHORIZED),
     JWT_UNSUPPORTED("11", "JWT token is unsupported", HttpStatus.UNAUTHORIZED),
     JWT_ILLEGAL_ARGUMENT("12", "JWT token is invalid", HttpStatus.UNAUTHORIZED),
+    EMAIL_INVALID("30", "EMAIL_INVALID", HttpStatus.BAD_REQUEST),
 
 
     ROLE_NOT_FOUND("13", "Vai trò không tồn tại", HttpStatus.NOT_FOUND),
