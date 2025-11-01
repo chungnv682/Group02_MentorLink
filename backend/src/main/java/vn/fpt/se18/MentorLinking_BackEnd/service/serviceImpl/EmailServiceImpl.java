@@ -86,6 +86,35 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
+    public void sendRejectBooking(String to, String subject, String text) {
+
+        Email fromEmail = new Email(from);
+        Email toEmail = new Email(to);
+
+
+        Content content = new Content("text/plain", text);
+        Mail mail = new Mail(fromEmail, subject, toEmail, content);
+        try {
+            Request request = new Request();
+            request.setMethod(Method.POST);
+            request.setEndpoint("mail/send");
+            request.setBody(mail.build());
+
+            Response response = sendGrid.api(request);
+
+            if (response.getStatusCode() == 202) { // Accepted
+                log.info("Email sent successfully");
+            } else {
+                log.error("Email sent failed: StatusCode = {}, Body = {}", response.getStatusCode(), response.getBody());
+                throw new AppException(ErrorCode.EMAIL_INVALID);
+            }
+        } catch (IOException e) {
+            log.error("Email sent failed");
+            throw new AppException(ErrorCode.EMAIL_INVALID);
+        }
+    }
+
+    @Override
     public void sendRequestFeedback(String to, String subject, String body) {
 
     }
