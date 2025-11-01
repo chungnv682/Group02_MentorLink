@@ -33,7 +33,7 @@ public class AppConfig {
     private final PreFilter preFilter;
     private final CorsConfigurationSource corsConfigurationSource;
 
-    @Value("${spring.sendgrid.api-key}")
+    @Value("${spring.sendgrid.code}")
     private String sendgridApiKey;
 
     @Bean
