@@ -8,10 +8,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 import vn.fpt.se18.MentorLinking_BackEnd.dto.request.BaseRequest;
 import vn.fpt.se18.MentorLinking_BackEnd.dto.request.auth.SignInRequest;
 import vn.fpt.se18.MentorLinking_BackEnd.dto.request.auth.SignUpMentorRequest;
@@ -71,13 +71,16 @@ public class AuthenticationController {
                 .build();
     }
 
-    @PostMapping("/mentor-signup")
-    public BaseResponse<TokenResponse> MentorSignUp(@Valid @RequestBody BaseRequest<SignUpMentorRequest> request) {
-        TokenResponse tokenResponse = authenticationService.signUpMentor(request.getData());
+    @PostMapping(value = "/mentor-signup", consumes = {"multipart/form-data"})
+    public BaseResponse<TokenResponse> MentorSignUp(@Valid @ModelAttribute SignUpMentorRequest request) {
+        log.info("Checking email: '{}'", request.getEmail());
+        log.info("Checking fullName: '{}'", request.getFullName());
+
+        TokenResponse tokenResponse = authenticationService.signUpMentor(request);
         return BaseResponse.<TokenResponse>builder()
-                .requestDateTime(request.getRequestDateTime())
+                .requestDateTime(String.valueOf(java.time.LocalDateTime.now()))
                 .respCode("0")
-                .description("User registered successfully")
+                .description("Mentor registered successfully")
                 .data(tokenResponse)
                 .build();
     }

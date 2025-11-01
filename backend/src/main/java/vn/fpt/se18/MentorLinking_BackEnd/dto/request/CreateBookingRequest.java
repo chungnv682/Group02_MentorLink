@@ -17,4 +17,7 @@ public class CreateBookingRequest {
 
     @NotBlank(message = "Description không được để trống")
     private String description;
+
+    @NotBlank(message = "Service không được để trống")
+    private String service;
 }

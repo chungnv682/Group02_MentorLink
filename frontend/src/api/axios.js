@@ -25,17 +25,13 @@ const getRefreshToken = () => localStorage.getItem("refreshToken");
 // authInstance cho các API không cần token (đăng nhập, đăng ký...)
 const authInstance = axios.create({
   baseURL: URL,
-  headers: {
-    'Content-Type': 'application/json',
-  }
+  // ❌ KHÔNG set Content-Type mặc định để axios tự động detect (JSON hoặc FormData)
 });
 
 // instance cho các API yêu cầu xác thực (có token)
 const instance = axios.create({
   baseURL: URL,
-  headers: {
-    'Content-Type': 'application/json',
-  }
+  // ❌ KHÔNG set Content-Type mặc định để axios tự động detect (JSON hoặc FormData)
 });
 
 // Request interceptor cho instance chính

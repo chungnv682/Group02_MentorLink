@@ -19,8 +19,23 @@ public enum ErrorCode {
     JWT_MALFORMED("10", "JWT token is malformed", HttpStatus.UNAUTHORIZED),
     JWT_UNSUPPORTED("11", "JWT token is unsupported", HttpStatus.UNAUTHORIZED),
     JWT_ILLEGAL_ARGUMENT("12", "JWT token is invalid", HttpStatus.UNAUTHORIZED),
-    EMAIL_INVALID("13", "EMAIL_INVALID", HttpStatus.BAD_REQUEST),
+    EMAIL_INVALID("30", "EMAIL_INVALID", HttpStatus.BAD_REQUEST),
+
+
+    ROLE_NOT_FOUND("13", "Vai trò không tồn tại", HttpStatus.NOT_FOUND),
+    ROLE_CODE_EXISTED("14", "Mã vai trò đã tồn tại", HttpStatus.BAD_REQUEST),
+    ROLE_NAME_EXISTED("15", "Tên vai trò đã tồn tại", HttpStatus.BAD_REQUEST),
+    ROLE_IN_USE("16", "Vai trò đang được sử dụng, không thể xóa", HttpStatus.BAD_REQUEST),
+    PERMISSION_NOT_FOUND("17", "Quyền không tồn tại", HttpStatus.NOT_FOUND),
+    PERMISSION_NAME_EXISTED("18", "Tên quyền đã tồn tại", HttpStatus.BAD_REQUEST),
+    
+    // Country related errors
+    COUNTRY_NOT_FOUND("19", "Quốc gia không tồn tại", HttpStatus.NOT_FOUND),
+    COUNTRY_ALREADY_EXISTS("20", "Quốc gia đã tồn tại", HttpStatus.BAD_REQUEST),
+    STATUS_NOT_FOUND("21", "Trạng thái không tồn tại", HttpStatus.NOT_FOUND),
+    USER_NOT_EXISTED("22", "Người dùng không tồn tại", HttpStatus.NOT_FOUND),
     ;
+    
     private final String code;
     private final String message;
     private final HttpStatus httpStatus;
