@@ -36,6 +36,33 @@ class MentorService {
         }
     }
 
+    // Get mentor by email. Uses the search endpoint and attempts to find exact email match.
+    static async getMentorByEmail(email) {
+        try {
+            // search by keyword (email) - backend may return paged results
+            const response = await this.getMentors({ keyword: email, size: 50, page: 0 });
+            // response may be in different shapes depending on backend (wrapper or raw array)
+            const payload = response?.data || response;
+            // try common shapes
+            let items = [];
+            if (Array.isArray(payload)) items = payload;
+            else if (Array.isArray(payload?.data)) items = payload.data;
+            else if (Array.isArray(payload?.content)) items = payload.content;
+
+            // fallback: if payload itself looks like a single mentor object
+            if (!items.length && payload && (payload.email === email || payload.data?.email === email)) {
+                const candidate = payload.data || payload;
+                return candidate;
+            }
+
+            const found = items.find(m => (m.email && m.email.toLowerCase() === email.toLowerCase()) || (m.user && m.user.email && m.user.email.toLowerCase() === email.toLowerCase()));
+            return found || null;
+        } catch (error) {
+            console.error('Error fetching mentor by email:', error);
+            throw error;
+        }
+    }
+
     // Search mentors by keyword
     static async searchMentors(keyword, options = {}) {
         try {

@@ -78,7 +78,6 @@ public class MentorServiceImpl implements MentorService {
                             .id(user.getId())
                             .username(user.getUsername())
                             .email(user.getEmail())
-                            .password(user.getPassword())
                             .fullname(user.getFullname())
                             .dob(user.getDob())
                             .phone(user.getPhone())

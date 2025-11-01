@@ -20,10 +20,45 @@ export const getCountryName = (country) => {
  * @returns {string|null} Flag URL or null
  */
 export const getCountryFlagUrl = (country) => {
-    if (typeof country === 'string') {
-        return null; // No flag URL for string countries
+    // If country is an object with a flagUrl, return it
+    if (country && typeof country === 'object') {
+        return country?.flagUrl || null;
     }
-    return country?.flagUrl || null;
+
+    // If country is a string, try to map to a known ISO code and use a public CDN
+    if (typeof country === 'string') {
+        const name = country.trim().toLowerCase();
+        // A small mapping from common Vietnamese names to ISO country codes
+        const mapping = {
+            'mỹ': 'us',
+            'my': 'us',
+            'hoa kỳ': 'us',
+            'hàn': 'kr',
+            'hàn quốc': 'kr',
+            'nhật': 'jp',
+            'nhật bản': 'jp',
+            'kanada': 'ca',
+            'canada': 'ca',
+            'anh': 'gb',
+            'anh quốc': 'gb',
+            'pháp': 'fr',
+            'đức': 'de',
+            'trung quốc': 'cn',
+            'singapore': 'sg',
+            'australia': 'au',
+            'úc': 'au',
+            'malaysia': 'my',
+            'hồng kông': 'hk'
+        };
+
+        const code = mapping[name] || name.slice(0, 2);
+        // Use flagcdn.com small png (16x12 or 20x15) — prefer 20x15 for clarity
+        if (code && code.length === 2) {
+            return `https://flagcdn.com/20x15/${code}.png`;
+        }
+    }
+
+    return null;
 };
 
 /**
