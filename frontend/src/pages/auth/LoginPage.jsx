@@ -139,7 +139,7 @@ const LoginPage = () => {
 
                                     <div className="alert alert-info text-center small mb-3">
                                         <p className="mb-1"><strong>Đăng nhập Moderator:</strong></p>
-                                        <p className="mb-0">Email: moderator@mentorlink.com<br />Password: password</p>
+                                        <p className="mb-0">Email: thu@gmail.com<br />Password: 123456</p>
                                     </div>
 
                                     <div className="text-center mb-3">

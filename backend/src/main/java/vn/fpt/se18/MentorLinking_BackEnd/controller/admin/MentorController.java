@@ -8,10 +8,15 @@ import org.springframework.web.bind.annotation.*;
 import vn.fpt.se18.MentorLinking_BackEnd.dto.request.mentor.MentorHandleBookingRequest;
 import vn.fpt.se18.MentorLinking_BackEnd.dto.response.BaseResponse;
 import vn.fpt.se18.MentorLinking_BackEnd.dto.response.mentor.MentorActivityResponse;
+import vn.fpt.se18.MentorLinking_BackEnd.dto.response.mentor.CountryResponse;
 import vn.fpt.se18.MentorLinking_BackEnd.dto.response.mentor.MentorDetailResponse;
 import vn.fpt.se18.MentorLinking_BackEnd.dto.response.mentor.MentorPageResponse;
 import vn.fpt.se18.MentorLinking_BackEnd.service.BookingService;
 import vn.fpt.se18.MentorLinking_BackEnd.service.MentorService;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/mentors")
@@ -57,5 +62,32 @@ public class MentorController {
         log.info("Handling mentor handle booking: {}", mentorHandleBookingRequest);
         bookingService.handleBookingAction(mentorHandleBookingRequest.getBookingId(), mentorHandleBookingRequest.getAction());
         return BaseResponse.<Void>builder().build();
+      
+    }
+  
+    @GetMapping("/{mentorId}/countries")
+    public BaseResponse<List<CountryResponse>> getMentorCountries(@PathVariable Long mentorId) {
+        log.info("REST request to get countries for mentor: {}", mentorId);
+        List<CountryResponse> data = mentorService.getMentorCountries(mentorId);
+        return BaseResponse.<List<CountryResponse>>builder()
+                .requestDateTime(LocalDateTime.now().toString())
+                .respCode("0")
+                .description("Get mentor countries successfully")
+                .data(data)
+                .build();
+    }
+
+    @PutMapping("/{mentorId}/countries")
+    public BaseResponse<Void> updateMentorCountries(
+            @PathVariable Long mentorId,
+            @RequestBody Map<String, List<Long>> requestBody) {
+        log.info("REST request to update countries for mentor: {}", mentorId);
+        List<Long> countryIds = requestBody.get("countryIds");
+        mentorService.updateMentorCountries(mentorId, countryIds);
+        return BaseResponse.<Void>builder()
+                .requestDateTime(LocalDateTime.now().toString())
+                .respCode("0")
+                .description("Update mentor countries successfully")
+                .build();
     }
 }

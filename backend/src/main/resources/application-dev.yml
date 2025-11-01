@@ -5,7 +5,7 @@ spring:
   devtools:
     add-properties: true
   datasource:
-    url: jdbc:mysql://10.8.0.1:3309/mentor_link
+    url: jdbc:mysql://103.20.96.16:3309/mentor_link
     username: root
     password: Chien@123
   jpa:
@@ -31,6 +31,7 @@ openapi:
     title: Backend service
     version: 1.0.0
 server:
+  port: 8080
   servlet:
     context-path: /api
 logging:
@@ -42,9 +43,21 @@ logging:
 jwt:
   secretKey: 123acv
 
+# Qdrant Vector Database Configuration
+qdrant:
+  host: 4df83e44-84fa-4101-b143-22c8743255cd.europe-west3-0.gcp.cloud.qdrant.io
+  port: 6334
+  api-key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIn0.D_jAvVkeUiItiRmRq4fnJwh403JwXgZnXv1gY3V_ock
+  tls: true
+
+# Google Generative AI (Gemini) Configuration
+gemini:
+  api-key: AIzaSyA79tAvF3XlXwVHsxp0oyTtATaWinMWiVI
+  model: gemini-1.5-flash
+
+
 vnpay:
   tmnCode: LY9UB66C
   hashSecret: MAZ53KRR5M5XB4QPXP51LDBQH4ETJY34
   apiUrl: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
   returnUrl: http://localhost:8080/api/bookings/vnpay-return
-

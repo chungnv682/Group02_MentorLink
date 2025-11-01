@@ -12,6 +12,7 @@ import vn.fpt.se18.MentorLinking_BackEnd.service.ScheduleService;
 import vn.fpt.se18.MentorLinking_BackEnd.util.PaymentProcess;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Set;
@@ -35,19 +36,27 @@ public class ScheduleServiceImpl implements ScheduleService {
             return List.of();
         }
 
-        // Filter out schedules for "today" that have any timeSlot with timeStart
-        // earlier than current hour
+        // Filter out schedules for "today" whose earliest timeslot starts less than 3 hours from now
         final LocalDate today = from;
-        final int currentHour = LocalTime.now().getHour();
+        final LocalDateTime now = LocalDateTime.now();
+        final LocalDateTime threshold = now.plusHours(3);
+
         List<Schedule> filteredSchedules = schedules.stream()
                 .filter(s -> {
                     if (s.getDate() != null && s.getDate().isEqual(today)) {
                         Set<TimeSlot> slots = s.getTimeSlots();
                         if (slots != null && !slots.isEmpty()) {
-                            boolean anySlotInPast = slots.stream()
-                                    .anyMatch(ts -> ts != null && ts.getTimeStart() != null
-                                            && ts.getTimeStart() < currentHour);
-                            return !anySlotInPast; // exclude schedule if any slot is in the past
+                            // find earliest start hour
+                            int minStart = slots.stream()
+                                    .map(TimeSlot::getTimeStart)
+                                    .min(Integer::compareTo)
+                                    .orElse(Integer.MAX_VALUE);
+
+                            if (minStart == Integer.MAX_VALUE) return false;
+
+                            LocalDateTime slotStart = s.getDate().atTime(LocalTime.of(minStart, 0));
+                            // Exclude schedule if earliest start is before the threshold (now + 3h)
+                            return !slotStart.isBefore(threshold);
                         }
                     }
                     return true;
