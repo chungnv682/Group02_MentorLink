@@ -6,6 +6,7 @@ import routes from "./routes";
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './styles/theme.css';
 import { ToastProvider } from './contexts/ToastContext';
+import ChatbotWidget from './components/common/ChatbotWidget';
 
 const queryClient = new QueryClient();
 
@@ -17,7 +18,12 @@ const AppContent = () => {
     return <AuthLoader />;
   }
 
-  return <RouterProvider router={routes} />;
+  return (
+    <>
+      <RouterProvider router={routes} />
+      <ChatbotWidget />
+    </>
+  );
 };
 
 function App() {

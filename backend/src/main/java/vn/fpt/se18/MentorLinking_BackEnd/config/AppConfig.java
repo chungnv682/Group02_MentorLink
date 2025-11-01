@@ -50,7 +50,7 @@ public class AppConfig {
                                 "/mentor-countries/**", "/faqs/**", "/schedules/**")
                         .permitAll()
                         .requestMatchers("/auth/**", "/profile/**", "/bookings/**", "/payments/**", "/comments/**",
-                                "/ratings/**")
+                                "/ratings/**", "/chat/**", "/recommendations/**","/chatbot/**")
                         .permitAll()
                         .anyRequest().authenticated())
                 .sessionManagement(manager -> manager.sessionCreationPolicy(STATELESS))
