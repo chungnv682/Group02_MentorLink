@@ -1,7 +1,6 @@
 package vn.fpt.se18.MentorLinking_BackEnd.service.serviceImpl;
 
 import java.util.Map;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -14,13 +13,22 @@ import vn.fpt.se18.MentorLinking_BackEnd.dto.response.mentor.*;
 import vn.fpt.se18.MentorLinking_BackEnd.entity.Booking;
 import vn.fpt.se18.MentorLinking_BackEnd.entity.User;
 import vn.fpt.se18.MentorLinking_BackEnd.repository.BookingRepository;
+import vn.fpt.se18.MentorLinking_BackEnd.entity.Country;
+import vn.fpt.se18.MentorLinking_BackEnd.entity.MentorCountry;
+import vn.fpt.se18.MentorLinking_BackEnd.entity.Status;
+import vn.fpt.se18.MentorLinking_BackEnd.exception.AppException;
+import vn.fpt.se18.MentorLinking_BackEnd.exception.ErrorCode;
+import vn.fpt.se18.MentorLinking_BackEnd.repository.CountryRepository;
+import vn.fpt.se18.MentorLinking_BackEnd.repository.MentorCountryRepository;
 import vn.fpt.se18.MentorLinking_BackEnd.repository.MentorRepository;
+import vn.fpt.se18.MentorLinking_BackEnd.repository.StatusRepository;
 import vn.fpt.se18.MentorLinking_BackEnd.service.MentorService;
 
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import vn.fpt.se18.MentorLinking_BackEnd.util.PaymentProcess;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -29,6 +37,8 @@ public class MentorServiceImpl implements MentorService {
 
     private final MentorRepository mentorRepository;
     private final BookingRepository bookingRepository;
+    private final CountryRepository countryRepository;
+    private final StatusRepository statusRepository;
 
     public MentorPageResponse getAllMentors(String keyword, String sort, int page, int size) {
         Sort.Order order = new Sort.Order(Sort.Direction.ASC, "id");
@@ -229,5 +239,54 @@ public class MentorServiceImpl implements MentorService {
             .rating(b.getReview() != null ? b.getReview().getRating() : null)
             .review(b.getReview() != null ? b.getReview().getComment() : null)
             .build();
+    }
+  
+  
+    @Transactional(readOnly = true)
+    public List<CountryResponse> getMentorCountries(Long mentorId) {
+        User mentor = mentorRepository.findById(mentorId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        return mentor.getMentorCountries().stream()
+                .filter(mentorCountry -> "APPROVED".equals(mentorCountry.getStatus().getCode()))
+                .map(mentorCountry -> CountryResponse.builder()
+                        .id(mentorCountry.getCountry().getId())
+                        .code(mentorCountry.getCountry().getCode())
+                        .name(mentorCountry.getCountry().getName())
+                        .flagUrl(mentorCountry.getCountry().getFlagUrl())
+                        .description(mentorCountry.getCountry().getDescription())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public void updateMentorCountries(Long mentorId, List<Long> countryIds) {
+        User mentor = mentorRepository.findById(mentorId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        // Get APPROVED status
+        Status approvedStatus = statusRepository.findByCode("APPROVED")
+                .orElseThrow(() -> new AppException(ErrorCode.STATUS_NOT_FOUND));
+
+        // Remove existing mentor countries
+        mentor.getMentorCountries().clear();
+
+        // Add new mentor countries
+        if (countryIds != null && !countryIds.isEmpty()) {
+            for (Long countryId : countryIds) {
+                Country country = countryRepository.findById(countryId)
+                        .orElseThrow(() -> new AppException(ErrorCode.COUNTRY_NOT_FOUND));
+
+                MentorCountry mentorCountry = new MentorCountry();
+                mentorCountry.setMentor(mentor);
+                mentorCountry.setCountry(country);
+                mentorCountry.setStatus(approvedStatus);
+
+                mentor.getMentorCountries().add(mentorCountry);
+            }
+        }
+
+        mentorRepository.save(mentor);
     }
 }

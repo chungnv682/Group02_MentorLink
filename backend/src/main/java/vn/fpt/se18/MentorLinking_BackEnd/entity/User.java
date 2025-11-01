@@ -152,4 +152,14 @@ public class User extends AbstractEntity<Long> implements UserDetails, Serializa
     public String getUsername() {
         return this.email;
     }
+
+    // Convenience accessor expected by service code (maps to avatar_url column)
+    public String getProfileImage() {
+        return this.avatarUrl;
+    }
+
+    // Convenience accessor expected by service code (maps to intro column)
+    public String getBio() {
+        return this.intro;
+    }
 }

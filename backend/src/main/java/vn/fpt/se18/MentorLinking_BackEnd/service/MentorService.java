@@ -2,8 +2,11 @@ package vn.fpt.se18.MentorLinking_BackEnd.service;
 
 import java.util.List;
 import vn.fpt.se18.MentorLinking_BackEnd.dto.response.mentor.MentorActivityResponse;
+import vn.fpt.se18.MentorLinking_BackEnd.dto.response.mentor.CountryResponse;
 import vn.fpt.se18.MentorLinking_BackEnd.dto.response.mentor.MentorDetailResponse;
 import vn.fpt.se18.MentorLinking_BackEnd.dto.response.mentor.MentorPageResponse;
+
+import java.util.List;
 
 public interface MentorService {
      MentorPageResponse getAllMentors(String keyword, String sort, int page, int size);
@@ -11,4 +14,8 @@ public interface MentorService {
      MentorDetailResponse getMentorById(Long id);
 
      MentorActivityResponse getMentorActivitiesByMentorEmail(String email);
+     
+     List<CountryResponse> getMentorCountries(Long mentorId);
+     
+     void updateMentorCountries(Long mentorId, List<Long> countryIds);
 }

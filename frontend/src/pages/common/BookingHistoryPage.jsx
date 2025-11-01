@@ -21,9 +21,19 @@ const BookingHistoryPage = () => {
                 setLoading(true);
                 const res = await instance.get('/api/bookings/mine');
                 const data = res?.data || res;
-                // Sort bookings by bookingId in ascending order
+                // Sort bookings by schedule date descending (newest first).
                 if (Array.isArray(data)) {
-                    setBookings(data.sort((a, b) => a.bookingId - b.bookingId));
+                    const sorted = data.slice().sort((a, b) => {
+                        const aDate = a?.schedule?.date ? new Date(a.schedule.date) : null;
+                        const bDate = b?.schedule?.date ? new Date(b.schedule.date) : null;
+
+                        if (aDate && bDate) return bDate - aDate; // desc
+                        if (aDate && !bDate) return -1;
+                        if (!aDate && bDate) return 1;
+                        // fallback to bookingId desc
+                        return (b.bookingId || 0) - (a.bookingId || 0);
+                    });
+                    setBookings(sorted);
                 }
             } catch (error) {
                 console.error('Fetch booking history error', error);
@@ -100,7 +110,16 @@ const BookingHistoryPage = () => {
             const res = await instance.get('/api/bookings/mine');
             const data = res?.data || res;
             if (Array.isArray(data)) {
-                setBookings(data.sort((a, b) => a.bookingId - b.bookingId));
+                const sorted = data.slice().sort((a, b) => {
+                    const aDate = a?.schedule?.date ? new Date(a.schedule.date) : null;
+                    const bDate = b?.schedule?.date ? new Date(b.schedule.date) : null;
+
+                    if (aDate && bDate) return bDate - aDate; // desc
+                    if (aDate && !bDate) return -1;
+                    if (!aDate && bDate) return 1;
+                    return (b.bookingId || 0) - (a.bookingId || 0);
+                });
+                setBookings(sorted);
             }
         } catch (error) {
             console.error('Error refreshing bookings:', error);
@@ -150,9 +169,9 @@ const BookingHistoryPage = () => {
                                                 <th style={{ width: '15%' }}>Cố vấn</th>
                                                 <th style={{ width: '10%' }}>Ngày</th>                                              
                                                 <th style={{ width: '16%' }}>Thời gian</th>
-                                                <th style={{ width: '12%' }}>Giá</th>
-                                                <th style={{ width: '10%' }}>Trạng thái</th>
+                                                <th style={{ width: '12%' }}>Giá</th>                                             
                                                 <th style={{ width: '17%' }}>TT Thanh toán</th>
+                                                <th style={{ width: '10%' }}>Trạng thái</th>
                                                 <th style={{ width: '10%' }}>Hành động</th>
                                             </tr>
                                         </thead>
@@ -184,12 +203,12 @@ const BookingHistoryPage = () => {
                                                     </td>
                                                     <td className="price-cell">
                                                         {booking.schedule ? formatPrice(booking.schedule.price) : '-'}
+                                                    </td>                                                  
+                                                    <td>
+                                                        {getPaymentBadge(booking.paymentProcess)}
                                                     </td>
                                                     <td>
                                                         {getStatusBadge(booking.statusName)}
-                                                    </td>
-                                                    <td>
-                                                        {getPaymentBadge(booking.paymentProcess)}
                                                     </td>
                                                     <td>
                                                         <Button

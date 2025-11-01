@@ -1,59 +1,172 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Card, Row, Col, Table, Button, Badge, Form,
-    InputGroup, Dropdown, Modal, Nav, Tab
+    InputGroup, Dropdown, Modal, Nav, Tab, Spinner, Alert, Pagination
 } from 'react-bootstrap';
 import {
     FaSearch, FaFilter, FaPlus, FaEdit, FaTrash,
     FaBan, FaCheck, FaEye, FaDownload, FaUserShield
 } from 'react-icons/fa';
+import { getAllUsers, getUserById, deleteUser, getUserStatistics } from '../../services/user';
 
 const UserManagement = () => {
+    // State management
     const [showModal, setShowModal] = useState(false);
     const [selectedUser, setSelectedUser] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterRole, setFilterRole] = useState('all');
     const [filterStatus, setFilterStatus] = useState('all');
+    
+    // Data states
+    const [users, setUsers] = useState([]);
+    const [statistics, setStatistics] = useState({
+        totalUsers: 0,
+        totalMentors: 0,
+        totalMentorPending: 0,
+        totalUserBlocked: 0
+    });
+    const [pagination, setPagination] = useState({
+        currentPage: 1,
+        pageSize: 10,
+        totalPages: 0,
+        totalElements: 0
+    });
+    
+    // Loading and error states
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+    const [statsLoading, setStatsLoading] = useState(false);
 
-    // Mock data - thay thế bằng API call thực tế
-    const users = [
-        {
-            id: 1,
-            email: 'john.doe@example.com',
-            fullname: 'John Doe',
-            role: 'CUSTOMER',
-            status: 'ACTIVE',
-            phone: '0901234567',
-            lastLogin: '2024-01-15',
-            joinDate: '2023-06-10',
-            avatar: null,
-            isBlocked: false
-        },
-        {
-            id: 2,
-            email: 'jane.mentor@example.com',
-            fullname: 'Jane Smith',
-            role: 'MENTOR',
-            status: 'ACTIVE',
-            phone: '0907654321',
-            lastLogin: '2024-01-14',
-            joinDate: '2023-05-20',
-            avatar: null,
-            isBlocked: false
-        },
-        {
-            id: 3,
-            email: 'admin@mentorlink.com',
-            fullname: 'Admin User',
-            role: 'ADMIN',
-            status: 'ACTIVE',
-            phone: '0901111111',
-            lastLogin: '2024-01-15',
-            joinDate: '2023-01-01',
-            avatar: null,
-            isBlocked: false
+    // Fetch statistics on component mount
+    useEffect(() => {
+        fetchStatistics();
+    }, []);
+
+    // Fetch users when filters or pagination change
+    useEffect(() => {
+        fetchUsers();
+    }, [pagination.currentPage, pagination.pageSize, filterRole, filterStatus, searchTerm]);
+
+    const fetchStatistics = async () => {
+        try {
+            setStatsLoading(true);
+            const response = await getUserStatistics();
+            console.log('Statistics response:', response); // Debug log
+            if (response && response.data) {
+                setStatistics(response.data);
+            }
+        } catch (err) {
+            console.error('Error fetching statistics:', err);
+            // Set default values on error
+            setStatistics({
+                totalUsers: 0,
+                totalMentors: 0,
+                totalMentorPending: 0,
+                totalUserBlocked: 0
+            });
+        } finally {
+            setStatsLoading(false);
         }
-    ];
+    };
+
+    const fetchUsers = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            
+            const params = {
+                page: pagination.currentPage,
+                size: pagination.pageSize,
+                keySearch: searchTerm || null,
+                roleId: filterRole !== 'all' ? getRoleId(filterRole) : null,
+                status: filterStatus !== 'all' ? getStatusValue(filterStatus) : null
+            };
+
+            console.log('Fetching users with params:', params); // Debug log
+            const response = await getAllUsers(params);
+            console.log('Response:', response); // Debug log
+            
+            if (response && response.data) {
+                const pageData = response.data;
+                console.log('Page data:', pageData); // Debug log
+                setUsers(pageData.content || []);
+                setPagination(prev => ({
+                    ...prev,
+                    totalPages: pageData.totalPages || 0,
+                    totalElements: pageData.totalElements || 0,
+                    currentPage: pageData.currentPage || pagination.currentPage
+                }));
+            }
+        } catch (err) {
+            console.error('Error fetching users:', err);
+            setError(err.description || err.message || 'Không thể tải danh sách người dùng');
+            setUsers([]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const getRoleId = (role) => {
+        const roleMap = {
+            'ADMIN': 1,
+            'MODERATOR': 2,
+            'MENTOR': 3,
+            'CUSTOMER': 4
+        };
+        return roleMap[role] || null;
+    };
+
+    const getStatusValue = (status) => {
+        const statusMap = {
+            'ACTIVE': 1,
+            'INACTIVE': 0,
+            'PENDING': 2,
+            'BLOCKED': 3
+        };
+        return statusMap[status];
+    };
+
+    const handleViewUser = async (user) => {
+        try {
+            const response = await getUserById(user.id);
+            console.log('User detail response:', response); // Debug log
+            if (response && response.data) {
+                setSelectedUser(response.data);
+                setShowModal(true);
+            }
+        } catch (err) {
+            console.error('Error fetching user details:', err);
+            alert('Không thể tải thông tin người dùng');
+        }
+    };
+
+    const handleDeleteUser = async (userId) => {
+        if (!window.confirm('Bạn có chắc chắn muốn xóa người dùng này?')) {
+            return;
+        }
+
+        try {
+            const response = await deleteUser(userId);
+            console.log('Delete user response:', response); // Debug log
+            if (response && response.respCode === '0') {
+                alert('Xóa người dùng thành công');
+                fetchUsers();
+                fetchStatistics();
+            }
+        } catch (err) {
+            console.error('Error deleting user:', err);
+            alert(err.description || 'Không thể xóa người dùng');
+        }
+    };
+
+    const handleSearch = () => {
+        setPagination(prev => ({ ...prev, currentPage: 1 }));
+        fetchUsers();
+    };
+
+    const handlePageChange = (pageNumber) => {
+        setPagination(prev => ({ ...prev, currentPage: pageNumber }));
+    };
 
     const roles = [
         { value: 'all', label: 'Tất cả vai trò' },
@@ -91,19 +204,25 @@ const UserManagement = () => {
         }
     };
 
-    const handleViewUser = (user) => {
-        setSelectedUser(user);
-        setShowModal(true);
+    const getStatusLabel = (status) => {
+        switch (status) {
+            case 'ACTIVE': return 'Hoạt động';
+            case 'INACTIVE': return 'Không hoạt động';
+            case 'PENDING': return 'Chờ duyệt';
+            case 'BLOCKED': return 'Bị khóa';
+            default: return status;
+        }
     };
 
-    const filteredUsers = users.filter(user => {
-        const matchesSearch = user.fullname.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            user.email.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesRole = filterRole === 'all' || user.role === filterRole;
-        const matchesStatus = filterStatus === 'all' || user.status === filterStatus;
-
-        return matchesSearch && matchesRole && matchesStatus;
-    });
+    const getRoleLabel = (role) => {
+        switch (role) {
+            case 'ADMIN': return 'Quản trị viên';
+            case 'MODERATOR': return 'Điều hành viên';
+            case 'MENTOR': return 'Cố vấn';
+            case 'CUSTOMER': return 'Khách hàng';
+            default: return role;
+        }
+    };
 
     return (
         <div className="user-management">
@@ -133,7 +252,9 @@ const UserManagement = () => {
                             <div className="d-flex justify-content-between">
                                 <div>
                                     <h6 className="text-muted mb-1">Tổng người dùng</h6>
-                                    <h3 className="mb-0 text-primary">1,234</h3>
+                                    <h3 className="mb-0 text-primary">
+                                        {statsLoading ? <Spinner animation="border" size="sm" /> : statistics.totalUsers}
+                                    </h3>
                                 </div>
                                 <div className="stats-icon bg-primary">
                                     <FaUserShield />
@@ -148,7 +269,9 @@ const UserManagement = () => {
                             <div className="d-flex justify-content-between">
                                 <div>
                                     <h6 className="text-muted mb-1">Mentor</h6>
-                                    <h3 className="mb-0 text-success">89</h3>
+                                    <h3 className="mb-0 text-success">
+                                        {statsLoading ? <Spinner animation="border" size="sm" /> : statistics.totalMentors}
+                                    </h3>
                                 </div>
                                 <div className="stats-icon bg-success">
                                     <FaUserShield />
@@ -163,7 +286,9 @@ const UserManagement = () => {
                             <div className="d-flex justify-content-between">
                                 <div>
                                     <h6 className="text-muted mb-1">Chờ duyệt</h6>
-                                    <h3 className="mb-0 text-warning">12</h3>
+                                    <h3 className="mb-0 text-warning">
+                                        {statsLoading ? <Spinner animation="border" size="sm" /> : statistics.totalMentorPending}
+                                    </h3>
                                 </div>
                                 <div className="stats-icon bg-warning">
                                     <FaUserShield />
@@ -178,7 +303,9 @@ const UserManagement = () => {
                             <div className="d-flex justify-content-between">
                                 <div>
                                     <h6 className="text-muted mb-1">Bị khóa</h6>
-                                    <h3 className="mb-0 text-danger">5</h3>
+                                    <h3 className="mb-0 text-danger">
+                                        {statsLoading ? <Spinner animation="border" size="sm" /> : statistics.totalUserBlocked}
+                                    </h3>
                                 </div>
                                 <div className="stats-icon bg-danger">
                                     <FaBan />
@@ -234,7 +361,11 @@ const UserManagement = () => {
                             </Form.Select>
                         </Col>
                         <Col md={2}>
-                            <Button variant="outline-secondary" className="w-100">
+                            <Button 
+                                variant="outline-secondary" 
+                                className="w-100"
+                                onClick={handleSearch}
+                            >
                                 <FaFilter className="me-1" />
                                 Lọc
                             </Button>
@@ -247,7 +378,7 @@ const UserManagement = () => {
             <Card>
                 <Card.Header className="bg-light">
                     <div className="d-flex justify-content-between align-items-center">
-                        <h6 className="mb-0">Danh sách người dùng ({filteredUsers.length})</h6>
+                        <h6 className="mb-0">Danh sách người dùng ({pagination.totalElements})</h6>
                         <div className="d-flex gap-2">
                             <Button variant="outline-primary" size="sm">Chọn tất cả</Button>
                             <Button variant="outline-danger" size="sm">Xóa đã chọn</Button>
@@ -255,96 +386,153 @@ const UserManagement = () => {
                     </div>
                 </Card.Header>
                 <Card.Body className="p-0">
-                    <Table responsive hover className="mb-0">
-                        <thead className="bg-light">
-                            <tr>
-                                <th width="5%">
-                                    <Form.Check type="checkbox" />
-                                </th>
-                                <th width="20%">Thông tin</th>
-                                <th width="15%">Vai trò</th>
-                                <th width="12%">Trạng thái</th>
-                                <th width="15%">Điện thoại</th>
-                                <th width="15%">Đăng nhập cuối</th>
-                                <th width="18%">Thao tác</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filteredUsers.map((user) => (
-                                <tr key={user.id}>
-                                    <td>
+                    {error && (
+                        <Alert variant="danger" className="m-3">
+                            {error}
+                        </Alert>
+                    )}
+                    
+                    {loading ? (
+                        <div className="text-center p-5">
+                            <Spinner animation="border" role="status">
+                                <span className="visually-hidden">Đang tải...</span>
+                            </Spinner>
+                            <p className="mt-2 text-muted">Đang tải dữ liệu...</p>
+                        </div>
+                    ) : users.length === 0 ? (
+                        <div className="text-center p-5">
+                            <p className="text-muted">Không tìm thấy người dùng nào</p>
+                        </div>
+                    ) : (
+                        <Table responsive hover className="mb-0">
+                            <thead className="bg-light">
+                                <tr>
+                                    <th width="5%">
                                         <Form.Check type="checkbox" />
-                                    </td>
-                                    <td>
-                                        <div className="d-flex align-items-center">
-                                            <div className="user-avatar me-3">
-                                                {user.avatar ? (
-                                                    <img
-                                                        src={user.avatar}
-                                                        alt={user.fullname}
-                                                        className="rounded-circle"
-                                                        width="40"
-                                                        height="40"
-                                                    />
-                                                ) : (
-                                                    <div className="avatar-placeholder">
-                                                        {user.fullname?.charAt(0) || 'U'}
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <div>
-                                                <div className="fw-medium">{user.fullname}</div>
-                                                <small className="text-muted">{user.email}</small>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <Badge bg={getRoleBadgeVariant(user.role)}>
-                                            {user.role}
-                                        </Badge>
-                                    </td>
-                                    <td>
-                                        <Badge bg={getStatusBadgeVariant(user.status)}>
-                                            {user.status}
-                                        </Badge>
-                                        {user.isBlocked && (
-                                            <Badge bg="danger" className="ms-1">
-                                                <FaBan className="me-1" />
-                                                Khóa
-                                            </Badge>
-                                        )}
-                                    </td>
-                                    <td>
-                                        <span className="text-muted">{user.phone || 'Chưa cập nhật'}</span>
-                                    </td>
-                                    <td>
-                                        <span className="text-muted">{user.lastLogin}</span>
-                                    </td>
-                                    <td>
-                                        <div className="d-flex gap-1">
-                                            <Button
-                                                variant="outline-info"
-                                                size="sm"
-                                                onClick={() => handleViewUser(user)}
-                                            >
-                                                <FaEye />
-                                            </Button>
-                                            <Button variant="outline-primary" size="sm">
-                                                <FaEdit />
-                                            </Button>
-                                            <Button variant="outline-warning" size="sm">
-                                                <FaBan />
-                                            </Button>
-                                            <Button variant="outline-danger" size="sm">
-                                                <FaTrash />
-                                            </Button>
-                                        </div>
-                                    </td>
+                                    </th>
+                                    <th width="20%">Thông tin</th>
+                                    <th width="15%">Vai trò</th>
+                                    <th width="12%">Trạng thái</th>
+                                    <th width="15%">Email</th>
+                                    <th width="15%">ID</th>
+                                    <th width="18%">Thao tác</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </Table>
+                            </thead>
+                            <tbody>
+                                {users.map((user) => (
+                                    <tr key={user.id}>
+                                        <td>
+                                            <Form.Check type="checkbox" />
+                                        </td>
+                                        <td>
+                                            <div className="d-flex align-items-center">
+                                                <div className="user-avatar me-3">
+                                                    <div className="avatar-placeholder">
+                                                        {user.fullName?.charAt(0) || 'U'}
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <div className="fw-medium">{user.fullName || 'N/A'}</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <Badge bg={getRoleBadgeVariant(user.role)}>
+                                                {getRoleLabel(user.role)}
+                                            </Badge>
+                                        </td>
+                                        <td>
+                                            <Badge bg={getStatusBadgeVariant(user.status)}>
+                                                {getStatusLabel(user.status)}
+                                            </Badge>
+                                        </td>
+                                        <td>
+                                            <small className="text-muted">{user.email}</small>
+                                        </td>
+                                        <td>
+                                            <span className="text-muted">#{user.id}</span>
+                                        </td>
+                                        <td>
+                                            <div className="d-flex gap-1">
+                                                <Button
+                                                    variant="outline-info"
+                                                    size="sm"
+                                                    onClick={() => handleViewUser(user)}
+                                                >
+                                                    <FaEye />
+                                                </Button>
+                                                <Button variant="outline-primary" size="sm">
+                                                    <FaEdit />
+                                                </Button>
+                                                <Button variant="outline-warning" size="sm">
+                                                    <FaBan />
+                                                </Button>
+                                                <Button 
+                                                    variant="outline-danger" 
+                                                    size="sm"
+                                                    onClick={() => handleDeleteUser(user.id)}
+                                                >
+                                                    <FaTrash />
+                                                </Button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </Table>
+                    )}
                 </Card.Body>
+                
+                {/* Pagination */}
+                {!loading && users.length > 0 && (
+                    <Card.Footer className="bg-light">
+                        <div className="d-flex justify-content-between align-items-center">
+                            <div className="text-muted">
+                                Hiển thị {((pagination.currentPage - 1) * pagination.pageSize) + 1} - {Math.min(pagination.currentPage * pagination.pageSize, pagination.totalElements)} 
+                                {' '}trong tổng số {pagination.totalElements} người dùng
+                            </div>
+                            <Pagination className="mb-0">
+                                <Pagination.First 
+                                    onClick={() => handlePageChange(1)}
+                                    disabled={pagination.currentPage === 1}
+                                />
+                                <Pagination.Prev 
+                                    onClick={() => handlePageChange(pagination.currentPage - 1)}
+                                    disabled={pagination.currentPage === 1}
+                                />
+                                {[...Array(Math.min(5, pagination.totalPages))].map((_, idx) => {
+                                    let pageNum;
+                                    if (pagination.totalPages <= 5) {
+                                        pageNum = idx + 1;
+                                    } else if (pagination.currentPage <= 3) {
+                                        pageNum = idx + 1;
+                                    } else if (pagination.currentPage >= pagination.totalPages - 2) {
+                                        pageNum = pagination.totalPages - 4 + idx;
+                                    } else {
+                                        pageNum = pagination.currentPage - 2 + idx;
+                                    }
+                                    return (
+                                        <Pagination.Item
+                                            key={pageNum}
+                                            active={pageNum === pagination.currentPage}
+                                            onClick={() => handlePageChange(pageNum)}
+                                        >
+                                            {pageNum}
+                                        </Pagination.Item>
+                                    );
+                                })}
+                                <Pagination.Next 
+                                    onClick={() => handlePageChange(pagination.currentPage + 1)}
+                                    disabled={pagination.currentPage === pagination.totalPages}
+                                />
+                                <Pagination.Last 
+                                    onClick={() => handlePageChange(pagination.totalPages)}
+                                    disabled={pagination.currentPage === pagination.totalPages}
+                                />
+                            </Pagination>
+                        </div>
+                    </Card.Footer>
+                )}
             </Card>
 
             {/* User Detail Modal */}
@@ -371,26 +559,14 @@ const UserManagement = () => {
                                     <Row>
                                         <Col md={6}>
                                             <p><strong>Email:</strong> {selectedUser.email}</p>
-                                            <p><strong>Họ tên:</strong> {selectedUser.fullname}</p>
-                                            <p><strong>Điện thoại:</strong> {selectedUser.phone || 'Chưa cập nhật'}</p>
-                                            <p><strong>Vai trò:</strong>
-                                                <Badge bg={getRoleBadgeVariant(selectedUser.role)} className="ms-2">
-                                                    {selectedUser.role}
-                                                </Badge>
-                                            </p>
+                                            <p><strong>Họ tên:</strong> {selectedUser.fullName || 'N/A'}</p>
+                                            <p><strong>ID:</strong> #{selectedUser.id}</p>
                                         </Col>
                                         <Col md={6}>
                                             <p><strong>Trạng thái:</strong>
                                                 <Badge bg={getStatusBadgeVariant(selectedUser.status)} className="ms-2">
-                                                    {selectedUser.status}
+                                                    {getStatusLabel(selectedUser.status)}
                                                 </Badge>
-                                            </p>
-                                            <p><strong>Ngày tham gia:</strong> {selectedUser.joinDate}</p>
-                                            <p><strong>Đăng nhập cuối:</strong> {selectedUser.lastLogin}</p>
-                                            <p><strong>Trạng thái khóa:</strong>
-                                                <span className={selectedUser.isBlocked ? 'text-danger' : 'text-success'}>
-                                                    {selectedUser.isBlocked ? ' Đã khóa' : ' Bình thường'}
-                                                </span>
                                             </p>
                                         </Col>
                                     </Row>
