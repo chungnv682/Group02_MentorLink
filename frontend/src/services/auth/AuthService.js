@@ -14,6 +14,10 @@ class AuthService {
             const response = await authInstance.post('/api/auth/access-token', {
                 email,
                 password
+            }, {
+                headers: {
+                    'Content-Type': 'application/json'
+                }
             });
 
             if (response.accessToken && response.refreshToken) {
@@ -169,99 +173,16 @@ class AuthService {
             // Check if data is FormData or regular object
             const isFormData = formDataFromPage instanceof FormData;
             
-            const formData = new FormData();
-            
             if (isFormData) {
-                // Extract data from FormData
-                const personalInfo = JSON.parse(formDataFromPage.get('personalInfo') || '{}');
-                
-                // Append personal info fields directly (for @ModelAttribute)
-                formData.append('fullName', personalInfo.name || '');
-                formData.append('email', personalInfo.email || '');
-                formData.append('password', personalInfo.password || '');
-                formData.append('confirmPassword', personalInfo.confirmPassword || '');
-                formData.append('dob', personalInfo.birthDate || '');
-                formData.append('address', personalInfo.location || '');
-                formData.append('phone', personalInfo.phone || '');
-                formData.append('title', personalInfo.title || '');
-                formData.append('levelOfEducation', personalInfo.education || '');
-                formData.append('linkedUrl', personalInfo.linkedinUrl || '');
-                formData.append('introduceYourself', personalInfo.bio || '');
-                
-                // Append avatar file
-                if (formDataFromPage.has('avatar')) {
-                    formData.append('avatar', formDataFromPage.get('avatar'));
+                // ✅ GỬI TRỰC TIẾP FormData từ component (không tạo mới)
+                console.log('=== Sending FormData directly to backend ===');
+                for (let [key, value] of formDataFromPage.entries()) {
+                    console.log(key, ':', value instanceof File ? `[File: ${value.name}]` : value);
                 }
                 
-                // Process educations
-                let eduIndex = 0;
-                while (formDataFromPage.has(`educations[${eduIndex}][school]`)) {
-                    formData.append(`mentorEducations[${eduIndex}].schoolName`, formDataFromPage.get(`educations[${eduIndex}][school]`));
-                    formData.append(`mentorEducations[${eduIndex}].major`, formDataFromPage.get(`educations[${eduIndex}][major]`));
-                    formData.append(`mentorEducations[${eduIndex}].startDate`, formDataFromPage.get(`educations[${eduIndex}][startDate]`) || '');
-                    formData.append(`mentorEducations[${eduIndex}].endDate`, formDataFromPage.get(`educations[${eduIndex}][endDate]`) || '');
-                    
-                    // Append certificate file if exists
-                    if (formDataFromPage.has(`educationCertificates[${eduIndex}]`)) {
-                        formData.append(`mentorEducations[${eduIndex}].degreesFile`, formDataFromPage.get(`educationCertificates[${eduIndex}]`));
-                    }
-                    eduIndex++;
-                }
-                
-                // Process experiences
-                let expIndex = 0;
-                while (formDataFromPage.has(`experiences[${expIndex}][company]`)) {
-                    formData.append(`experiences[${expIndex}].company`, formDataFromPage.get(`experiences[${expIndex}][company]`));
-                    formData.append(`experiences[${expIndex}].position`, formDataFromPage.get(`experiences[${expIndex}][position]`));
-                    formData.append(`experiences[${expIndex}].startDate`, formDataFromPage.get(`experiences[${expIndex}][startDate]`) || '');
-                    formData.append(`experiences[${expIndex}].endDate`, formDataFromPage.get(`experiences[${expIndex}][endDate]`) || '');
-                    
-                    // Append proof file if exists
-                    if (formDataFromPage.has(`experienceProofs[${expIndex}]`)) {
-                        formData.append(`experiences[${expIndex}].experiencesFile`, formDataFromPage.get(`experienceProofs[${expIndex}]`));
-                    }
-                    expIndex++;
-                }
-                
-                // Process test scores/certificates
-                let testIndex = 0;
-                while (formDataFromPage.has(`testScores[${testIndex}][testName]`)) {
-                    formData.append(`certificates[${testIndex}].certificateName`, formDataFromPage.get(`testScores[${testIndex}][testName]`));
-                    formData.append(`certificates[${testIndex}].score`, formDataFromPage.get(`testScores[${testIndex}][score]`));
-                    
-                    // Append certificate file if exists
-                    if (formDataFromPage.has(`testScoreCertificates[${testIndex}]`)) {
-                        formData.append(`certificates[${testIndex}].certificatesFile`, formDataFromPage.get(`testScoreCertificates[${testIndex}]`));
-                    }
-                    testIndex++;
-                }
-                
-                // Process approved countries
-                let countryIndex = 0;
-                while (formDataFromPage.has(`approvedCountries[${countryIndex}]`)) {
-                    const country = formDataFromPage.get(`approvedCountries[${countryIndex}]`);
-                    try {
-                        const countryObj = JSON.parse(country);
-                        if (countryObj.id) {
-                            formData.append(`mentorCountries[${countryIndex}].countryId`, countryObj.id);
-                        } else {
-                            formData.append(`mentorCountries[${countryIndex}].countryName`, countryObj.name || country);
-                        }
-                        formData.append(`mentorCountries[${countryIndex}].description`, countryObj.description || '');
-                    } catch {
-                        // If not JSON, treat as string
-                        formData.append(`mentorCountries[${countryIndex}].countryName`, country);
-                        formData.append(`mentorCountries[${countryIndex}].description`, '');
-                    }
-                    countryIndex++;
-                }
-                
-                // Send as multipart/form-data
-                const response = await authInstance.post('/api/auth/mentor-signup', formData, {
-                    headers: {
-                        'Content-Type': 'multipart/form-data'
-                    }
-                });
+                // ✅ Axios sẽ tự động set Content-Type: multipart/form-data khi detect FormData
+                // KHÔNG set header manually để tránh bị thiếu boundary parameter
+                const response = await authInstance.post('/api/auth/mentor-signup', formDataFromPage);
                 
                 console.log('Mentor signup response:', response);
                 

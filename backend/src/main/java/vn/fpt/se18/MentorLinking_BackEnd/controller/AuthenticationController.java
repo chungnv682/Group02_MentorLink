@@ -73,6 +73,9 @@ public class AuthenticationController {
 
     @PostMapping(value = "/mentor-signup", consumes = {"multipart/form-data"})
     public BaseResponse<TokenResponse> MentorSignUp(@Valid @ModelAttribute SignUpMentorRequest request) {
+        log.info("Checking email: '{}'", request.getEmail());
+        log.info("Checking fullName: '{}'", request.getFullName());
+
         TokenResponse tokenResponse = authenticationService.signUpMentor(request);
         return BaseResponse.<TokenResponse>builder()
                 .requestDateTime(String.valueOf(java.time.LocalDateTime.now()))
