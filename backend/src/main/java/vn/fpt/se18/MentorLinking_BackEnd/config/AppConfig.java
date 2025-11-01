@@ -43,6 +43,7 @@ public class AppConfig {
                 .headers(headers -> headers.frameOptions(frameOptions -> frameOptions.sameOrigin()))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.GET,
+                                "/admin/**",
                                 "/mentors", "/mentors/**",
                                 "/blogs", "/blogs/**",
                                 "/mentor-policies/**", "/customer-policies/**", "/banners/**", "/blogs/**",
