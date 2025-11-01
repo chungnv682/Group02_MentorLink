@@ -324,10 +324,7 @@ import '../../styles/components/MentorDetail.css'; const MentorDetailPage = () =
                                             LinkedIn
                                         </Button>
                                     )}
-                                    <Button variant="outline-secondary" size="sm">
-                                        <FaBookmark className="me-1" />
-                                        Lưu mentor
-                                    </Button>
+                                    
                                 </div>
                             </Col>
 
@@ -335,17 +332,9 @@ import '../../styles/components/MentorDetail.css'; const MentorDetailPage = () =
                                 <Card className="booking-card shadow border-primary">
                                     <Card.Body className="p-3">
                                         <h6 className="text-primary mb-3 fw-bold">
-                                            📅 Đặt lịch tư vấn
+                                            Nhận tư vấn ngay tại đây
                                         </h6>
-                                        <Button
-                                            variant="success"
-                                            size="lg"
-                                            className="w-100 mb-3 btn-friendly"
-                                            onClick={() => navigate(`/mentors/${mentor.id}/booking`)}
-                                        >
-                                            <FaCalendarAlt className="me-2" />
-                                            Đặt lịch ngay
-                                        </Button>
+                                    
                                         <Button
                                             variant="outline-primary"
                                             size="sm"

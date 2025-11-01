@@ -3,56 +3,7 @@ import { Card, Badge, Button } from 'react-bootstrap';
 import { FiCheck, FiX } from 'react-icons/fi';
 
 const ContentReview = () => {
-    const [contentItems, setContentItems] = useState([
-        {
-            id: 1,
-            title: 'Blog: Cách trở thành một mentor hiệu quả',
-            author: 'nguyenvana@gmail.com',
-            date: '30/09/2025',
-            status: 'pending',
-            type: 'blog'
-        },
-        {
-            id: 3,
-            title: 'Feedback: Cải thiện trải nghiệm đặt lịch',
-            author: 'tranbaoquang@gmail.com',
-            date: '28/09/2025',
-            status: 'approved',
-            type: 'feedback'
-        },
-        {
-            id: 4,
-            title: 'Blog: 5 kỹ năng cần thiết cho người muốn tìm mentor',
-            author: 'lethihoa@gmail.com',
-            date: '27/09/2025',
-            status: 'pending',
-            type: 'blog'
-        },
-        {
-            id: 5,
-            title: 'Blog: Những sai lầm thường gặp khi tìm mentor',
-            author: 'vothimyhang@gmail.com',
-            date: '26/09/2025',
-            status: 'pending',
-            type: 'blog'
-        },
-        {
-            id: 6,
-            title: 'Blog: Cách viết CV ấn tượng',
-            author: 'leanhduc@gmail.com',
-            date: '25/09/2025',
-            status: 'rejected',
-            type: 'blog'
-        },
-        {
-            id: 7,
-            title: 'Feedback: Nội dung không phù hợp',
-            author: 'anonymous@gmail.com',
-            date: '24/09/2025',
-            status: 'rejected',
-            type: 'feedback'
-        }
-    ]);
+    
 
     const [activeFilter, setActiveFilter] = useState('all');
 

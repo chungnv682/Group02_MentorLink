@@ -51,7 +51,7 @@ public class AppConfig {
                                 "/countries", "/api/countries/popular", "/api/countries/search")
                         .permitAll()
                         .requestMatchers("/auth/**", "/profile/**", "/bookings/**", "/payments/**", "/comments/**",
-                                "/ratings/**")
+                                "/ratings/**", "/chat/**", "/recommendations/**","/chatbot/**")
                         .permitAll()
                         .anyRequest().authenticated())
                 .sessionManagement(manager -> manager.sessionCreationPolicy(STATELESS))
