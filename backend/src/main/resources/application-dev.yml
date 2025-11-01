@@ -16,7 +16,7 @@ spring:
     hibernate:
       ddl-auto: update
   sendgrid:
-    code:  ${SENDGRID_API_KEY:dummy-key}
+    code: dummy-key
     from-email: chientxhe186184@fpt.edu.vn
 # application-dev.yml
 springdoc:
