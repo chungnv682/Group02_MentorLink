@@ -1,5 +1,7 @@
 package vn.fpt.se18.MentorLinking_BackEnd.service.serviceImpl;
 
+import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -9,13 +11,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import vn.fpt.se18.MentorLinking_BackEnd.dto.response.mentor.*;
+import vn.fpt.se18.MentorLinking_BackEnd.entity.Booking;
 import vn.fpt.se18.MentorLinking_BackEnd.entity.User;
+import vn.fpt.se18.MentorLinking_BackEnd.repository.BookingRepository;
 import vn.fpt.se18.MentorLinking_BackEnd.repository.MentorRepository;
 import vn.fpt.se18.MentorLinking_BackEnd.service.MentorService;
 
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import vn.fpt.se18.MentorLinking_BackEnd.util.PaymentProcess;
 
 @Service
 @RequiredArgsConstructor
@@ -23,6 +28,7 @@ public class MentorServiceImpl implements MentorService {
 
 
     private final MentorRepository mentorRepository;
+    private final BookingRepository bookingRepository;
 
     public MentorPageResponse getAllMentors(String keyword, String sort, int page, int size) {
         Sort.Order order = new Sort.Order(Sort.Direction.ASC, "id");
@@ -176,5 +182,52 @@ public class MentorServiceImpl implements MentorService {
                 .tests(tests)
                 .approvedCountries(approvedCountries)
                 .build();
+    }
+
+    @Override
+    public MentorActivityResponse getMentorActivitiesByMentorEmail(String email) {
+        List<Booking> bookings = bookingRepository.findByMentorIdAndPaymentProcess(email, PaymentProcess.COMPLETED);
+        if (bookings.isEmpty()) {
+            return MentorActivityResponse.builder()
+                .pending(List.of())
+                .confirmed(List.of())
+                .completed(List.of())
+                .cancelled(List.of())
+                .build();
+        }
+        Map<String, List<BookingResponse>> grouped = bookings.stream()
+            .map(this::toBookingResponse)
+            .collect(Collectors.groupingBy(BookingResponse::getStatus));
+
+        return MentorActivityResponse.builder()
+            .pending(grouped.getOrDefault("PENDING", List.of()))
+            .confirmed(grouped.getOrDefault("CONFIRMED", List.of()))
+            .completed(grouped.getOrDefault("COMPLETED", List.of()))
+            .cancelled(grouped.getOrDefault("CANCELLED", List.of()))
+            .build();
+    }
+
+    private BookingResponse toBookingResponse(Booking b) {
+        return BookingResponse.builder()
+            .id(b.getId())
+            .customer(BookingCustomerProfileResponse.builder()
+                .id(b.getCustomer().getId())
+                .fullname(b.getCustomer().getFullname())
+                .email(b.getCustomer().getEmail())
+                .phone(b.getCustomer().getPhone())
+                .build())
+            .service(b.getSchedule().getUser().getTitle()) // Hoặc tên service bạn muốn
+            .date(b.getSchedule().getDate())
+            .timeSlot(b.getSchedule().getTimeSlots().stream()
+                .findFirst()
+                .map(ts -> new BookingTimeSlotResponse(ts.getTimeStart(), ts.getTimeEnd()))
+                .orElse(null))
+            .status(b.getStatus().getCode().toUpperCase())
+            .createdAt(b.getCreatedAt())
+            .note(b.getDescription())
+            .comment(b.getComment())
+            .rating(b.getReview() != null ? b.getReview().getRating() : null)
+            .review(b.getReview() != null ? b.getReview().getComment() : null)
+            .build();
     }
 }
