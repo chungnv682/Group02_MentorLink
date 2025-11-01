@@ -2,6 +2,7 @@ package vn.fpt.se18.MentorLinking_BackEnd.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import vn.fpt.se18.MentorLinking_BackEnd.util.BookingService;
 import vn.fpt.se18.MentorLinking_BackEnd.util.PaymentProcess;
 
 import java.util.List;
@@ -29,6 +30,16 @@ public class Booking extends AbstractEntity<Long> {
     @Column(name = "payment_process")
     @Enumerated(EnumType.STRING)
     private PaymentProcess paymentProcess;
+
+    @Column(name = "service")
+    @Enumerated(EnumType.STRING)
+    private BookingService service;
+
+    @Column(name = "link_meeting")
+    private String linkMeeting;
+
+    @Column(name = "is_read")
+    private Boolean isRead = false;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "mentor_id", nullable = false)
