@@ -27,6 +27,7 @@ import vn.fpt.se18.MentorLinking_BackEnd.service.UserService;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 import static vn.fpt.se18.MentorLinking_BackEnd.exception.ErrorCode.UNCATEGORIZED;
@@ -247,7 +248,22 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     @Override
     public TokenResponse signUpMentor(SignUpMentorRequest request) {
         log.info("---------- signUpMentor ----------");
-        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+        
+        // Trim email to remove whitespace
+        String email = request.getEmail() != null ? request.getEmail().trim() : null;
+        log.info("Checking email: '{}'", email);
+        
+        // Check if email exists
+        Optional<User> existingUserByEmail = userRepository.findByEmail(email);
+        if (existingUserByEmail.isPresent()) {
+            log.warn("Email already exists: {}", email);
+            throw new AppException(ErrorCode.UNCATEGORIZED, "Email already exists");
+        }
+        
+        // Check if username exists (username is set to email)
+        Optional<User> existingUserByUsername = userRepository.findByUsername(email);
+        if (existingUserByUsername.isPresent()) {
+            log.warn("Username (email) already exists: {}", email);
             throw new AppException(ErrorCode.UNCATEGORIZED, "Email already exists");
         }
 
@@ -277,8 +293,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
         // Create and save user
         User user = User.builder()
-                .username(request.getEmail())
-                .email(request.getEmail())
+                .username(email)
+                .email(email)
                 .password(passwordEncoder.encode(request.getPassword()))
                 .role(role)
                 .fullname(request.getFullName())
@@ -305,10 +321,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 List<String> certificateUrls = new ArrayList<>();
 
                 if (education.getDegreesFile() != null) {
-                    for (MultipartFile file : education.getDegreesFile()) {
-                        String certificateUrl = fileUploadService.uploadFile(file, "certificates");
+                        String certificateUrl = fileUploadService.uploadFile(education.getDegreesFile(), "certificates");
                         certificateUrls.add(certificateUrl);
-                    }
                 }
 
                 MentorEducation mentorEducation = MentorEducation.builder()
@@ -332,10 +346,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 List<String> experienceUrls = new ArrayList<>();
 
                 if (experience.getExperiencesFile() != null) {
-                    for (MultipartFile file : experience.getExperiencesFile()) {
-                        String experienceUrl = fileUploadService.uploadFile(file, "experiences");
+                        String experienceUrl = fileUploadService.uploadFile(experience.getExperiencesFile(), "experiences");
                         experienceUrls.add(experienceUrl);
-                    }
                 }
 
                 MentorExperience mentorExperience = MentorExperience.builder()
@@ -359,10 +371,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 List<String> scoreUrls = new ArrayList<>();
 
                 if (certificate.getCertificatesFile() != null) {
-                    for (MultipartFile file : certificate.getCertificatesFile()) {
-                        String scoreUrl = fileUploadService.uploadFile(file, "tests");
+                        String scoreUrl = fileUploadService.uploadFile(certificate.getCertificatesFile(), "tests");
                         scoreUrls.add(scoreUrl);
-                    }
                 }
 
                 MentorTest mentorTest = MentorTest.builder()
@@ -388,33 +398,21 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
             for (SignUpMentorRequest.MentorCountryRequest countryRequest : request.getMentorCountries()) {
                 Country country = null;
-                Status mentorCountryStatus = pendingStatus; // Mặc định là PENDING
-                
-                // Nếu có countryId => chọn country có sẵn
-                if (countryRequest.getCountryId() != null) {
-                    country = countryRepository.findById(countryRequest.getCountryId())
-                            .orElse(null);
-                    
-                    // Nếu country đã được approved thì mentor country cũng approved luôn
-                    if (country != null && "APPROVED".equals(country.getStatus().getCode())) {
-                        mentorCountryStatus = approvedCountryStatus;
-                    }
-                }
+                Status mentorCountryStatus = pendingStatus;
+
                 // Nếu không có countryId => đề xuất country mới
-                else if (countryRequest.getCountryName() != null && !countryRequest.getCountryName().isEmpty()) {
+                if (countryRequest.getCountryName() != null && !countryRequest.getCountryName().isEmpty()) {
                     // Kiểm tra xem country đã tồn tại chưa (theo tên)
                     country = countryRepository.findByName(countryRequest.getCountryName())
                             .orElse(null);
                     
                     // Nếu chưa tồn tại => tạo mới với status PENDING
                     if (country == null) {
-                        String countryCode = countryRequest.getCountryCode();
+                        String countryCode = countryRequest.getCountryName();
                         if (countryCode == null || countryCode.isEmpty()) {
-                            // Tự động generate code từ tên
                             countryCode = countryRequest.getCountryName()
                                     .toUpperCase()
-                                    .replaceAll("\\s+", "_")
-                                    .substring(0, Math.min(10, countryRequest.getCountryName().length()));
+                                    .replaceAll("\\s+", "");
                         }
                         
                         country = Country.builder()
