@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/countries")
+@RequestMapping("/countries")
 @RequiredArgsConstructor
 @Tag(name = "Country Controller", description = "APIs for country management")
 @Slf4j
