@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Container, Row, Col, Card, Nav, Tab, Badge, Alert, Button } from 'react-bootstrap';
 import {
     FaUsers, FaBlog, FaUserCog, FaChartBar,
@@ -7,7 +8,7 @@ import {
 } from 'react-icons/fa';
 import { CountryManagement } from '../../components/admin';
 import { getAllUsers, getUserStatistics } from '../../services/user/userManagementService';
-import { getBlogs } from '../../services/blog';
+import { getAllBlogs } from '../../services/blog';
 import MentorService from '../../services/mentor/MentorService';
 import CountryService from '../../services/country/CountryService';
 
@@ -226,12 +227,40 @@ const UserManagement = ({ users, stats, loading, onSearch, onPageChange, current
 };
 
 
-const ContentManagement = ({ blogs, loading }) => {
+const ContentManagement = ({ blogs, loading, onRefresh }) => {
     const totalBlogs = blogs?.length || 0;
-    const pendingBlogs = blogs?.filter(blog => blog.status === 'PENDING')?.length || 0;
+    const pendingBlogs = blogs?.filter(blog => blog.statusName === 'PENDING')?.length || 0;
+    const navigate = useNavigate();
+
+    const handleApproveBlog = async (blogId) => {
+        try {
+            const { moderateBlog } = await import('../../services/blog');
+            // Backend expects decisionId (Long): 3=PENDING, 4=APPROVED, 5=REJECTED
+            const response = await moderateBlog(blogId, { 
+                decisionId: 4, // APPROVED
+                comment: 'Đã duyệt bởi admin'
+            });
+            console.log('Approve response:', response.data);
+            if (response.data.respCode === "0") {
+                alert('Đã duyệt bài viết thành công!');
+                if (onRefresh) onRefresh();
+            } else {
+                alert('Lỗi: ' + (response.data.description || 'Không thể duyệt bài viết'));
+            }
+        } catch (error) {
+            console.error('Error approving blog:', error);
+            console.error('Error response:', error.response?.data);
+            alert('Không thể duyệt bài viết: ' + (error.response?.data?.description || 'Lỗi không xác định'));
+        }
+    };
+
+    const handleViewBlog = (blogId) => {
+        // Navigate to content management tab or open modal
+        console.log('View blog:', blogId);
+    };
 
     return (
-        <AdminComponentWrapper icon="📝" title="Quản lý nội dung" badge={pendingBlogs}>
+        <AdminComponentWrapper icon="📝" title="Quản lý nội dung" >
             {loading ? (
                 <div className="text-center py-4">
                     <div className="spinner-border text-primary" role="status">
@@ -277,23 +306,32 @@ const ContentManagement = ({ blogs, loading }) => {
                                     blogs.slice(0, 5).map(blog => (
                                         <tr key={blog.id}>
                                             <td>{blog.title}</td>
-                                            <td>{blog.author?.fullName || 'Unknown'}</td>
+                                            <td>{blog.author || 'Unknown'}</td>
                                             <td>
                                                 <Badge bg={
-                                                    blog.status === 'APPROVED' ? 'success' :
-                                                        blog.status === 'PENDING' ? 'warning' : 'secondary'
+                                                    blog.statusName === 'APPROVED' ? 'success' :
+                                                        blog.statusName === 'PENDING' ? 'warning' : 'secondary'
                                                 }>
-                                                    {blog.status}
+                                                    {blog.statusName}
                                                 </Badge>
                                             </td>
-                                            <td>{blog.views?.toLocaleString() || 0}</td>
+                                            <td>{blog.viewCount?.toLocaleString() || 0}</td>
                                             <td>{blog.createdAt ? new Date(blog.createdAt).toLocaleDateString('vi-VN') : 'N/A'}</td>
                                             <td>
-                                                <Button size="sm" variant="outline-primary" className="me-1">
+                                                <Button 
+                                                    size="sm" 
+                                                    variant="outline-primary" 
+                                                    className="me-1"
+                                                    onClick={() => handleViewBlog(blog.id)}
+                                                >
                                                     Xem
                                                 </Button>
-                                                {blog.status === 'PENDING' && (
-                                                    <Button size="sm" variant="outline-success">
+                                                {blog.statusName === 'PENDING' && (
+                                                    <Button 
+                                                        size="sm" 
+                                                        variant="success"
+                                                        onClick={() => handleApproveBlog(blog.id)}
+                                                    >
                                                         Duyệt
                                                     </Button>
                                                 )}
@@ -637,6 +675,23 @@ const AdminPage = () => {
         fetchUsers(page, userSearch);
     };
 
+    // Handler refresh blogs
+    const handleRefreshBlogs = async () => {
+        try {
+            setLoading(true);
+            const blogsResponse = await getAllBlogs({ page: 0, size: 10 });
+            if (blogsResponse?.respCode === "0" || blogsResponse?.success) {
+                const blogsData = blogsResponse.data?.blogs || [];
+                setBlogs(blogsData);
+                console.log('Blogs refreshed:', blogsData.length, 'items');
+            }
+        } catch (error) {
+            console.error('Error refreshing blogs:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     // Fetch data khi component mount
     useEffect(() => {
         const fetchData = async () => {
@@ -648,7 +703,7 @@ const AdminPage = () => {
                 const [usersResponse, statsResponse, blogsResponse, mentorsResponse] = await Promise.allSettled([
                     getAllUsers({ page: userPage, size: userSize, keySearch: userSearch }),
                     getUserStatistics(),
-                    getBlogs({ page: 0, size: 10 }),
+                    getAllBlogs({ page: 0, size: 10 }),
                     MentorService.getMentors({ page: 0, size: 50 })
                 ]);
 
@@ -681,11 +736,23 @@ const AdminPage = () => {
                     console.log('Stats loaded:', statsResponse.value.data);
                 }
 
+                // Process blogs - Cấu trúc: blogsResponse.value = {respCode, data: {blogs, pageNumber, ...}}
                 if (blogsResponse.status === 'fulfilled') {
-                    setBlogs(blogsResponse.value.data?.content || []);
-                    console.log('Blogs loaded:', blogsResponse.value.data?.content);
+                    // respCode nằm ở blogsResponse.value.respCode
+                    if (blogsResponse.value?.respCode === "0" || blogsResponse.value?.success) {
+                        // blogs nằm ở blogsResponse.value.data.blogs
+                        const blogsData = blogsResponse.value.data?.blogs || [];
+                        setBlogs(blogsData);
+                        console.log('Blogs loaded successfully:', blogsData.length, 'items');
+                    } else {
+                        console.warn('Blogs response not successful:', blogsResponse.value);
+                        setBlogs([]);
+                    }
+                } else {
+                    console.error('Failed to load blogs:', blogsResponse.reason);
+                    setBlogs([]);
                 }
-
+                
                 if (mentorsResponse.status === 'fulfilled') {
                     setMentors(mentorsResponse.value.data?.content || []);
                     console.log('Mentors loaded:', mentorsResponse.value.data?.content);
@@ -723,8 +790,8 @@ const AdminPage = () => {
             key: 'content',
             icon: <FaBlog />,
             title: 'Quản lý nội dung',
-            badge: blogs?.filter(b => b.status === 'PENDING')?.length || '0',
-            component: <ContentManagement blogs={blogs} loading={loading} />
+            badge: blogs?.filter(b => b.statusName === 'PENDING' || b.status === 'PENDING')?.length || '0',
+            component: <ContentManagement blogs={blogs} loading={loading} onRefresh={handleRefreshBlogs} />
         },
         {
             key: 'mentor-approval',
