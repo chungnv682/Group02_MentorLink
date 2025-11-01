@@ -59,6 +59,25 @@ public class BookingServiceImpl implements BookingService {
             throw new RuntimeException("Lịch này đã được đặt bởi người khác");
         }
 
+        // Enforce booking rule: cannot create a booking if the earliest timeslot
+        // of the schedule starts within 3 hours from now.
+        if (schedule.getTimeSlots() == null || schedule.getTimeSlots().isEmpty()) {
+            throw new RuntimeException("Schedule chưa có time slot để xác định thời gian đặt");
+        }
+
+        int earliestHour = schedule.getTimeSlots().stream()
+                .map(TimeSlot::getTimeStart)
+                .min(Comparator.naturalOrder())
+                .orElseThrow(() -> new RuntimeException("Không thể xác định time slot"));
+
+        LocalDateTime slotStartDateTime = schedule.getDate().atTime(LocalTime.of(earliestHour, 0));
+        LocalDateTime now = LocalDateTime.now();
+
+        // If earliest start is less than 3 hours from now, reject booking
+        if (slotStartDateTime.isBefore(now.plusHours(3))) {
+            throw new RuntimeException("Không thể đặt lịch trong vòng 3 giờ trước khi buổi học bắt đầu");
+        }
+
         // Get mentor from schedule
         User mentor = schedule.getUser();
 
@@ -66,9 +85,18 @@ public class BookingServiceImpl implements BookingService {
         Status pendingStatus = statusRepository.findByCode("PENDING")
                 .orElseThrow(() -> new RuntimeException("Status PENDING không tồn tại"));
 
+        // Parse and validate service from request (use fully-qualified enum to avoid name clash with BookingService interface)
+        vn.fpt.se18.MentorLinking_BackEnd.util.BookingService serviceEnum;
+        try {
+            serviceEnum = vn.fpt.se18.MentorLinking_BackEnd.util.BookingService.valueOf(request.getService().toUpperCase());
+        } catch (Exception e) {
+            throw new RuntimeException("Service không hợp lệ. Giá trị hợp lệ: " + java.util.Arrays.toString(vn.fpt.se18.MentorLinking_BackEnd.util.BookingService.values()));
+        }
+
         // Create booking with PENDING status and PENDING payment process
         Booking booking = Booking.builder()
                 .description(request.getDescription())
+                .service(serviceEnum)
                 .status(pendingStatus)
                 .paymentProcess(PaymentProcess.PENDING)
                 .mentor(mentor)
@@ -257,6 +285,9 @@ public class BookingServiceImpl implements BookingService {
                     .paymentProcess(b.getPaymentProcess() != null ? b.getPaymentProcess().name() : null)
                     .statusName(b.getStatus() != null ? b.getStatus().getName() : null)
                     .emailMentor(b.getMentor() != null ? b.getMentor().getEmail() : null)
+                    .service(b.getService() != null ? b.getService().name() : null)
+                    .linkMeeting(b.getLinkMeeting())
+                    .isRead(Boolean.TRUE.equals(b.getIsRead()))
                     .schedule(scheduleResponse)
                     .build();
         }).collect(Collectors.toList());

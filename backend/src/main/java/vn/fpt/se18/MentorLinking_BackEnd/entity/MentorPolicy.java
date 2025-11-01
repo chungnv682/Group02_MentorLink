@@ -21,4 +21,9 @@ public class MentorPolicy extends AbstractEntity<Long> {
     @Column(name = "is_active", nullable = false)
     @Builder.Default
     private Boolean isActive = true;
+
+    // Compatibility helper used by DataSyncService
+    public String getDescription() {
+        return this.content;
+    }
 }
