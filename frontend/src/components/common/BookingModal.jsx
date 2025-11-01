@@ -10,17 +10,27 @@ import {
     Box,
     Typography,
     Alert,
+    FormControl,
+    InputLabel,
+    Select,
+    MenuItem,
 } from '@mui/material';
 import { createBookingAndGetPaymentUrl } from '../../services/booking/bookingApi';
 
 export const BookingModal = ({ open, onClose, scheduleId, scheduleDate, schedulePrice, onSuccess }) => {
     const [description, setDescription] = useState('');
+    const [service, setService] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
     const handleSubmit = async () => {
         if (!description.trim()) {
             setError('Vui lòng nhập nội dung hỏi');
+            return;
+        }
+
+        if (!service) {
+            setError('Vui lòng chọn loại dịch vụ');
             return;
         }
 
@@ -33,7 +43,7 @@ export const BookingModal = ({ open, onClose, scheduleId, scheduleDate, schedule
         setError('');
 
         try {
-            const response = await createBookingAndGetPaymentUrl(scheduleId, description);
+            const response = await createBookingAndGetPaymentUrl(scheduleId, description, service);
 
             if (response.respCode === '0' && response.data) {
                 // Redirect to VNPay payment URL
@@ -80,6 +90,28 @@ export const BookingModal = ({ open, onClose, scheduleId, scheduleDate, schedule
                         <strong>Giá:</strong> {schedulePrice?.toLocaleString('vi-VN')} đ
                     </Typography>
                 </Box>
+
+                {/* Service Select */}
+                <FormControl fullWidth sx={{ mb: 2 }}>
+                    <InputLabel id="service-select-label">Loại dịch vụ</InputLabel>
+                    <Select
+                        labelId="service-select-label"
+                        value={service}
+                        label="Loại dịch vụ"
+                        onChange={(e) => {
+                            setService(e.target.value);
+                            setError('');
+                        }}
+                        disabled={loading}
+                    >
+                        <MenuItem value={'SCHOLARSHIP'}>Học bổng</MenuItem>
+                        <MenuItem value={'JOBS'}>Việc làm</MenuItem>
+                        <MenuItem value={'SOFT_SKILLS'}>Kỹ năng mềm</MenuItem>
+                        <MenuItem value={'PROCEDURES'}>Thủ tục</MenuItem>
+                        <MenuItem value={'ORIENTATION'}>Định hướng</MenuItem>
+                        <MenuItem value={'OTHERS'}>Khác</MenuItem>
+                    </Select>
+                </FormControl>
 
                 <TextField
                     fullWidth

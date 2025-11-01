@@ -1,2 +1,2 @@
 // User service exports
-// TODO: Implement UserService functions
+export * from './userManagementService';

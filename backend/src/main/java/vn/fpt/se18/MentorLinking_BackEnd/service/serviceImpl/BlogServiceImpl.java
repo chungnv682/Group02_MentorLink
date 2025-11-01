@@ -9,12 +9,17 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import vn.fpt.se18.MentorLinking_BackEnd.dto.request.ModerateBlogRequest;
 import vn.fpt.se18.MentorLinking_BackEnd.dto.response.BlogPageResponse;
 import vn.fpt.se18.MentorLinking_BackEnd.dto.response.BlogResponse;
 import vn.fpt.se18.MentorLinking_BackEnd.entity.Blog;
+import vn.fpt.se18.MentorLinking_BackEnd.entity.Status;
+import vn.fpt.se18.MentorLinking_BackEnd.entity.User;
 import vn.fpt.se18.MentorLinking_BackEnd.exception.AppException;
 import vn.fpt.se18.MentorLinking_BackEnd.exception.ErrorCode;
 import vn.fpt.se18.MentorLinking_BackEnd.repository.BlogRepository;
+import vn.fpt.se18.MentorLinking_BackEnd.repository.StatusRepository;
+import vn.fpt.se18.MentorLinking_BackEnd.repository.UserRepository;
 import vn.fpt.se18.MentorLinking_BackEnd.service.BlogService;
 
 import java.util.List;
@@ -29,6 +34,8 @@ import java.util.stream.Collectors;
 public class BlogServiceImpl implements BlogService {
 
     private final BlogRepository blogRepository;
+    private final UserRepository userRepository;
+    private final StatusRepository statusRepository;
     private static final String APPROVED_STATUS = "Approved";
 
     @Override
@@ -77,6 +84,47 @@ public class BlogServiceImpl implements BlogService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public BlogPageResponse getAllBlogsForAdmin(String keyword, String status, String sort, int page, int size) {
+        Sort.Order order = new Sort.Order(Sort.Direction.DESC, "createdAt");
+
+        if (StringUtils.hasLength(sort)) {
+            Pattern pattern = Pattern.compile("^(\\w+):(asc|desc)$", Pattern.CASE_INSENSITIVE);
+            Matcher matcher = pattern.matcher(sort);
+            if (matcher.find()) {
+                String columnName = matcher.group(1);
+                if (matcher.group(2).equalsIgnoreCase("asc")) {
+                    order = new Sort.Order(Sort.Direction.ASC, columnName);
+                } else {
+                    order = new Sort.Order(Sort.Direction.DESC, columnName);
+                }
+            }
+        }
+
+        int pageNo = 0;
+        if (page > 0) pageNo = page - 1;
+
+        Pageable pageable = PageRequest.of(pageNo, size, Sort.by(order));
+
+        String kw = null;
+        if (StringUtils.hasLength(keyword)) {
+            kw = "%" + keyword.toLowerCase() + "%";
+        }
+
+        Page<Blog> entityPage = blogRepository.findAllBlogsForAdmin(kw, status, pageable);
+        List<BlogResponse> blogResponses = entityPage.stream().map(this::toResponse).collect(Collectors.toList());
+
+        BlogPageResponse pageResponse = new BlogPageResponse();
+        pageResponse.setPageNumber(entityPage.getNumber());
+        pageResponse.setPageSize(entityPage.getSize());
+        pageResponse.setTotalElements(entityPage.getTotalElements());
+        pageResponse.setTotalPages(entityPage.getTotalPages());
+        pageResponse.setBlogs(blogResponses);
+
+        return pageResponse;
+    }
+
+    @Override
     @Transactional
     public BlogResponse getBlogById(Long id) {
         Optional<Blog> optionalBlog = blogRepository.findById(id);
@@ -89,6 +137,52 @@ public class BlogServiceImpl implements BlogService {
         blogRepository.save(blog);
 
         return toResponse(blog);
+    }
+
+    @Override
+    @Transactional
+    public void deleteBlog(Long id) {
+        Blog blog = blogRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.INVALID_ENDPOINT, "Blog not found"));
+
+        blogRepository.delete(blog);
+    }
+
+    @Override
+    @Transactional
+    public BlogResponse moderateBlog(Long blogId, ModerateBlogRequest request, Long moderatorId) {
+        Blog blog = blogRepository.findById(blogId)
+                .orElseThrow(() -> new AppException(ErrorCode.INVALID_ENDPOINT, "Blog not found"));
+
+        User moderator = userRepository.findById(moderatorId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED, "Moderator not found"));
+
+        Status decision = statusRepository.findById(request.getDecisionId())
+                .orElseThrow(() -> new AppException(ErrorCode.INVALID_ENDPOINT, "Decision status not found"));
+
+        // Update blog status
+        blog.setStatus(decision);
+        blog.setUpdatedBy(moderator);
+
+        Blog savedBlog = blogRepository.save(blog);
+
+        return toResponse(savedBlog);
+    }
+
+    @Override
+    @Transactional
+    public BlogResponse togglePublishStatus(Long id, Long updatedBy) {
+        Blog blog = blogRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.INVALID_ENDPOINT, "Blog not found"));
+
+        User updater = userRepository.findById(updatedBy)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED, "User not found"));
+
+        blog.setIsPublished(!blog.getIsPublished());
+        blog.setUpdatedBy(updater);
+
+        Blog savedBlog = blogRepository.save(blog);
+        return toResponse(savedBlog);
     }
 
     private BlogResponse toResponse(Blog b) {
