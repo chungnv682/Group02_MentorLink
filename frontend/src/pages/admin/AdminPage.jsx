@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Nav, Tab, Badge, Alert, Button } from 'react-bootstrap';
 import {
     FaUsers, FaBlog, FaUserCog, FaChartBar,
@@ -6,49 +6,12 @@ import {
     FaBullhorn, FaCog, FaKey, FaShieldAlt, FaGlobeAmericas
 } from 'react-icons/fa';
 import { CountryManagement } from '../../components/admin';
+import { getAllUsers, getUserStatistics } from '../../services/user/userManagementService';
+import { getBlogs } from '../../services/blog';
+import MentorService from '../../services/mentor/MentorService';
+import CountryService from '../../services/country/CountryService';
 
 import '../../styles/components/AdminPage.css';
-
-// Mock data để làm admin page realistic hơn
-const mockUsers = [
-    { id: 1, name: 'Nguyễn Văn A', email: 'nguyenvana@gmail.com', role: 'CUSTOMER', status: 'active', joinDate: '2024-01-15' },
-    { id: 2, name: 'Trần Thị B', email: 'tranthib@gmail.com', role: 'MENTOR', status: 'pending', joinDate: '2024-02-20' },
-    { id: 3, name: 'Lê Minh C', email: 'leminhc@gmail.com', role: 'CUSTOMER', status: 'active', joinDate: '2024-03-10' },
-    { id: 4, name: 'Phạm Thu D', email: 'phamthud@gmail.com', role: 'MENTOR', status: 'active', joinDate: '2024-01-25' },
-];
-
-const mockBookings = [
-    { id: 1, mentorName: 'Trần Thị B', customerName: 'Nguyễn Văn A', date: '2024-10-20', time: '14:00', status: 'confirmed', amount: '500,000₫' },
-    { id: 2, mentorName: 'Phạm Thu D', customerName: 'Lê Minh C', date: '2024-10-18', time: '10:00', status: 'pending', amount: '350,000₫' },
-    { id: 3, mentorName: 'Trần Thị B', customerName: 'Nguyễn Văn A', date: '2024-10-22', time: '16:00', status: 'completed', amount: '500,000₫' },
-];
-
-const mockBlogs = [
-    { id: 1, title: 'Tips học lập trình hiệu quả', author: 'Trần Thị B', status: 'published', views: 1250, date: '2024-10-10' },
-    { id: 2, title: 'Cách phát triển soft skills', author: 'Phạm Thu D', status: 'pending', views: 0, date: '2024-10-15' },
-    { id: 3, title: 'Xu hướng công nghệ 2024', author: 'Lê Minh C', status: 'draft', views: 0, date: '2024-10-12' },
-];
-
-const mockFeedbacks = [
-    { id: 1, user: 'Nguyễn Văn A', mentor: 'Trần Thị B', rating: 5, comment: 'Mentor rất nhiệt tình và chuyên nghiệp', date: '2024-10-16', status: 'approved' },
-    { id: 2, user: 'Lê Minh C', mentor: 'Phạm Thu D', rating: 4, comment: 'Hữu ích nhưng cần cải thiện thời gian', date: '2024-10-14', status: 'pending' },
-    { id: 3, user: 'Anonymous', type: 'complaint', comment: 'Hệ thống đôi khi bị lag', date: '2024-10-13', status: 'investigating' },
-];
-
-const mockStats = {
-    totalUsers: 1234,
-    activeUsers: 89,
-    totalMentors: 156,
-    pendingMentors: 8,
-    totalBookings: 445,
-    todayBookings: 23,
-    monthRevenue: 45000000,
-    todayRevenue: 1200000,
-    totalBlogs: 45,
-    pendingBlogs: 12,
-    totalFeedbacks: 156,
-    urgentFeedbacks: 5,
-};
 
 // Admin component containers
 const AdminComponentWrapper = ({ icon, title, children, badge = null }) => (
@@ -68,227 +31,379 @@ const AdminComponentWrapper = ({ icon, title, children, badge = null }) => (
     </Card>
 );
 
-// Components với fake data realistic
-const UserManagement = () => (
-    <AdminComponentWrapper icon="👥" title="Quản lý người dùng" badge={mockStats.totalUsers}>
-        <Row className="mb-3">
-            <Col md={4}>
-                <Card className="text-center border-0 bg-light">
-                    <Card.Body>
-                        <h3 className="text-primary">{mockStats.totalUsers.toLocaleString()}</h3>
-                        <small className="text-muted">Tổng người dùng</small>
-                    </Card.Body>
-                </Card>
-            </Col>
-            <Col md={4}>
-                <Card className="text-center border-0 bg-light">
-                    <Card.Body>
-                        <h3 className="text-success">{mockStats.activeUsers}</h3>
-                        <small className="text-muted">Hoạt động hôm nay</small>
-                    </Card.Body>
-                </Card>
-            </Col>
-            <Col md={4}>
-                <Card className="text-center border-0 bg-light">
-                    <Card.Body>
-                        <h3 className="text-warning">{mockStats.pendingMentors}</h3>
-                        <small className="text-muted">Chờ duyệt</small>
-                    </Card.Body>
-                </Card>
-            </Col>
-        </Row>
 
-        <h6>Người dùng gần đây</h6>
-        <div className="table-responsive">
-            <table className="table table-sm">
-                <thead>
-                    <tr>
-                        <th>Tên</th>
-                        <th>Email</th>
-                        <th>Vai trò</th>
-                        <th>Trạng thái</th>
-                        <th>Ngày tham gia</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {mockUsers.map(user => (
-                        <tr key={user.id}>
-                            <td>{user.name}</td>
-                            <td>{user.email}</td>
-                            <td>
-                                <Badge bg={user.role === 'MENTOR' ? 'success' : 'primary'}>
-                                    {user.role}
-                                </Badge>
-                            </td>
-                            <td>
-                                <Badge bg={user.status === 'active' ? 'success' : 'warning'}>
-                                    {user.status}
-                                </Badge>
-                            </td>
-                            <td>{user.joinDate}</td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-        </div>
-    </AdminComponentWrapper>
-);
+// Components với data từ API
+const UserManagement = ({ users, stats, loading, onSearch, onPageChange, currentPage, totalPages, totalElements }) => {
+    const [searchKeyword, setSearchKeyword] = useState('');
+    const [searchDebounce, setSearchDebounce] = useState(null);
 
-const ContentManagement = () => (
-    <AdminComponentWrapper icon="📝" title="Quản lý nội dung" badge={mockStats.pendingBlogs}>
-        <Row className="mb-3">
-            <Col md={6}>
-                <Card className="text-center border-0 bg-light">
-                    <Card.Body>
-                        <h4 className="text-info">{mockStats.totalBlogs}</h4>
-                        <small className="text-muted">Tổng bài viết</small>
-                    </Card.Body>
-                </Card>
-            </Col>
-            <Col md={6}>
-                <Card className="text-center border-0 bg-light">
-                    <Card.Body>
-                        <h4 className="text-warning">{mockStats.pendingBlogs}</h4>
-                        <small className="text-muted">Chờ duyệt</small>
-                    </Card.Body>
-                </Card>
-            </Col>
-        </Row>
+    const handleSearchChange = (e) => {
+        const value = e.target.value;
+        setSearchKeyword(value);
 
-        <h6>Bài viết gần đây</h6>
-        <div className="table-responsive">
-            <table className="table table-sm">
-                <thead>
-                    <tr>
-                        <th>Tiêu đề</th>
-                        <th>Tác giả</th>
-                        <th>Trạng thái</th>
-                        <th>Lượt xem</th>
-                        <th>Ngày tạo</th>
-                        <th>Hành động</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {mockBlogs.map(blog => (
-                        <tr key={blog.id}>
-                            <td>{blog.title}</td>
-                            <td>{blog.author}</td>
-                            <td>
-                                <Badge bg={
-                                    blog.status === 'published' ? 'success' :
-                                        blog.status === 'pending' ? 'warning' : 'secondary'
-                                }>
-                                    {blog.status}
-                                </Badge>
-                            </td>
-                            <td>{blog.views.toLocaleString()}</td>
-                            <td>{blog.date}</td>
-                            <td>
-                                <Button size="sm" variant="outline-primary" className="me-1">
-                                    Xem
-                                </Button>
-                                {blog.status === 'pending' && (
-                                    <Button size="sm" variant="outline-success">
-                                        Duyệt
-                                    </Button>
+        // Clear previous timeout
+        if (searchDebounce) {
+            clearTimeout(searchDebounce);
+        }
+
+        // Set new timeout for debounce (500ms)
+        const timeout = setTimeout(() => {
+            onSearch(value);
+        }, 500);
+
+        setSearchDebounce(timeout);
+    };
+
+    const handleSearchSubmit = (e) => {
+        e.preventDefault();
+        if (searchDebounce) {
+            clearTimeout(searchDebounce);
+        }
+        onSearch(searchKeyword);
+    };
+
+    return (
+        <AdminComponentWrapper icon="👥" title="Quản lý người dùng">
+            <Row className="mb-3">
+                <Col md={4}>
+                    <Card className="text-center border-0 bg-light">
+                        <Card.Body>
+                            <h3 className="text-primary">{stats?.totalUsers?.toLocaleString() || 0}</h3>
+                            <small className="text-muted">Tổng người dùng</small>
+                        </Card.Body>
+                    </Card>
+                </Col>
+                <Col md={4}>
+                    <Card className="text-center border-0 bg-light">
+                        <Card.Body>
+                            <h3 className="text-success">{stats?.totalMentors || 0}</h3>
+                            <small className="text-muted">Tổng mentor</small>
+                        </Card.Body>
+                    </Card>
+                </Col>
+                <Col md={4}>
+                    <Card className="text-center border-0 bg-light">
+                        <Card.Body>
+                            <h3 className="text-warning">{stats?.pendingMentors || 0}</h3>
+                            <small className="text-muted">Chờ duyệt</small>
+                        </Card.Body>
+                    </Card>
+                </Col>
+            </Row>
+
+            <div className="d-flex justify-content-between align-items-center mb-3">
+                <h6 className="mb-0">Người dùng gần đây</h6>
+                <form onSubmit={handleSearchSubmit} className="d-flex gap-2" style={{ maxWidth: '400px' }}>
+                    <input
+                        type="text"
+                        className="form-control form-control-sm"
+                        placeholder="Tìm kiếm "
+                        value={searchKeyword}
+                        onChange={handleSearchChange}
+                        disabled={loading}
+                    />
+                    <Button size="sm" variant="primary" type="submit" disabled={loading}>
+                        {loading ? <span className="spinner-border spinner-border-sm me-1" /> : null}
+                        Tìm
+                    </Button>
+                </form>
+            </div>
+
+            <div className="position-relative">
+                {loading && (
+                    <div className="position-absolute w-100 h-100 d-flex justify-content-center align-items-center" 
+                         style={{ background: 'rgba(255,255,255,0.7)', zIndex: 10 }}>
+                        <div className="spinner-border text-primary" role="status">
+                            <span className="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                )}
+                
+                <div className="table-responsive">
+                    <table className="table table-sm table-hover">
+                        <thead className="table-light">
+                            <tr>
+                                <th>Tên</th>
+                                <th>Email</th>
+                                <th>Vai trò</th>
+                                <th>Trạng thái</th>
+                                <th>Ngày tham gia</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {users && users.length > 0 ? (
+                                users.map(user => (
+                                    <tr key={user.id}>
+                                        <td>{user.fullName || user.name || 'N/A'}</td>
+                                        <td>{user.email}</td>
+                                        <td>
+                                            <Badge bg={user.role?.roleName === 'MENTOR' ? 'success' : 'primary'}>
+                                                {user.role?.roleName || 'CUSTOMER'}
+                                            </Badge>
+                                        </td>
+                                        <td>
+                                            <Badge bg={(user.status === 1 || (typeof user.status === 'string' && /active/i.test(user.status))) ? 'success' : 'warning'}>
+                                                {typeof user.status === 'string' ? user.status : (user.status === 1 ? 'active' : 'inactive')}
+                                            </Badge>
+                                        </td>
+                                        <td>{user.createTime ? new Date(user.createTime).toLocaleDateString('vi-VN') : 'N/A'}</td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan="5" className="text-center py-4">
+                                        {loading ? 'Đang tải...' : 'Không có dữ liệu'}
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {/* Pagination */}
+            {totalPages >= 1 && (
+                <div className="d-flex justify-content-between align-items-center mt-3">
+                    <div className="text-muted small">
+                        Hiển thị {users?.length || 0} / {totalElements?.toLocaleString() || 0} người dùng
+                    </div>
+                    <nav>
+                        <ul className="pagination pagination-sm mb-0">
+                            <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+                                <button
+                                    className="page-link"
+                                    onClick={() => onPageChange(currentPage - 1)}
+                                    disabled={currentPage === 1 || loading}
+                                >
+                                    ‹ Trước
+                                </button>
+                            </li>
+                            
+                            {/* Page numbers */}
+                            {[...Array(totalPages)].map((_, index) => {
+                                const pageNum = index + 1;
+                                // Show first page, last page, current page, and pages around current
+                                if (
+                                    pageNum === 1 ||
+                                    pageNum === totalPages ||
+                                    (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)
+                                ) {
+                                    return (
+                                        <li key={pageNum} className={`page-item ${currentPage === pageNum ? 'active' : ''}`}>
+                                            <button
+                                                className="page-link"
+                                                onClick={() => onPageChange(pageNum)}
+                                                disabled={loading}
+                                            >
+                                                {pageNum}
+                                            </button>
+                                        </li>
+                                    );
+                                } else if (
+                                    pageNum === currentPage - 2 ||
+                                    pageNum === currentPage + 2
+                                ) {
+                                    return <li key={pageNum} className="page-item disabled"><span className="page-link">...</span></li>;
+                                }
+                                return null;
+                            })}
+
+                            <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
+                                <button
+                                    className="page-link"
+                                    onClick={() => onPageChange(currentPage + 1)}
+                                    disabled={currentPage === totalPages || loading}
+                                >
+                                    Sau ›
+                                </button>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+            )}
+        </AdminComponentWrapper>
+    );
+};
+
+
+const ContentManagement = ({ blogs, loading }) => {
+    const totalBlogs = blogs?.length || 0;
+    const pendingBlogs = blogs?.filter(blog => blog.status === 'PENDING')?.length || 0;
+
+    return (
+        <AdminComponentWrapper icon="📝" title="Quản lý nội dung" badge={pendingBlogs}>
+            {loading ? (
+                <div className="text-center py-4">
+                    <div className="spinner-border text-primary" role="status">
+                        <span className="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            ) : (
+                <>
+                    <Row className="mb-3">
+                        <Col md={6}>
+                            <Card className="text-center border-0 bg-light">
+                                <Card.Body>
+                                    <h4 className="text-info">{totalBlogs}</h4>
+                                    <small className="text-muted">Tổng bài viết</small>
+                                </Card.Body>
+                            </Card>
+                        </Col>
+                        <Col md={6}>
+                            <Card className="text-center border-0 bg-light">
+                                <Card.Body>
+                                    <h4 className="text-warning">{pendingBlogs}</h4>
+                                    <small className="text-muted">Chờ duyệt</small>
+                                </Card.Body>
+                            </Card>
+                        </Col>
+                    </Row>
+
+                    <h6>Bài viết gần đây</h6>
+                    <div className="table-responsive">
+                        <table className="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Tiêu đề</th>
+                                    <th>Tác giả</th>
+                                    <th>Trạng thái</th>
+                                    <th>Lượt xem</th>
+                                    <th>Ngày tạo</th>
+                                    <th>Hành động</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {blogs && blogs.length > 0 ? (
+                                    blogs.slice(0, 5).map(blog => (
+                                        <tr key={blog.id}>
+                                            <td>{blog.title}</td>
+                                            <td>{blog.author?.fullName || 'Unknown'}</td>
+                                            <td>
+                                                <Badge bg={
+                                                    blog.status === 'APPROVED' ? 'success' :
+                                                        blog.status === 'PENDING' ? 'warning' : 'secondary'
+                                                }>
+                                                    {blog.status}
+                                                </Badge>
+                                            </td>
+                                            <td>{blog.views?.toLocaleString() || 0}</td>
+                                            <td>{blog.createdAt ? new Date(blog.createdAt).toLocaleDateString('vi-VN') : 'N/A'}</td>
+                                            <td>
+                                                <Button size="sm" variant="outline-primary" className="me-1">
+                                                    Xem
+                                                </Button>
+                                                {blog.status === 'PENDING' && (
+                                                    <Button size="sm" variant="outline-success">
+                                                        Duyệt
+                                                    </Button>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan="6" className="text-center">Không có bài viết nào</td>
+                                    </tr>
                                 )}
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-        </div>
-    </AdminComponentWrapper>
-);
+                            </tbody>
+                        </table>
+                    </div>
+                </>
+            )}
+        </AdminComponentWrapper>
+    );
+};
 
-const Analytics = () => (
-    <AdminComponentWrapper icon="📊" title="Báo cáo & thống kê">
-        <Row className="mb-4">
-            <Col md={3}>
-                <Card className="text-center border-0 bg-gradient-primary text-white">
-                    <Card.Body>
-                        <h4>2,456</h4>
-                        <small>Lượt truy cập hôm nay</small>
-                    </Card.Body>
-                </Card>
-            </Col>
-            <Col md={3}>
-                <Card className="text-center border-0 bg-gradient-success text-white">
-                    <Card.Body>
-                        <h4>{mockStats.totalBookings}</h4>
-                        <small>Tổng đặt lịch</small>
-                    </Card.Body>
-                </Card>
-            </Col>
-            <Col md={3}>
-                <Card className="text-center border-0 bg-gradient-info text-white">
-                    <Card.Body>
-                        <h4>{mockStats.totalMentors}</h4>
-                        <small>Tổng mentor</small>
-                    </Card.Body>
-                </Card>
-            </Col>
-            <Col md={3}>
-                <Card className="text-center border-0 bg-gradient-warning text-white">
-                    <Card.Body>
-                        <h4>₫{(mockStats.monthRevenue / 1000000).toFixed(0)}M</h4>
-                        <small>Doanh thu tháng</small>
-                    </Card.Body>
-                </Card>
-            </Col>
-        </Row>
 
-        <Row>
-            <Col md={6}>
-                <Card>
-                    <Card.Header>📈 Xu hướng đăng ký</Card.Header>
-                    <Card.Body>
-                        <div className="text-center p-4">
-                            <h5 className="text-muted">📊 Biểu đồ sẽ hiển thị tại đây</h5>
-                            <p className="small text-muted">Chart.js hoặc Recharts integration</p>
-                            <div className="bg-light p-3 rounded">
-                                <div className="d-flex justify-content-between">
-                                    <span>T1: 45 users</span>
-                                    <span>T2: 52 users</span>
-                                    <span>T3: 38 users</span>
-                                </div>
-                                <div className="progress mt-2">
-                                    <div className="progress-bar bg-success" style={{ width: '70%' }}></div>
+const Analytics = ({ stats, mentors }) => {
+    const totalMentors = mentors?.length || stats?.totalMentors || 0;
+    const totalUsers = stats?.totalUsers || 0;
+
+    return (
+        <AdminComponentWrapper icon="📊" title="Báo cáo & thống kê">
+            <Row className="mb-4">
+                <Col md={3}>
+                    <Card className="text-center border-0 bg-gradient-primary text-white">
+                        <Card.Body>
+                            <h4>N/A</h4>
+                            <small>Lượt truy cập hôm nay</small>
+                        </Card.Body>
+                    </Card>
+                </Col>
+                <Col md={3}>
+                    <Card className="text-center border-0 bg-gradient-success text-white">
+                        <Card.Body>
+                            <h4>{stats?.totalBookings || 'N/A'}</h4>
+                            <small>Tổng đặt lịch</small>
+                        </Card.Body>
+                    </Card>
+                </Col>
+                <Col md={3}>
+                    <Card className="text-center border-0 bg-gradient-info text-white">
+                        <Card.Body>
+                            <h4>{totalMentors}</h4>
+                            <small>Tổng mentor</small>
+                        </Card.Body>
+                    </Card>
+                </Col>
+                <Col md={3}>
+                    <Card className="text-center border-0 bg-gradient-warning text-white">
+                        <Card.Body>
+                            <h4>N/A</h4>
+                            <small>Doanh thu tháng</small>
+                        </Card.Body>
+                    </Card>
+                </Col>
+            </Row>
+
+            <Row>
+                <Col md={6}>
+                    <Card>
+                        <Card.Header>📈 Xu hướng đăng ký</Card.Header>
+                        <Card.Body>
+                            <div className="text-center p-4">
+                                <h5 className="text-muted">📊 Biểu đồ sẽ hiển thị tại đây</h5>
+                                <p className="small text-muted">Chart.js hoặc Recharts integration</p>
+                                <div className="bg-light p-3 rounded">
+                                    <div className="d-flex justify-content-between">
+                                        <span>Tổng users: {totalUsers}</span>
+                                    </div>
+                                    <div className="progress mt-2">
+                                        <div className="progress-bar bg-success" style={{ width: '70%' }}></div>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </Card.Body>
-                </Card>
-            </Col>
-            <Col md={6}>
-                <Card>
-                    <Card.Header>💰 Doanh thu theo tháng</Card.Header>
-                    <Card.Body>
-                        <div className="text-center p-4">
-                            <h5 className="text-muted">💹 Biểu đồ doanh thu</h5>
-                            <p className="small text-muted">Revenue charts & trends</p>
-                            <div className="bg-light p-3 rounded">
-                                <div className="d-flex justify-content-between">
-                                    <span>T8: ₫38M</span>
-                                    <span>T9: ₫42M</span>
-                                    <span>T10: ₫45M</span>
-                                </div>
-                                <div className="progress mt-2">
-                                    <div className="progress-bar bg-warning" style={{ width: '85%' }}></div>
+                        </Card.Body>
+                    </Card>
+                </Col>
+                <Col md={6}>
+                    <Card>
+                        <Card.Header>💰 Doanh thu theo tháng</Card.Header>
+                        <Card.Body>
+                            <div className="text-center p-4">
+                                <h5 className="text-muted">💹 Biểu đồ doanh thu</h5>
+                                <p className="small text-muted">Revenue charts & trends</p>
+                                <div className="bg-light p-3 rounded">
+                                    <div className="d-flex justify-content-between">
+                                        <span>Tính năng đang phát triển</span>
+                                    </div>
+                                    <div className="progress mt-2">
+                                        <div className="progress-bar bg-warning" style={{ width: '85%' }}></div>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </Card.Body>
-                </Card>
-            </Col>
-        </Row>
-    </AdminComponentWrapper>
-);
+                        </Card.Body>
+                    </Card>
+                </Col>
+            </Row>
+        </AdminComponentWrapper>
+    );
+};
 
-const MentorApproval = () => (
-    <AdminComponentWrapper icon="✅" title="Duyệt mentor" badge="8">
+const MentorApproval = ({ stats }) => (
+    <AdminComponentWrapper icon="✅" title="Duyệt mentor" badge={stats?.pendingMentors || 0}>
         <Alert variant="warning">
-            <strong>8 mentor</strong> đang chờ duyệt hồ sơ
+            <strong>{stats?.pendingMentors || 0} mentor</strong> đang chờ duyệt hồ sơ
         </Alert>
         <Alert variant="info">
             <strong>Tính năng đang phát triển:</strong> Duyệt hồ sơ mentor, xác thực chuyên môn.
@@ -296,215 +411,119 @@ const MentorApproval = () => (
     </AdminComponentWrapper>
 );
 
-const FeedbackManagement = () => (
-    <AdminComponentWrapper icon="💬" title="Quản lý phản hồi" badge={mockStats.urgentFeedbacks}>
-        <Row className="mb-3">
-            <Col md={6}>
-                <Card className="text-center border-0 bg-light">
-                    <Card.Body>
-                        <h4 className="text-primary">{mockStats.totalFeedbacks}</h4>
-                        <small className="text-muted">Tổng phản hồi</small>
-                    </Card.Body>
-                </Card>
-            </Col>
-            <Col md={6}>
-                <Card className="text-center border-0 bg-light">
-                    <Card.Body>
-                        <h4 className="text-danger">{mockStats.urgentFeedbacks}</h4>
-                        <small className="text-muted">Cần xử lý khẩn</small>
-                    </Card.Body>
-                </Card>
-            </Col>
-        </Row>
 
-        <h6>Phản hồi gần đây</h6>
-        <div className="table-responsive">
-            <table className="table table-sm">
-                <thead>
-                    <tr>
-                        <th>Người gửi</th>
-                        <th>Loại</th>
-                        <th>Nội dung</th>
-                        <th>Đánh giá</th>
-                        <th>Trạng thái</th>
-                        <th>Ngày</th>
-                        <th>Hành động</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {mockFeedbacks.map(feedback => (
-                        <tr key={feedback.id}>
-                            <td>{feedback.user}</td>
-                            <td>{feedback.mentor || feedback.type}</td>
-                            <td className="text-truncate" style={{ maxWidth: '200px' }}>
-                                {feedback.comment}
-                            </td>
-                            <td>
-                                {feedback.rating && (
-                                    <span>
-                                        {'⭐'.repeat(feedback.rating)} ({feedback.rating})
-                                    </span>
-                                )}
-                            </td>
-                            <td>
-                                <Badge bg={
-                                    feedback.status === 'approved' ? 'success' :
-                                        feedback.status === 'pending' ? 'warning' : 'danger'
-                                }>
-                                    {feedback.status}
-                                </Badge>
-                            </td>
-                            <td>{feedback.date}</td>
-                            <td>
-                                <Button size="sm" variant="outline-primary" className="me-1">
-                                    Xem
-                                </Button>
-                                {feedback.status === 'pending' && (
-                                    <Button size="sm" variant="outline-success">
-                                        Duyệt
-                                    </Button>
-                                )}
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-        </div>
-    </AdminComponentWrapper>
-);
+const FeedbackManagement = () => {
+    const totalFeedbacks = 0; // Chưa có API
+    const urgentFeedbacks = 0; // Chưa có API
 
-const BookingManagement = () => (
-    <AdminComponentWrapper icon="📅" title="Quản lý đặt lịch" badge={mockStats.todayBookings}>
-        <Row className="mb-3">
-            <Col md={6}>
-                <Card className="text-center border-0 bg-light">
-                    <Card.Body>
-                        <h4 className="text-success">{mockStats.totalBookings}</h4>
-                        <small className="text-muted">Tổng đặt lịch</small>
-                    </Card.Body>
-                </Card>
-            </Col>
-            <Col md={6}>
-                <Card className="text-center border-0 bg-light">
-                    <Card.Body>
-                        <h4 className="text-info">{mockStats.todayBookings}</h4>
-                        <small className="text-muted">Hôm nay</small>
-                    </Card.Body>
-                </Card>
-            </Col>
-        </Row>
+    return (
+        <AdminComponentWrapper icon="💬" title="Quản lý phản hồi" badge={urgentFeedbacks}>
+            <Row className="mb-3">
+                <Col md={6}>
+                    <Card className="text-center border-0 bg-light">
+                        <Card.Body>
+                            <h4 className="text-primary">{totalFeedbacks}</h4>
+                            <small className="text-muted">Tổng phản hồi</small>
+                        </Card.Body>
+                    </Card>
+                </Col>
+                <Col md={6}>
+                    <Card className="text-center border-0 bg-light">
+                        <Card.Body>
+                            <h4 className="text-danger">{urgentFeedbacks}</h4>
+                            <small className="text-muted">Cần xử lý khẩn</small>
+                        </Card.Body>
+                    </Card>
+                </Col>
+            </Row>
 
-        <h6>Đặt lịch gần đây</h6>
-        <div className="table-responsive">
-            <table className="table table-sm">
-                <thead>
-                    <tr>
-                        <th>Mentor</th>
-                        <th>Khách hàng</th>
-                        <th>Ngày</th>
-                        <th>Giờ</th>
-                        <th>Trạng thái</th>
-                        <th>Số tiền</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {mockBookings.map(booking => (
-                        <tr key={booking.id}>
-                            <td>{booking.mentorName}</td>
-                            <td>{booking.customerName}</td>
-                            <td>{booking.date}</td>
-                            <td>{booking.time}</td>
-                            <td>
-                                <Badge bg={
-                                    booking.status === 'confirmed' ? 'success' :
-                                        booking.status === 'pending' ? 'warning' : 'primary'
-                                }>
-                                    {booking.status}
-                                </Badge>
-                            </td>
-                            <td>{booking.amount}</td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-        </div>
-    </AdminComponentWrapper>
-);
+            <Alert variant="info">
+                <strong>Tính năng đang phát triển:</strong> API quản lý feedback chưa được implement.
+            </Alert>
+        </AdminComponentWrapper>
+    );
+};
 
-const PaymentHistory = () => (
-    <AdminComponentWrapper icon="💳" title="Lịch sử thanh toán">
-        <Row className="mb-3">
-            <Col md={4}>
-                <Card className="text-center border-0 bg-success text-white">
-                    <Card.Body>
-                        <h4>₫{(mockStats.monthRevenue / 1000000).toFixed(0)}M</h4>
-                        <small>Doanh thu tháng</small>
-                    </Card.Body>
-                </Card>
-            </Col>
-            <Col md={4}>
-                <Card className="text-center border-0 bg-info text-white">
-                    <Card.Body>
-                        <h4>₫{(mockStats.todayRevenue / 1000).toFixed(0)}K</h4>
-                        <small>Doanh thu hôm nay</small>
-                    </Card.Body>
-                </Card>
-            </Col>
-            <Col md={4}>
-                <Card className="text-center border-0 bg-warning text-white">
-                    <Card.Body>
-                        <h4>4.2%</h4>
-                        <small>Phí hoa hồng</small>
-                    </Card.Body>
-                </Card>
-            </Col>
-        </Row>
 
-        <h6>Giao dịch gần đây</h6>
-        <div className="table-responsive">
-            <table className="table table-sm">
-                <thead>
-                    <tr>
-                        <th>Mã GD</th>
-                        <th>Khách hàng</th>
-                        <th>Mentor</th>
-                        <th>Số tiền</th>
-                        <th>Phí</th>
-                        <th>Trạng thái</th>
-                        <th>Ngày</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {mockBookings.map(booking => (
-                        <tr key={booking.id}>
-                            <td>TXN{booking.id.toString().padStart(6, '0')}</td>
-                            <td>{booking.customerName}</td>
-                            <td>{booking.mentorName}</td>
-                            <td>{booking.amount}</td>
-                            <td>₫{(parseInt(booking.amount.replace(/[₫,]/g, '')) * 0.042).toLocaleString()}₫</td>
-                            <td>
-                                <Badge bg={booking.status === 'completed' ? 'success' : 'warning'}>
-                                    {booking.status === 'completed' ? 'Hoàn thành' : 'Đang xử lý'}
-                                </Badge>
-                            </td>
-                            <td>{booking.date}</td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-        </div>
+const BookingManagement = () => {
+    const totalBookings = 0; // Chưa có API admin
+    const todayBookings = 0;
 
-        <Alert variant="info" className="mt-3">
-            <strong>💡 Tính năng có thể phát triển:</strong>
-            <ul className="mb-0 mt-2">
-                <li>Export báo cáo Excel/PDF</li>
-                <li>Lọc theo khoảng thời gian</li>
-                <li>Thống kê doanh thu theo mentor</li>
-                <li>Quản lý refund/hoàn tiền</li>
-            </ul>
-        </Alert>
-    </AdminComponentWrapper>
-);
+    return (
+        <AdminComponentWrapper icon="📅" title="Quản lý đặt lịch" badge={todayBookings}>
+            <Row className="mb-3">
+                <Col md={6}>
+                    <Card className="text-center border-0 bg-light">
+                        <Card.Body>
+                            <h4 className="text-success">{totalBookings}</h4>
+                            <small className="text-muted">Tổng đặt lịch</small>
+                        </Card.Body>
+                    </Card>
+                </Col>
+                <Col md={6}>
+                    <Card className="text-center border-0 bg-light">
+                        <Card.Body>
+                            <h4 className="text-info">{todayBookings}</h4>
+                            <small className="text-muted">Hôm nay</small>
+                        </Card.Body>
+                    </Card>
+                </Col>
+            </Row>
+
+            <Alert variant="info">
+                <strong>Tính năng đang phát triển:</strong> API quản lý booking cho admin chưa được implement.
+            </Alert>
+        </AdminComponentWrapper>
+    );
+};
+
+
+const PaymentHistory = () => {
+    const monthRevenue = 0; // Chưa có API
+    const todayRevenue = 0;
+
+    return (
+        <AdminComponentWrapper icon="💳" title="Lịch sử thanh toán">
+            <Row className="mb-3">
+                <Col md={4}>
+                    <Card className="text-center border-0 bg-success text-white">
+                        <Card.Body>
+                            <h4>₫{monthRevenue.toLocaleString()}</h4>
+                            <small>Doanh thu tháng</small>
+                        </Card.Body>
+                    </Card>
+                </Col>
+                <Col md={4}>
+                    <Card className="text-center border-0 bg-info text-white">
+                        <Card.Body>
+                            <h4>₫{todayRevenue.toLocaleString()}</h4>
+                            <small>Doanh thu hôm nay</small>
+                        </Card.Body>
+                    </Card>
+                </Col>
+                <Col md={4}>
+                    <Card className="text-center border-0 bg-warning text-white">
+                        <Card.Body>
+                            <h4>4.2%</h4>
+                            <small>Phí hoa hồng</small>
+                        </Card.Body>
+                    </Card>
+                </Col>
+            </Row>
+
+            <Alert variant="info" className="mt-3">
+                <strong>💡 Tính năng đang phát triển:</strong>
+                <ul className="mb-0 mt-2">
+                    <li>API quản lý payment cho admin</li>
+                    <li>Export báo cáo Excel/PDF</li>
+                    <li>Lọc theo khoảng thời gian</li>
+                    <li>Thống kê doanh thu theo mentor</li>
+                    <li>Quản lý refund/hoàn tiền</li>
+                </ul>
+            </Alert>
+        </AdminComponentWrapper>
+    );
+};
 
 const ReviewManagement = () => (
     <AdminComponentWrapper icon="⭐" title="Quản lý đánh giá" badge="3">
@@ -543,48 +562,196 @@ const RolePermissions = () => (
 
 const AdminPage = () => {
     const [activeTab, setActiveTab] = useState('users');
+    
+    // State cho data từ API
+    const [users, setUsers] = useState([]);
+    const [stats, setStats] = useState(null);
+    const [blogs, setBlogs] = useState([]);
+    const [mentors, setMentors] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [usersLoading, setUsersLoading] = useState(false);
+    const [error, setError] = useState(null);
+
+    // State cho pagination và search
+    const [userPage, setUserPage] = useState(1);
+    const [userSize] = useState(10);
+    const [userSearch, setUserSearch] = useState('');
+    const [userTotalPages, setUserTotalPages] = useState(0);
+    const [userTotalElements, setUserTotalElements] = useState(0);
+
+    // Fetch users với pagination và search
+    const fetchUsers = async (page = 1, search = '') => {
+        try {
+            setUsersLoading(true);
+            const response = await getAllUsers({ 
+                page, 
+                size: userSize,
+                keySearch: search 
+            });
+
+            if (response?.respCode === '000' || response?.respCode === '0') {
+                const rawUsers = response.data?.content || response.data?.data || [];
+
+                const normalized = (rawUsers || []).map(u => {
+                    const fullName = (u.fullName || u.name || '').toString().trim();
+                    let status = u.status;
+
+                    if (typeof status === 'string') {
+                        const s = status.toLowerCase();
+                        if (s === '1' || s === 'true' || /active/.test(s)) status = 1;
+                        else if (s === '0' || s === 'false' || /inactive/.test(s)) status = 0;
+                    }
+
+                    const role = u.role || (u.roleName ? { roleName: u.roleName } : undefined);
+
+                    return { ...u, fullName: fullName || null, status, role };
+                });
+
+                setUsers(normalized);
+                setUserTotalPages(response.data?.totalPages || 0);
+                setUserTotalElements(response.data?.totalElements || 0);
+                console.log('Users loaded:', normalized);
+                console.log('Total pages:', response.data?.totalPages);
+                console.log('Total elements:', response.data?.totalElements);
+            } else {
+                console.error('Error loading users:', response);
+            }
+        } catch (err) {
+            console.error('Error fetching users:', err);
+            setError('Có lỗi xảy ra khi tải dữ liệu người dùng');
+        } finally {
+            setUsersLoading(false);
+        }
+    };
+
+    // Handler cho search
+    const handleUserSearch = (searchKeyword) => {
+        setUserSearch(searchKeyword);
+        setUserPage(1); // Reset về trang 1 khi search
+        fetchUsers(1, searchKeyword);
+    };
+
+    // Handler cho page change
+    const handleUserPageChange = (page) => {
+        setUserPage(page);
+        fetchUsers(page, userSearch);
+    };
+
+    // Fetch data khi component mount
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                setLoading(true);
+                setError(null);
+
+                // Fetch tất cả data song song
+                const [usersResponse, statsResponse, blogsResponse, mentorsResponse] = await Promise.allSettled([
+                    getAllUsers({ page: userPage, size: userSize, keySearch: userSearch }),
+                    getUserStatistics(),
+                    getBlogs({ page: 0, size: 10 }),
+                    MentorService.getMentors({ page: 0, size: 50 })
+                ]);
+
+                // Process users
+                if (usersResponse.status === 'fulfilled' && (usersResponse.value?.respCode === '000' || usersResponse.value?.respCode === '0')) {
+                    const rawUsers = usersResponse.value.data?.content || usersResponse.value.data?.data || [];
+                    const normalized = (rawUsers || []).map(u => {
+                        const fullName = (u.fullName || u.name || '').toString().trim();
+                        let status = u.status;
+
+                        if (typeof status === 'string') {
+                            const s = status.toLowerCase();
+                            if (s === '1' || s === 'true' || /active/.test(s)) status = 1;
+                            else if (s === '0' || s === 'false' || /inactive/.test(s)) status = 0;
+                        }
+
+                        const role = u.role || (u.roleName ? { roleName: u.roleName } : undefined);
+                        return { ...u, fullName: fullName || null, status, role };
+                    });
+
+                    setUsers(normalized);
+                    setUserTotalPages(usersResponse.value.data?.totalPages || 0);
+                    setUserTotalElements(usersResponse.value.data?.totalElements || 0);
+                    console.log('Users loaded:', normalized);
+                    console.log('Total pages:', usersResponse.value.data?.totalPages);
+                }
+
+                if (statsResponse.status === 'fulfilled') {
+                    setStats(statsResponse.value.data);
+                    console.log('Stats loaded:', statsResponse.value.data);
+                }
+
+                if (blogsResponse.status === 'fulfilled') {
+                    setBlogs(blogsResponse.value.data?.content || []);
+                    console.log('Blogs loaded:', blogsResponse.value.data?.content);
+                }
+
+                if (mentorsResponse.status === 'fulfilled') {
+                    setMentors(mentorsResponse.value.data?.content || []);
+                    console.log('Mentors loaded:', mentorsResponse.value.data?.content);
+                }
+
+            } catch (err) {
+                console.error('Error fetching admin data:', err);
+                setError('Có lỗi xảy ra khi tải dữ liệu');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     const menuItems = [
         {
             key: 'users',
             icon: <FaUsers />,
             title: 'Quản lý người dùng',
-            badge: '156',
-            component: <UserManagement />
+            badge: stats?.totalUsers || '0',
+            component: <UserManagement 
+                users={users} 
+                stats={stats} 
+                loading={usersLoading}
+                onSearch={handleUserSearch}
+                onPageChange={handleUserPageChange}
+                currentPage={userPage}
+                totalPages={userTotalPages}
+                totalElements={userTotalElements}
+            />
         },
         {
             key: 'content',
             icon: <FaBlog />,
             title: 'Quản lý nội dung',
-            badge: '12',
-            component: <ContentManagement />
+            badge: blogs?.filter(b => b.status === 'PENDING')?.length || '0',
+            component: <ContentManagement blogs={blogs} loading={loading} />
         },
         {
             key: 'mentor-approval',
             icon: <FaUserCog />,
             title: 'Duyệt/xác thực mentor',
-            badge: '8',
-            component: <MentorApproval />
+            badge: stats?.pendingMentors || '0',
+            component: <MentorApproval stats={stats} />
         },
         {
             key: 'countries',
             icon: <FaGlobeAmericas />,
             title: 'Quản lý các nước du học',
-            badge: '3',
+            badge: null,
             component: <CountryManagement />
         },
         {
             key: 'feedback',
             icon: <FaCommentDots />,
             title: 'Quản lý phản hồi & báo cáo',
-            badge: '5',
+            badge: '0',
             component: <FeedbackManagement />
         },
         {
             key: 'booking',
             icon: <FaCalendarAlt />,
             title: 'Quản lý đặt lịch & lịch hẹn',
-            badge: '23',
+            badge: null,
             component: <BookingManagement />
         },
         {
@@ -598,7 +765,7 @@ const AdminPage = () => {
             key: 'reviews',
             icon: <FaCommentDots />,
             title: 'Quản lý quyền & vai trò',
-            badge: '3',
+            badge: null,
             component: <ReviewManagement />
         },
         {
@@ -613,7 +780,7 @@ const AdminPage = () => {
             icon: <FaChartBar />,
             title: 'Báo cáo & thống kê',
             badge: null,
-            component: <Analytics />
+            component: <Analytics stats={stats} mentors={mentors} />
         },
         {
             key: 'roles',
@@ -633,17 +800,30 @@ const AdminPage = () => {
 
     return (
         <Container fluid className="admin-page py-4">
+            {error && (
+                <Row className="mb-4">
+                    <Col>
+                        <Alert variant="danger" dismissible onClose={() => setError(null)}>
+                            <h5 className="alert-heading mb-2">⚠️ Lỗi</h5>
+                            <p className="mb-0">{error}</p>
+                        </Alert>
+                    </Col>
+                </Row>
+            )}
+
             <Row className="mb-4">
                 <Col>
                     <Alert variant="success" className="mb-4">
                         <h5 className="alert-heading mb-2">🎉 Chào mừng Admin!</h5>
                         <p className="mb-0">
                             Bạn đã đăng nhập thành công với quyền Admin.
-                            Trang admin hiện đang hoạt động bình thường.
+                            Trang admin đang tải dữ liệu từ database...
                         </p>
                     </Alert>
                 </Col>
-            </Row>            <Row className="mb-4">
+            </Row>
+
+            <Row className="mb-4">
                 <Col>
                     <div className="d-flex justify-content-between align-items-center">
                         <div>
@@ -651,22 +831,30 @@ const AdminPage = () => {
                             <p className="text-muted mb-0">Tổng quan và quản lý toàn bộ hệ thống MentorLink</p>
                         </div>
                         <div className="admin-stats d-flex gap-3">
-                            <div className="stat-item text-center">
-                                <div className="stat-number text-primary">{mockStats.totalUsers.toLocaleString()}</div>
-                                <div className="stat-label">Người dùng</div>
-                            </div>
-                            <div className="stat-item text-center">
-                                <div className="stat-number text-success">{mockStats.totalMentors}</div>
-                                <div className="stat-label">Mentor</div>
-                            </div>
-                            <div className="stat-item text-center">
-                                <div className="stat-number text-warning">{mockStats.totalBookings}</div>
-                                <div className="stat-label">Đặt lịch</div>
-                            </div>
-                            <div className="stat-item text-center">
-                                <div className="stat-number text-info">{mockStats.pendingMentors}</div>
-                                <div className="stat-label">Chờ duyệt</div>
-                            </div>
+                            {loading ? (
+                                <div className="spinner-border text-primary" role="status">
+                                    <span className="visually-hidden">Loading...</span>
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="stat-item text-center">
+                                        <div className="stat-number text-primary">{stats?.totalUsers?.toLocaleString() || 0}</div>
+                                        <div className="stat-label">Người dùng</div>
+                                    </div>
+                                    <div className="stat-item text-center">
+                                        <div className="stat-number text-success">{stats?.totalMentors || 0}</div>
+                                        <div className="stat-label">Mentor</div>
+                                    </div>
+                                    <div className="stat-item text-center">
+                                        <div className="stat-number text-warning">{stats?.totalBookings || 0}</div>
+                                        <div className="stat-label">Đặt lịch</div>
+                                    </div>
+                                    <div className="stat-item text-center">
+                                        <div className="stat-number text-info">{stats?.pendingMentors || 0}</div>
+                                        <div className="stat-label">Chờ duyệt</div>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </div>
                 </Col>
