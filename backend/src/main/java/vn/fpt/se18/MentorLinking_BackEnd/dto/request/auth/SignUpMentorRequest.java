@@ -57,12 +57,8 @@ public class SignUpMentorRequest {
     @Getter
     @Setter
     public static class MentorCountryRequest {
-        private Long countryId;
-        
         private String countryName;
-        
-        private String countryCode;
-        
+
         private String description;
     }
 
@@ -80,7 +76,7 @@ public class SignUpMentorRequest {
         private LocalDate endDate;
 
         @NotEmpty(message = "Degrees File is required")
-        private List<MultipartFile> degreesFile;
+        private MultipartFile degreesFile;
     }
 
     @Getter
@@ -93,7 +89,7 @@ public class SignUpMentorRequest {
         private String score;
 
         @NotEmpty(message = "Certificates File is required")
-        private List<MultipartFile> certificatesFile;
+        private MultipartFile certificatesFile;
     }
 
     @Getter
@@ -110,7 +106,7 @@ public class SignUpMentorRequest {
         private LocalDate endDate;
 
         @NotEmpty(message = "Experiences File is required")
-        private List<MultipartFile> experiencesFile;
+        private MultipartFile experiencesFile;
     }
 }
 
