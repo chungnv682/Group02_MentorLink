@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/mentors")
+@RequestMapping("/mentors")
 @RequiredArgsConstructor
 @Slf4j
 public class MentorController {
