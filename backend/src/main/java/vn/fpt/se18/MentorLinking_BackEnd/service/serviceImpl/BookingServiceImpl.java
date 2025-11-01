@@ -384,6 +384,8 @@ public class BookingServiceImpl implements BookingService {
             Optional<Status> status = statusRepository.findByCode("CANCELED");
             booking.setStatus(status.get());
             bookingRepository.save(booking);
+
+            emailService.sendRejectBooking(mentee.getEmail(), "Hủy buổi học", "");
         }
 
         // gui mail

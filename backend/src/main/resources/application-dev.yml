@@ -16,7 +16,7 @@ spring:
     hibernate:
       ddl-auto: update
   sendgrid:
-    api-key: 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
+    code: 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
     from-email: chientxhe186184@fpt.edu.vn
 # application-dev.yml
 springdoc:
