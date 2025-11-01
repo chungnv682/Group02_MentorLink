@@ -52,6 +52,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     private final HighestDegreeRepository highestDegreeRepository;
     private final StatusRepository statusRepository;
     private final FileUploadServiceImpl fileUploadService;
+    private final CountryRepository countryRepository;
+    private final MentorCountryRepository mentorCountryRepository;
 
 
     @Override
@@ -373,6 +375,80 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                         .build();
 
                 mentorTestRepository.save(mentorTest);
+            }
+        }
+
+        // Save mentor countries
+        if (request.getMentorCountries() != null && !request.getMentorCountries().isEmpty()) {
+            Status pendingStatus = statusRepository.findByCode("PENDING")
+                    .orElseThrow(() -> new IllegalArgumentException("Pending status not found"));
+            
+            Status approvedCountryStatus = statusRepository.findByCode("APPROVED")
+                    .orElseThrow(() -> new IllegalArgumentException("Approved status not found"));
+
+            for (SignUpMentorRequest.MentorCountryRequest countryRequest : request.getMentorCountries()) {
+                Country country = null;
+                Status mentorCountryStatus = pendingStatus; // Mặc định là PENDING
+                
+                // Nếu có countryId => chọn country có sẵn
+                if (countryRequest.getCountryId() != null) {
+                    country = countryRepository.findById(countryRequest.getCountryId())
+                            .orElse(null);
+                    
+                    // Nếu country đã được approved thì mentor country cũng approved luôn
+                    if (country != null && "APPROVED".equals(country.getStatus().getCode())) {
+                        mentorCountryStatus = approvedCountryStatus;
+                    }
+                }
+                // Nếu không có countryId => đề xuất country mới
+                else if (countryRequest.getCountryName() != null && !countryRequest.getCountryName().isEmpty()) {
+                    // Kiểm tra xem country đã tồn tại chưa (theo tên)
+                    country = countryRepository.findByName(countryRequest.getCountryName())
+                            .orElse(null);
+                    
+                    // Nếu chưa tồn tại => tạo mới với status PENDING
+                    if (country == null) {
+                        String countryCode = countryRequest.getCountryCode();
+                        if (countryCode == null || countryCode.isEmpty()) {
+                            // Tự động generate code từ tên
+                            countryCode = countryRequest.getCountryName()
+                                    .toUpperCase()
+                                    .replaceAll("\\s+", "_")
+                                    .substring(0, Math.min(10, countryRequest.getCountryName().length()));
+                        }
+                        
+                        country = Country.builder()
+                                .code(countryCode)
+                                .name(countryRequest.getCountryName())
+                                .description(countryRequest.getDescription())
+                                .status(pendingStatus)
+                                .createdBy(user)
+                                .updatedBy(user)
+                                .build();
+                        
+                        country = countryRepository.save(country);
+                        mentorCountryStatus = pendingStatus; // Country mới thì mentor country cũng PENDING
+                    } else {
+                        // Country đã tồn tại, kiểm tra status của nó
+                        if ("APPROVED".equals(country.getStatus().getCode())) {
+                            mentorCountryStatus = approvedCountryStatus;
+                        }
+                    }
+                }
+                
+                // Tạo MentorCountry
+                if (country != null) {
+                    MentorCountry mentorCountry = MentorCountry.builder()
+                            .mentor(user)
+                            .country(country)
+                            .status(mentorCountryStatus)
+                            .adminComment(countryRequest.getDescription()) // Lưu mô tả của mentor
+                            .createdBy(user)
+                            .updatedBy(user)
+                            .build();
+                    
+                    mentorCountryRepository.save(mentorCountry);
+                }
             }
         }
 

@@ -42,8 +42,6 @@ public class SignUpMentorRequest {
 
     private String linkedUrl;
 
-    private String serviceProvide;
-
     private MultipartFile avatar;
 
     private String introduceYourself;
@@ -53,6 +51,20 @@ public class SignUpMentorRequest {
     private List<Certificate> certificates;
 
     private List<Experience> experiences;
+
+    private List<MentorCountryRequest> mentorCountries;
+
+    @Getter
+    @Setter
+    public static class MentorCountryRequest {
+        private Long countryId;
+        
+        private String countryName;
+        
+        private String countryCode;
+        
+        private String description;
+    }
 
     @Getter
     @Setter
