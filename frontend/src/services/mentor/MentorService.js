@@ -1,4 +1,5 @@
 import { instance } from '../../api/axios';
+import AuthService from '../auth/AuthService';
 
 class MentorService {
     // Get all mentors with filters and pagination
@@ -77,6 +78,8 @@ class MentorService {
         }
     }
 
+
+
     // Get featured mentors (high rating, many bookings)
     static async getFeaturedMentors(limit = 6) {
         try {
@@ -152,6 +155,24 @@ class MentorService {
             throw error;
         }
     }
+
+    static async getMentorActivity() {
+        try {
+            const userInfo = AuthService.getCurrentUser();
+            console.log('Current user info:', userInfo);
+            const mentorEmail = userInfo?.email;
+            if (!mentorEmail) {
+                throw new Error('No mentor ID found for current user');
+            }
+            const response = await instance.get(`/api/mentors/activity/${mentorEmail}`);
+            return response;
+        } catch (error) {
+            console.error('Error fetching mentor activity:', error);
+            throw error;
+        }
+    }
+
+
 }
 
 export default MentorService;
