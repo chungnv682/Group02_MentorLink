@@ -52,4 +52,6 @@ public interface BookingService {
      * @param bookingId  id of the booking to cancel
      */
     void cancelBooking(Long customerId, Long bookingId) throws Exception;
+
+    void handleBookingAction(Long bookingId, String action) throws Exception;
 }

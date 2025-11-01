@@ -1,103 +1,134 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Row, Col, Card, Button, Table, Badge, Modal, Form, Tab, Nav, Alert } from 'react-bootstrap';
+import { useGetMentorActivity } from '../../../hooks/useMentors';
+import { handleBookingActionApi } from '../../../services/booking/bookingApi'; 
+import { notifications } from "@mantine/notifications";
+import { MdError } from "react-icons/md";
+import { IconAlertCircle, IconCheck } from "@tabler/icons-react";
+import { useQueryClient } from '@tanstack/react-query';
 
 const BookingManagement = () => {
+
+    const queryClient = useQueryClient();
     const [showDetailModal, setShowDetailModal] = useState(false);
     const [selectedBooking, setSelectedBooking] = useState(null);
     const [activeTab, setActiveTab] = useState('pending');
+    const [notification, setNotification] = useState([]);
+    const [bookings, setBookings] = useState({
+    pending: [],
+    confirmed: [],
+    completed: [],
+    cancelled: []
+    });
+    const { data: mentorActivity, isLoading, isError } = useGetMentorActivity();
+
+
+    if(mentorActivity){
+        console.log("Mentor Activity Data:", mentorActivity);
+    }
+
+    useEffect(() => {
+        if (mentorActivity) {
+            console.log('Mentor activity data loaded:', mentorActivity?.data);
+            setBookings(mentorActivity?.data);
+        }
+    }, [mentorActivity]);
+
+
 
     // Mock data cho bookings
-    const bookings = {
-        pending: [
-            {
-                id: 1,
-                customer: {
-                    id: 1,
-                    fullname: 'Nguyễn Thị Lan',
-                    email: 'lan.nguyen@email.com',
-                    phone: '0901234567'
-                },
-                service: 'Tư vấn du học',
-                date: '2024-01-20',
-                timeSlot: { timestart: 14, timeend: 15 },
-                status: 'PENDING',
-                created_at: '2024-01-15T10:30:00',
-                note: 'Muốn tư vấn về du học Mỹ, ngành Computer Science'
-            },
-            {
-                id: 2,
-                customer: {
-                    id: 2,
-                    fullname: 'Trần Văn Đức',
-                    email: 'duc.tran@email.com',
-                    phone: '0912345678'
-                },
-                service: 'Hướng nghiệp',
-                date: '2024-01-21',
-                timeSlot: { timestart: 10, timeend: 11 },
-                status: 'PENDING',
-                created_at: '2024-01-16T09:15:00',
-                note: 'Cần tư vấn về lộ trình career trong IT'
-            }
-        ],
-        confirmed: [
-            {
-                id: 3,
-                customer: {
-                    id: 3,
-                    fullname: 'Lê Thị Mai',
-                    email: 'mai.le@email.com',
-                    phone: '0923456789'
-                },
-                service: 'Luyện thi IELTS',
-                date: '2024-01-18',
-                timeSlot: { timestart: 16, timeend: 17 },
-                status: 'CONFIRMED',
-                created_at: '2024-01-12T14:20:00',
-                note: 'Cần luyện Speaking và Writing'
-            }
-        ],
-        completed: [
-            {
-                id: 4,
-                customer: {
-                    id: 4,
-                    fullname: 'Phạm Văn Nam',
-                    email: 'nam.pham@email.com',
-                    phone: '0934567890'
-                },
-                service: 'Tư vấn du học',
-                date: '2024-01-10',
-                timeSlot: { timestart: 9, timeend: 10 },
-                status: 'COMPLETED',
-                created_at: '2024-01-05T11:45:00',
-                completed_at: '2024-01-10T10:00:00',
-                note: 'Tư vấn về du học Canada',
-                rating: 5,
-                review: 'Mentor rất nhiệt tình và có kinh nghiệm!'
-            }
-        ],
-        cancelled: [
-            {
-                id: 5,
-                customer: {
-                    id: 5,
-                    fullname: 'Hoàng Thị Thu',
-                    email: 'thu.hoang@email.com',
-                    phone: '0945678901'
-                },
-                service: 'Hướng nghiệp',
-                date: '2024-01-08',
-                timeSlot: { timestart: 15, timeend: 16 },
-                status: 'CANCELLED',
-                created_at: '2024-01-03T16:30:00',
-                cancelled_at: '2024-01-07T12:00:00',
-                note: 'Bận việc đột xuất, không thể tham gia'
-            }
-        ]
-    };
+    //  bookings = {
+    //     pending: [
+    //         {
+    //             id: 1,
+    //             customer: {
+    //                 id: 1,
+    //                 fullname: 'Nguyễn Thị Lan',
+    //                 email: 'lan.nguyen@email.com',
+    //                 phone: '0901234567'
+    //             },
+    //             service: 'Tư vấn du học',
+    //             date: '2024-01-20',
+    //             timeSlot: { timestart: 14, timeend: 15 },
+    //             status: 'PENDING',
+    //             created_at: '2024-01-15T10:30:00',
+    //             note: 'Muốn tư vấn về du học Mỹ, ngành Computer Science'
+    //         },
+    //         {
+    //             id: 2,
+    //             customer: {
+    //                 id: 2,
+    //                 fullname: 'Trần Văn Đức',
+    //                 email: 'duc.tran@email.com',
+    //                 phone: '0912345678'
+    //             },
+    //             service: 'Hướng nghiệp',
+    //             date: '2024-01-21',
+    //             timeSlot: { timestart: 10, timeend: 11 },
+    //             status: 'PENDING',
+    //             created_at: '2024-01-16T09:15:00',
+    //             note: 'Cần tư vấn về lộ trình career trong IT'
+    //         }
+    //     ],
+    //     confirmed: [
+    //         {
+    //             id: 3,
+    //             customer: {
+    //                 id: 3,
+    //                 fullname: 'Lê Thị Mai',
+    //                 email: 'mai.le@email.com',
+    //                 phone: '0923456789'
+    //             },
+    //             service: 'Luyện thi IELTS',
+    //             date: '2024-01-18',
+    //             timeSlot: { timestart: 16, timeend: 17 },
+    //             status: 'CONFIRMED',
+    //             created_at: '2024-01-12T14:20:00',
+    //             note: 'Cần luyện Speaking và Writing'
+    //         }
+    //     ],
+    //     completed: [
+    //         {
+    //             id: 4,
+    //             customer: {
+    //                 id: 4,
+    //                 fullname: 'Phạm Văn Nam',
+    //                 email: 'nam.pham@email.com',
+    //                 phone: '0934567890'
+    //             },
+    //             service: 'Tư vấn du học',
+    //             date: '2024-01-10',
+    //             timeSlot: { timestart: 9, timeend: 10 },
+    //             status: 'COMPLETED',
+    //             created_at: '2024-01-05T11:45:00',
+    //             completed_at: '2024-01-10T10:00:00',
+    //             note: 'Tư vấn về du học Canada',
+    //             rating: 5,
+    //             review: 'Mentor rất nhiệt tình và có kinh nghiệm!'
+    //         }
+    //     ],
+    //     cancelled: [
+    //         {
+    //             id: 5,
+    //             customer: {
+    //                 id: 5,
+    //                 fullname: 'Hoàng Thị Thu',
+    //                 email: 'thu.hoang@email.com',
+    //                 phone: '0945678901'
+    //             },
+    //             service: 'Hướng nghiệp',
+    //             date: '2024-01-08',
+    //             timeSlot: { timestart: 15, timeend: 16 },
+    //             status: 'CANCELLED',
+    //             created_at: '2024-01-03T16:30:00',
+    //             cancelled_at: '2024-01-07T12:00:00',
+    //             note: 'Bận việc đột xuất, không thể tham gia'
+    //         }
+    //     ]
+    // };
 
     const formatTime = (hour) => {
+        if (hour === undefined || hour === null) return '—'; // hoặc '00:00'
         return `${hour.toString().padStart(2, '0')}:00`;
     };
 
@@ -116,8 +147,31 @@ const BookingManagement = () => {
         return <Badge bg={statusInfo.bg}>{statusInfo.text}</Badge>;
     };
 
-    const handleBookingAction = (bookingId, action) => {
+    const handleBookingAction = async (bookingId, action) => {
         console.log(`${action} booking:`, bookingId);
+        try{
+            console.log("handle booking......");
+            
+            await handleBookingActionApi(bookingId, action);
+            queryClient.invalidateQueries({ queryKey: ['mentorActivity'] });
+            notifications.show({
+                title: "Cập nhật thành công!",
+                message: "Đã cập nhập thông tin thành công.",
+                color: "green",
+                icon: <IconAlertCircle />,
+                autoClose: 3000,
+            });
+
+
+        }catch(error){
+            notifications.show({
+            title: "Lỗi!",
+            message: "Đã có lỗi trong quá trình xử lý, vui lòng thử lại sau.",
+            color: "red",
+            icon: <MdError />, // bạn có thể import từ react-icons
+            autoClose: 4000,
+          });
+        }
         // Logic xử lý booking
     };
 
@@ -139,14 +193,14 @@ const BookingManagement = () => {
                                         <div className="bg-gradient-primary rounded-circle d-flex align-items-center justify-content-center"
                                             style={{ width: '50px', height: '50px', background: 'linear-gradient(135deg, #71c9ce, #5fb3d4)' }}>
                                             <span className="text-white fw-bold fs-5">
-                                                {booking.customer.fullname.charAt(0)}
+                                                {booking?.customer?.fullname?.charAt(0) || '?'}
                                             </span>
                                         </div>
                                     </div>
                                     <div>
-                                        <h6 className="mb-1 fw-bold">{booking.customer.fullname}</h6>
-                                        <small className="text-muted d-block">{booking.customer.email}</small>
-                                        <small className="text-muted">{booking.customer.phone}</small>
+                                        <h6 className="mb-1 fw-bold">{booking?.customer?.fullname || 'Không rõ'}</h6>
+                                        <small className="text-muted d-block">{booking?.customer?.email || 'Không có email'}</small>
+                                        <small className="text-muted">{booking?.customer?.phone || 'Không có SĐT'}</small>
                                     </div>
                                 </div>
                             </Col>
@@ -168,7 +222,7 @@ const BookingManagement = () => {
                                         <div className="d-flex align-items-center">
                                             <i className="bi bi-clock text-success me-2"></i>
                                             <span className="text-muted">
-                                                {formatTime(booking.timeSlot.timestart)} - {formatTime(booking.timeSlot.timeend)}
+                                                {formatTime(booking?.timeSlot?.timeStart)} - {formatTime(booking?.timeSlot?.timeEnd)}
                                             </span>
                                         </div>
                                     </div>
@@ -181,7 +235,7 @@ const BookingManagement = () => {
                                     {getStatusBadge(booking.status)}
                                     <div className="mt-2">
                                         <small className="text-muted">
-                                            Đặt lúc: {formatDateTime(booking.created_at).split(' ')[1]}
+                                            Đặt lúc: {formatDateTime(booking.createdAt).split(' ')[1]}
                                         </small>
                                     </div>
                                 </div>
@@ -205,7 +259,7 @@ const BookingManagement = () => {
                                             <Button
                                                 variant="success"
                                                 size="sm"
-                                                onClick={() => handleBookingAction(booking.id, 'confirm')}
+                                                onClick={() => handleBookingAction(booking.id, 'CONFIRMED')}
                                                 className="px-3"
                                             >
                                                 <i className="bi bi-check-lg me-1"></i>
@@ -214,14 +268,14 @@ const BookingManagement = () => {
                                             <Button
                                                 variant="outline-danger"
                                                 size="sm"
-                                                onClick={() => handleBookingAction(booking.id, 'reject')}
+                                                onClick={() => handleBookingAction(booking.id, 'CANCELED')}
                                             >
                                                 <i className="bi bi-x-lg"></i>
                                             </Button>
                                         </div>
                                     )}
 
-                                    {booking.status === 'CONFIRMED' && (
+                                    {booking.status === 'APPROVED' && (
                                         <Button
                                             variant="info"
                                             size="sm"
@@ -522,11 +576,11 @@ const BookingManagement = () => {
                                         <div className="mb-3">
                                             <label className="form-label fw-bold">Giờ:</label>
                                             <p className="mb-1">
-                                                {formatTime(selectedBooking.timeSlot.timestart)} - {formatTime(selectedBooking.timeSlot.timeend)}
+                                                {formatTime(selectedBooking?.timeSlot?.timeStart)} - {formatTime(selectedBooking?.timeSlot?.timeEnd)}
                                             </p>
                                         </div>
                                         <div className="mb-3">
-                                            <label className="form-label fw-bold">Trạng thái:</label>
+                                            <label className="form-label fw-bold">Trạng thái:</label>   
                                             <div>{getStatusBadge(selectedBooking.status)}</div>
                                         </div>
                                     </Card.Body>
