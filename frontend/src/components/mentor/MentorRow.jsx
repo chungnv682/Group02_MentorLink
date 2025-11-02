@@ -28,7 +28,7 @@ const MentorRow = ({ mentor }) => {
             <div className="d-flex align-items-stretch">
                 <div className="mentor-row-left p-4 d-flex flex-column align-items-center text-center">
                     <div className="mentor-avatar-wrapper-row mb-3">
-                        <img src={mentor.avatarUrl || '/images/default-avatar.png'} alt={mentor.fullname} className="mentor-avatar-row" />
+                        <img src={mentor.avatarUrl || '/images/default-avatar.svg'} alt={mentor.fullname} className="mentor-avatar-row" onError={(e)=>{e.target.src='/images/default-avatar.svg'}} />
                     </div>
                     <h5 className="mb-1 fw-bold">{mentor.fullname}</h5>
                     <div className="text-muted small mb-2">{mentor.title}</div>

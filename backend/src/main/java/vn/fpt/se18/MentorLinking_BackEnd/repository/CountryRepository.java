@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import vn.fpt.se18.MentorLinking_BackEnd.entity.Country;
+import vn.fpt.se18.MentorLinking_BackEnd.util.CONTINENTS;
 
 import java.util.List;
 import java.util.Optional;
@@ -44,4 +45,14 @@ public interface CountryRepository extends JpaRepository<Country, Long> {
            "GROUP BY c.id " +
            "ORDER BY COUNT(mc.id) DESC")
     List<Country> findPopularCountries(Pageable pageable);
+
+    // Find countries by continent
+    List<Country> findByContinent(CONTINENTS continent);
+
+    // Find approved countries by continent
+    @Query("SELECT c FROM Country c WHERE c.continent = :continent AND c.status.code = :statusCode")
+    List<Country> findByContinent(@Param("continent") CONTINENTS continent, @Param("statusCode") String statusCode);
+
+    // Find all countries by continent with pagination
+    Page<Country> findByContinent(CONTINENTS continent, Pageable pageable);
 }
