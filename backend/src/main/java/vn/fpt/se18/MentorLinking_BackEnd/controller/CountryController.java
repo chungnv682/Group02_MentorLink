@@ -133,4 +133,32 @@ public class CountryController {
                 .data(data)
                 .build();
     }
+
+    @GetMapping("/continent/{continentName}")
+    @Operation(summary = "Get all countries by continent name")
+    public BaseResponse<List<CountryResponse>> getCountriesByContinent(
+            @PathVariable String continentName) {
+        log.info("REST request to get countries by continent: {}", continentName);
+        List<CountryResponse> data = countryService.getCountriesByContinent(continentName);
+        return BaseResponse.<List<CountryResponse>>builder()
+                .requestDateTime(LocalDateTime.now().toString())
+                .respCode("0")
+                .description("Get countries by continent successfully")
+                .data(data)
+                .build();
+    }
+
+    @GetMapping("/continent/{continentName}/approved")
+    @Operation(summary = "Get approved countries by continent name")
+    public BaseResponse<List<CountryResponse>> getApprovedCountriesByContinent(
+            @PathVariable String continentName) {
+        log.info("REST request to get approved countries by continent: {}", continentName);
+        List<CountryResponse> data = countryService.getApprovedCountriesByContinent(continentName);
+        return BaseResponse.<List<CountryResponse>>builder()
+                .requestDateTime(LocalDateTime.now().toString())
+                .respCode("0")
+                .description("Get approved countries by continent successfully")
+                .data(data)
+                .build();
+    }
 }
