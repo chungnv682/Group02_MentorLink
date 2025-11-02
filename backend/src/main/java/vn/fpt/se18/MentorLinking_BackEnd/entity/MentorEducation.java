@@ -32,6 +32,10 @@ public class MentorEducation extends AbstractEntity<Long> {
     private String certificateImage;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "status_id", nullable = false)
+    private Status status; // PENDING / APPROVED / REJECTED
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by")
     private User createdBy;
 
