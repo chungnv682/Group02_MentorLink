@@ -77,7 +77,7 @@ const ProfilePage = () => {
 
     if (loading) {
         return (
-            <Container className="py-5">
+            <Container fluid className="py-5 px-0">
                 <Row>
                     <Col className="text-center">
                         <Spinner animation="border" />
@@ -107,7 +107,7 @@ const ProfilePage = () => {
     }
 
     const isCustomer = (user?.role || '').toUpperCase() === USER_ROLES.CUSTOMER;
-    const avatarUrl = form.avatarUrl || '/images/default-avatar.png';
+    const avatarUrl = form.avatarUrl || '/images/default-avatar.svg';
 
     return (
         <div className="profile-page">
@@ -127,9 +127,7 @@ const ProfilePage = () => {
                                             <div className="profile-avatar-wrapper">
                                                 <Image
                                                     src={avatarUrl}
-                                                    onError={(e) => {
-                                                        e.target.src = '/images/default-avatar.png';
-                                                    }}
+                                                    onError={(e) => { e.target.src = '/images/default-avatar.svg'; }}
                                                     roundedCircle
                                                     className="profile-avatar"
                                                     alt={form.fullname || 'User Avatar'}
