@@ -1,4 +1,6 @@
 // Admin components exports
+export { default as AdminComponentWrapper } from './AdminComponentWrapper';
+export { default as AdminSidebar } from './AdminSidebar';
 export { default as Analytics } from './Analytics';
 export { default as BannerManagement } from './BannerManagement';
 export { default as BookingManagement } from './BookingManagement';

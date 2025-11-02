@@ -5,3 +5,4 @@ export * from './mentor';
 export * from './country';
 export * from './policy';
 export * from './blog';
+export * from './admin';
