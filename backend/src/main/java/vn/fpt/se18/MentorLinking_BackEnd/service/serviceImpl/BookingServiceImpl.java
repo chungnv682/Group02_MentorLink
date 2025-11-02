@@ -1,6 +1,8 @@
 package vn.fpt.se18.MentorLinking_BackEnd.service.serviceImpl;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.Optional;
+import java.util.concurrent.ThreadLocalRandom;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -12,6 +14,7 @@ import vn.fpt.se18.MentorLinking_BackEnd.dto.response.TimeSlotResponse;
 import vn.fpt.se18.MentorLinking_BackEnd.entity.*;
 import vn.fpt.se18.MentorLinking_BackEnd.repository.*;
 import vn.fpt.se18.MentorLinking_BackEnd.service.BookingService;
+import vn.fpt.se18.MentorLinking_BackEnd.service.EmailService;
 import vn.fpt.se18.MentorLinking_BackEnd.service.VNPayService;
 import vn.fpt.se18.MentorLinking_BackEnd.util.PaymentProcess;
 
@@ -35,6 +38,18 @@ public class BookingServiceImpl implements BookingService {
     private final PaymentHistoryRepository paymentHistoryRepository;
     private final HistoryRepository historyRepository;
     private final VNPayService vnPayService;
+    private final EmailService emailService;
+
+    private List<String> googlemeet_link = List.of(
+        "https://meet.google.com/cpg-xvbr-ete",
+        "https://meet.google.com/uny-zuen-quq",
+        "https://meet.google.com/jhy-gmsp-cbp",
+        "https://meet.google.com/rrh-qrnm-ier",
+        "https://meet.google.com/dyd-zeqw-yfa",
+        "https://meet.google.com/hgy-viac-dic",
+        "https://meet.google.com/axw-fkiz-bca",
+        "https://meet.google.com/xsf-wdyg-qjc"
+    );
 
     @Override
     @Transactional
@@ -57,25 +72,6 @@ public class BookingServiceImpl implements BookingService {
 
         if (hasCompletedBooking) {
             throw new RuntimeException("Lịch này đã được đặt bởi người khác");
-        }
-
-        // Enforce booking rule: cannot create a booking if the earliest timeslot
-        // of the schedule starts within 3 hours from now.
-        if (schedule.getTimeSlots() == null || schedule.getTimeSlots().isEmpty()) {
-            throw new RuntimeException("Schedule chưa có time slot để xác định thời gian đặt");
-        }
-
-        int earliestHour = schedule.getTimeSlots().stream()
-                .map(TimeSlot::getTimeStart)
-                .min(Comparator.naturalOrder())
-                .orElseThrow(() -> new RuntimeException("Không thể xác định time slot"));
-
-        LocalDateTime slotStartDateTime = schedule.getDate().atTime(LocalTime.of(earliestHour, 0));
-        LocalDateTime now = LocalDateTime.now();
-
-        // If earliest start is less than 3 hours from now, reject booking
-        if (slotStartDateTime.isBefore(now.plusHours(3))) {
-            throw new RuntimeException("Không thể đặt lịch trong vòng 3 giờ trước khi buổi học bắt đầu");
         }
 
         // Get mentor from schedule
@@ -337,23 +333,78 @@ public class BookingServiceImpl implements BookingService {
             throw new RuntimeException("Không thể hủy trong vòng 3 giờ trước khi buổi học bắt đầu");
         }
 
-        // Get CANCELED status
-        Status canceledStatus = statusRepository.findByCode("CANCELED")
-                .orElseThrow(() -> new RuntimeException("Status CANCELED không tồn tại"));
+        // Get CANCELLED status
+        Status cancelledStatus = statusRepository.findByCode("CANCELLED")
+                .orElseThrow(() -> new RuntimeException("Status CANCELLED không tồn tại"));
 
         // Update booking status and payment process
-        booking.setStatus(canceledStatus);
+        booking.setStatus(cancelledStatus);
         booking.setPaymentProcess(PaymentProcess.WAIT_REFUND);
         bookingRepository.save(booking);
 
         // Create history record for audit
         History history = History.builder()
                 .booking(booking)
-                .description("Customer canceled booking before start time")
+                .description("Customer cancelled booking before start time")
                 .createdBy(booking.getCustomer())
                 .build();
         historyRepository.save(history);
 
-        log.info("Booking {} canceled and paymentProcess set to WAIT_REFUND", bookingId);
+        log.info("Booking {} cancelled and paymentProcess set to WAIT_REFUND", bookingId);
+    }
+
+
+
+
+    @Override
+    public void handleBookingAction(Long bookingId, String action) throws Exception {
+        Booking booking = bookingRepository.getBookingById(bookingId);
+        Schedule schedule = booking.getSchedule();
+        Long earliestStart = 0L;
+        Long latestEnd = 0L;
+        if(schedule != null && schedule.getTimeSlots() != null && !schedule.getTimeSlots().isEmpty()) {
+            // Lấy earliest timeStart
+             earliestStart = Long.valueOf(schedule.getTimeSlots().stream()
+                .map(TimeSlot::getTimeStart)
+                .min(Integer::compare)
+                .orElseThrow(() -> new RuntimeException("Không thể xác định timeStart")));
+
+            // Lấy latest timeEnd
+            latestEnd = Long.valueOf(schedule.getTimeSlots().stream()
+                .map(TimeSlot::getTimeEnd)
+                .max(Integer::compare)
+                .orElseThrow(() -> new RuntimeException("Không thể xác định timeEnd"))) ;
+
+            System.out.println("Booking timeStart: " + earliestStart + ", timeEnd: " + latestEnd);
+        }
+        User mentee = booking.getCustomer();
+        User mentor = booking.getMentor();
+
+        if(action.equals("CONFIRMED")){
+            Optional<Status> status = statusRepository.findByCode("CONFIRMED");
+            booking.setStatus(status.get());
+            bookingRepository.save(booking);
+            int randomIndex = ThreadLocalRandom.current().nextInt(googlemeet_link.size());
+
+            // send email to mentee
+            emailService.sendConfirmBooking(mentee.getEmail(), "Thông báo bổi học", mentee.getFullname(), booking.getSchedule().getDate(), earliestStart, latestEnd, googlemeet_link.get(randomIndex));
+
+            // send email to mentor
+            emailService.sendConfirmBooking(mentor.getEmail(), "Thông báo bổi học", mentee.getFullname(), booking.getSchedule().getDate(), earliestStart, latestEnd, googlemeet_link.get(randomIndex));
+
+        }else if(action.equals("CANCELLED")){
+            Optional<Status> status = statusRepository.findByCode("CANCELLED");
+            booking.setStatus(status.get());
+            bookingRepository.save(booking);
+
+            emailService.sendRejectBooking(mentee.getEmail(), "Hủy buổi học", "");
+        }
+
+        // gui mail
+
+
+
+
+
     }
 }
