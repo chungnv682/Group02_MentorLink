@@ -226,7 +226,7 @@ import '../../styles/components/MentorDetail.css'; const MentorDetailPage = () =
                             <Col lg={3} md={4} className="text-center">
                                 <div className="mentor-avatar-large mx-auto mb-3">
                                     <Image
-                                        src={mentor.avatarUrl || '/images/default-avatar.png'}
+                                        src={mentor.avatarUrl || '/images/default-avatar.svg'}
                                         alt={mentor.fullname}
                                         className="mentor-avatar-img"
                                         fluid
@@ -242,7 +242,6 @@ import '../../styles/components/MentorDetail.css'; const MentorDetailPage = () =
 
                             <Col lg={6} md={8}>
                                 <h1 className="mentor-name mb-2">{mentor.fullname}</h1>
-                                <h4 className="mentor-title text-primary mb-3">{mentor.title}</h4>
 
                                 <div className="mentor-stats mb-3">
                                     <div className="d-flex align-items-center mb-2">
@@ -329,32 +328,7 @@ import '../../styles/components/MentorDetail.css'; const MentorDetailPage = () =
                             </Col>
 
                             <Col lg={3} className="text-center">
-                                <Card className="booking-card shadow border-primary">
-                                    <Card.Body className="p-3">
-                                        <h6 className="text-primary mb-3 fw-bold">
-                                            Nhận tư vấn ngay tại đây
-                                        </h6>
-                                    
-                                        <Button
-                                            variant="outline-primary"
-                                            size="sm"
-                                            className="w-100 btn-friendly mb-3"
-                                            onClick={() => alert('Chức năng chat đang phát triển')}
-                                        >
-                                            💬 Nhắn tin
-                                        </Button>
-
-                                        <div className="mentor-badges mt-3">
-                                            <Badge bg="success" className="me-1 mb-1">
-                                                <FaCheckCircle className="me-1" />
-                                                Verified
-                                            </Badge>
-                                            <Badge bg="info" className="mb-1">
-                                                Top Mentor
-                                            </Badge>
-                                        </div>
-                                    </Card.Body>
-                                </Card>
+                                
                             </Col>
                         </Row>
                     </Card.Body>
@@ -428,9 +402,7 @@ import '../../styles/components/MentorDetail.css'; const MentorDetailPage = () =
                                                                             `Chuyên ngành: ${edu.major}`
                                                                         )}
                                                                     />
-                                                                    <div className="click-to-view">
-                                                                        <small>🔍 Click để xem chi tiết</small>
-                                                                    </div>
+                                                                    
                                                                 </div>
                                                             )}
                                                         </Card.Body>

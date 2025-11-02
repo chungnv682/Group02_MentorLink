@@ -18,6 +18,7 @@ import vn.fpt.se18.MentorLinking_BackEnd.repository.CountryRepository;
 import vn.fpt.se18.MentorLinking_BackEnd.repository.StatusRepository;
 import vn.fpt.se18.MentorLinking_BackEnd.repository.UserRepository;
 import vn.fpt.se18.MentorLinking_BackEnd.service.CountryService;
+import vn.fpt.se18.MentorLinking_BackEnd.util.CONTINENTS;
 
 import java.util.HashMap;
 import java.util.List;
@@ -164,17 +165,53 @@ public class CountryServiceImpl implements CountryService {
                 .collect(Collectors.toList());
     }
 
+    @Override
+    public List<CountryResponse> getCountriesByContinent(String continentName) {
+        log.info("Fetching countries by continent: {}", continentName);
+
+        try {
+            CONTINENTS continent = CONTINENTS.valueOf(continentName.toUpperCase());
+            List<Country> countries = countryRepository.findByContinent(continent);
+            return countries.stream()
+                    .map(this::toCountryResponse)
+                    .collect(Collectors.toList());
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid continent name: {}", continentName);
+            throw new AppException(ErrorCode.INVALID_INPUT);
+        }
+    }
+
+    @Override
+    public List<CountryResponse> getApprovedCountriesByContinent(String continentName) {
+        log.info("Fetching approved countries by continent: {}", continentName);
+
+        try {
+            CONTINENTS continent = CONTINENTS.valueOf(continentName.toUpperCase());
+            List<Country> countries = countryRepository.findByContinent(continent, "APPROVED");
+            return countries.stream()
+                    .map(this::toCountryResponse)
+                    .collect(Collectors.toList());
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid continent name: {}", continentName);
+            throw new AppException(ErrorCode.INVALID_INPUT);
+        }
+    }
+
     private CountryResponse toCountryResponse(Country country) {
         if (country == null) {
             return null;
         }
         
+        String continentName = country.getContinent() != null ? country.getContinent().name() : null;
+
         return CountryResponse.builder()
                 .id(country.getId())
                 .code(country.getCode())
                 .name(country.getName())
                 .flagUrl(country.getFlagUrl())
                 .description(country.getDescription())
+                .continent(continentName)
+                .continentName(continentName)
                 .build();
     }
 }
