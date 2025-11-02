@@ -1,7 +1,9 @@
 package vn.fpt.se18.MentorLinking_BackEnd.config;
 
+import com.sendgrid.SendGrid;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -31,6 +33,9 @@ public class AppConfig {
     private final PreFilter preFilter;
     private final CorsConfigurationSource corsConfigurationSource;
 
+    @Value("${spring.sendgrid.code}")
+    private String sendgridApiKey;
+
     @Bean
     public PasswordEncoder getPasswordEncoder() {
         return new BCryptPasswordEncoder();
@@ -48,7 +53,7 @@ public class AppConfig {
                                 "/blogs", "/blogs/**",
                                 "/mentor-policies/**", "/customer-policies/**", "/banners/**", "/blogs/**",
                                 "/mentor-countries/**", "/faqs/**", "/schedules/**",
-                                "/countries", "/api/countries/popular", "/api/countries/search")
+                                "/countries/**", "/api/countries/popular", "/api/countries/search")
                         .permitAll()
                         .requestMatchers("/auth/**", "/profile/**", "/bookings/**", "/payments/**", "/comments/**",
                                 "/ratings/**", "/chat/**", "/recommendations/**","/chatbot/**")
@@ -80,5 +85,10 @@ public class AppConfig {
         provider.setPasswordEncoder(getPasswordEncoder());
 
         return provider;
+    }
+
+    @Bean
+    public SendGrid sendGrid(){
+        return new SendGrid(sendgridApiKey);
     }
 }

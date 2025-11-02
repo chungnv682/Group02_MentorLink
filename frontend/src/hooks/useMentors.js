@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import MentorService from '../services/mentor/MentorService';
+import { useQuery } from "@tanstack/react-query"
 
 const useMentors = () => {
     const [mentors, setMentors] = useState([]);
@@ -69,3 +70,10 @@ const useMentors = () => {
         getFeaturedMentors
     };
 }; export default useMentors;
+
+export const useGetMentorActivity = () => {
+    return useQuery({
+        queryKey: ['mentorActivity'],
+        queryFn: () =>  MentorService.getMentorActivity(),
+    });
+} 

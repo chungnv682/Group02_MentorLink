@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>Buổi học bị từ chối</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f7f9fc; color: #333; }
+    .container {
+      max-width: 600px;
+      margin: 30px auto;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      padding: 20px 30px;
+    }
+    .header {
+      background: #e74c3c;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 8px 8px 0 0;
+      text-align: center;
+    }
+    .content { padding: 20px; }
+    .reason {
+      background: #fff3f3;
+      border-left: 5px solid #e74c3c;
+      padding: 10px 15px;
+      border-radius: 5px;
+      color: #c0392b;
+    }
+    .footer {
+      font-size: 12px;
+      color: #777;
+      text-align: center;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h2>Thông báo từ chối buổi học</h2>
+  </div>
+  <div class="content">
+    <p>Chào <strong th:text="${studentName}">Học viên</strong>,</p>
+
+    <p>Mentor của bạn rất tiếc phải thông báo rằng buổi học của bạn đã bị <strong>từ chối</strong>.</p>
+
+    <div class="reason">
+      <p><strong>Lý do:</strong> Mentor xin lỗi, hiện đang bận vì lý do cá nhân nên không thể tham gia buổi học này.</p>
+    </div>
+
+    <p>Bạn có thể đặt lại buổi học khác trong thời gian tới.</p>
+
+    <p>Trân trọng,<br/>MentorLink Team</p>
+  </div>
+
+  <div class="footer">
+    Đây là email tự động, vui lòng không phản hồi lại.
+  </div>
+</div>
+</body>
+</html>
