@@ -2,6 +2,7 @@ package vn.fpt.se18.MentorLinking_BackEnd.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import vn.fpt.se18.MentorLinking_BackEnd.util.CONTINENTS;
 
 @Entity
 @Table(name = "countries")
@@ -27,6 +28,10 @@ public class Country extends AbstractEntity<Long> {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "status_id")
     private Status status; // ACTIVE / PENDING / INACTIVE
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "continent")
+    private CONTINENTS continent;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by")

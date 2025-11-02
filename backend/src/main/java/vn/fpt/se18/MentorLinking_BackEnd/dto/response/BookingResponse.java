@@ -23,7 +23,7 @@ public class BookingResponse {
 
     private String paymentProcess; // COMPLETED, REFUNDED, WAIT_REFUND
 
-    private String statusName; // Approved, Pending, Rejected,CANCELED
+    private String statusName; // Approved, Pending, Rejected,CANCELLED
 
     private String emailMentor;
 

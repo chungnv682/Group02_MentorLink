@@ -13,4 +13,6 @@ public class CountryResponse {
     private String name;
     private String flagUrl;
     private String description;
+    private String continentName;
+    private String continent;
 }
