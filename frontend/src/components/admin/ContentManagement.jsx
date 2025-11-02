@@ -8,6 +8,7 @@ import {
     FaBlog, FaUser, FaClock, FaChartLine, FaTrash, FaEyeSlash, FaToggleOn, FaToggleOff
 } from 'react-icons/fa';
 import { getAllBlogs, moderateBlog, deleteBlog, togglePublishStatus } from '../../services/blog';
+import { getAllFaqsForAdmin, togglePublishFaq, deleteFaq, updateFaq } from '../../services/faq';
 import { useToast } from '../../contexts/ToastContext';
 
 const ContentManagement = () => {
@@ -15,17 +16,30 @@ const ContentManagement = () => {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showFAQModal, setShowFAQModal] = useState(false);
     const [selectedBlog, setSelectedBlog] = useState(null);
+    const [selectedFaq, setSelectedFaq] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatus, setFilterStatus] = useState('all');
     const [blogs, setBlogs] = useState([]);
+    const [faqs, setFaqs] = useState([]);
     const [stats, setStats] = useState({
         total: 0,
         pending: 0,
         approved: 0,
         views: 0
     });
+    const [faqStats, setFaqStats] = useState({
+        total: 0,
+        published: 0
+    });
     const [loading, setLoading] = useState(false);
+    const [faqLoading, setFaqLoading] = useState(false);
     const [pagination, setPagination] = useState({
+        page: 0,
+        size: 10,
+        totalPages: 0,
+        totalElements: 0
+    });
+    const [faqPagination, setFaqPagination] = useState({
         page: 0,
         size: 10,
         totalPages: 0,
@@ -35,8 +49,17 @@ const ContentManagement = () => {
 
     // Fetch blogs from API
     useEffect(() => {
+        console.log('Fetching blogs - page:', pagination.page, 'filter:', filterStatus);
         fetchBlogs();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [filterStatus, pagination.page]);
+
+    // Fetch FAQs from API  
+    useEffect(() => {
+        console.log('Fetching FAQs - page:', faqPagination.page);
+        fetchFaqs();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [faqPagination.page]);
 
     const fetchBlogs = async () => {
         try {
@@ -49,23 +72,27 @@ const ContentManagement = () => {
             };
             
             const response = await getAllBlogs(params);
-            console.log('ContentManagement - API Response:', response.data); // Debug log
+            console.log('ContentManagement - API Response:', response); // Debug log
             
-            if (response.data.respCode === "0" || response.data.success) {
-                const data = response.data.data;
-                // API trả về data.blogs thay vì data.content
+            // Axios interceptor đã unwrap response.data, vậy response = { respCode, description, data }
+            if (response.respCode === "0" || response.success) {
+                const data = response.data;
+                // API trả về data.blogs
                 const blogsList = data.blogs || [];
+                console.log('Blogs list:', blogsList); // Debug log
                 setBlogs(blogsList);
+                
+                // API trả về pageNumber, pageSize, totalPages, totalElements
                 setPagination(prev => ({
                     ...prev,
+                    page: data.pageNumber || 0,
+                    size: data.pageSize || 10,
                     totalPages: data.totalPages || 0,
                     totalElements: data.totalElements || 0
                 }));
 
-                // Nếu không có filter, tính stats từ data có sẵn
-                if (filterStatus === 'all' && pagination.page === 0) {
-                    calculateStats(blogsList, data.totalElements || 0);
-                }
+                // Tính stats từ data có sẵn
+                calculateStats(blogsList, data.totalElements || 0);
             }
         } catch (error) {
             console.error('Error fetching blogs:', error);
@@ -93,24 +120,53 @@ const ContentManagement = () => {
         fetchBlogs();
     };
 
-    const faqReports = [
-        {
-            id: 1,
-            question: 'Làm thế nào để trở thành mentor?',
-            answer: 'Để trở thành mentor, bạn cần đăng ký tài khoản...',
-            category: 'Mentor',
-            status: 'PUBLISHED',
-            createdAt: '2024-01-10'
-        },
-        {
-            id: 2,
-            question: 'Cách đặt lịch hẹn với mentor?',
-            answer: 'Bạn có thể đặt lịch hẹn bằng cách...',
-            category: 'Booking',
-            status: 'DRAFT',
-            createdAt: '2024-01-12'
+    const fetchFaqs = async () => {
+        try {
+            setFaqLoading(true);
+            const params = {
+                page: faqPagination.page, // Backend page bắt đầu từ 0
+                size: faqPagination.size,
+                sort: 'createdAt,desc' // Sắp xếp theo ngày tạo mới nhất
+            };
+            
+            console.log('Fetching FAQs with params:', params);
+            const response = await getAllFaqsForAdmin(params);
+            console.log('ContentManagement - FAQ API Response:', response);
+            
+            if (response.respCode === "0" || response.success) {
+                const data = response.data;
+                // Backend trả về Page<FaqResponse>, cần access .content
+                const faqsList = data.content || [];
+                console.log('FAQs list:', faqsList);
+                setFaqs(faqsList);
+                setFaqPagination(prev => ({
+                    ...prev,
+                    totalPages: data.totalPages || 0,
+                    totalElements: data.totalElements || 0
+                }));
+
+                // Calculate FAQ stats
+                setFaqStats({
+                    total: data.totalElements || 0,
+                    published: faqsList.filter(f => f.isPublished).length
+                });
+            }
+        } catch (error) {
+            console.error('Error fetching FAQs:', error);
+            console.error('Error details:', error.response?.data);
+            // Nếu không có dữ liệu FAQ, không hiển thị lỗi
+            if (error.response?.status !== 404) {
+                showToast('Không thể tải danh sách FAQ', 'error');
+            } else {
+                console.log('No FAQs found or endpoint not available');
+            }
+            // Set empty data
+            setFaqs([]);
+            setFaqStats({ total: 0, published: 0 });
+        } finally {
+            setFaqLoading(false);
         }
-    ];
+    };
 
     const getStatusBadgeVariant = (status) => {
         switch (status) {
@@ -147,21 +203,21 @@ const ContentManagement = () => {
                 decisionId: 4, // APPROVED
                 comment: 'Đã duyệt bởi admin'
             });
-            console.log('Approve response:', response.data);
+            console.log('Approve response:', response);
             
-            if (response.data.respCode === "0" || response.data.success) {
+            if (response.respCode === "0" || response.success) {
                 showToast('Đã duyệt bài viết thành công', 'success');
                 fetchBlogs();
                 if (selectedBlog?.id === blogId) {
                     setShowModal(false);
                 }
             } else {
-                showToast('Không thể duyệt bài viết: ' + (response.data.description || 'Unknown error'), 'error');
+                showToast('Không thể duyệt bài viết: ' + (response.description || 'Unknown error'), 'error');
             }
         } catch (error) {
             console.error('Error approving blog:', error);
             console.error('Error response:', error.response);
-            showToast(error.response?.data?.description || error.response?.data?.message || 'Không thể duyệt bài viết', 'error');
+            showToast(error.description || error.message || 'Không thể duyệt bài viết', 'error');
         }
     };
 
@@ -173,21 +229,21 @@ const ContentManagement = () => {
                 decisionId: 5, // REJECTED
                 comment: reason
             });
-            console.log('Reject response:', response.data);
+            console.log('Reject response:', response);
             
-            if (response.data.respCode === "0" || response.data.success) {
+            if (response.respCode === "0" || response.success) {
                 showToast('Đã từ chối bài viết', 'success');
                 fetchBlogs();
                 if (selectedBlog?.id === blogId) {
                     setShowModal(false);
                 }
             } else {
-                showToast('Không thể từ chối bài viết: ' + (response.data.description || 'Unknown error'), 'error');
+                showToast('Không thể từ chối bài viết: ' + (response.description || 'Unknown error'), 'error');
             }
         } catch (error) {
             console.error('Error rejecting blog:', error);
             console.error('Error response:', error.response);
-            showToast(error.response?.data?.description || error.response?.data?.message || 'Không thể từ chối bài viết', 'error');
+            showToast(error.description || error.message || 'Không thể từ chối bài viết', 'error');
         }
     };
 
@@ -195,18 +251,18 @@ const ContentManagement = () => {
         try {
             console.log('Toggling publish status for blog:', blogId);
             const response = await togglePublishStatus(blogId);
-            console.log('Toggle response:', response.data);
+            console.log('Toggle response:', response);
             
-            if (response.data.respCode === "0" || response.data.success) {
+            if (response.respCode === "0" || response.success) {
                 showToast('Đã thay đổi trạng thái xuất bản', 'success');
                 fetchBlogs();
             } else {
-                showToast('Không thể thay đổi trạng thái: ' + (response.data.description || 'Unknown error'), 'error');
+                showToast('Không thể thay đổi trạng thái: ' + (response.description || 'Unknown error'), 'error');
             }
         } catch (error) {
             console.error('Error toggling publish status:', error);
             console.error('Error response:', error.response);
-            showToast(error.response?.data?.description || error.response?.data?.message || 'Không thể thay đổi trạng thái', 'error');
+            showToast(error.description || error.message || 'Không thể thay đổi trạng thái', 'error');
         }
     };
 
@@ -217,13 +273,51 @@ const ContentManagement = () => {
         
         try {
             const response = await deleteBlog(blogId);
-            if (response.data.respCode === "0" || response.data.success) {
+            if (response.respCode === "0" || response.success) {
                 showToast('Đã xóa bài viết', 'success');
                 fetchBlogs();
             }
         } catch (error) {
             console.error('Error deleting blog:', error);
-            showToast(error.response?.data?.description || error.response?.data?.message || 'Không thể xóa bài viết', 'error');
+            showToast(error.description || error.message || 'Không thể xóa bài viết', 'error');
+        }
+    };
+
+    const handleViewFaq = (faq) => {
+        setSelectedFaq(faq);
+        setShowFAQModal(true);
+    };
+
+    const handleTogglePublishFaq = async (faqId, currentStatus) => {
+        try {
+            const response = await togglePublishFaq(faqId, !currentStatus);
+            if (response.respCode === "0" || response.success) {
+                showToast(
+                    !currentStatus ? 'Đã xuất bản FAQ' : 'Đã ẩn FAQ', 
+                    'success'
+                );
+                fetchFaqs();
+            }
+        } catch (error) {
+            console.error('Error toggling FAQ publish status:', error);
+            showToast(error.description || 'Không thể thay đổi trạng thái', 'error');
+        }
+    };
+
+    const handleDeleteFaq = async (faqId) => {
+        if (!window.confirm('Bạn có chắc chắn muốn xóa FAQ này?')) {
+            return;
+        }
+        
+        try {
+            const response = await deleteFaq(faqId);
+            if (response.respCode === "0" || response.success) {
+                showToast('Đã xóa FAQ', 'success');
+                fetchFaqs();
+            }
+        } catch (error) {
+            console.error('Error deleting FAQ:', error);
+            showToast(error.description || 'Không thể xóa FAQ', 'error');
         }
     };
 
@@ -558,67 +652,143 @@ const ContentManagement = () => {
                         <Card>
                             <Card.Header className="bg-light">
                                 <div className="d-flex justify-content-between align-items-center">
-                                    <h6 className="mb-0">Danh sách FAQ ({faqReports.length})</h6>
-                                    <Button variant="primary" size="sm">
+                                    <h6 className="mb-0">Danh sách FAQ ({faqPagination.totalElements})</h6>
+                                    <Button variant="primary" size="sm" disabled>
                                         <FaEdit className="me-1" />
                                         Thêm FAQ mới
                                     </Button>
                                 </div>
                             </Card.Header>
                             <Card.Body className="p-0">
-                                <Table responsive hover className="mb-0">
-                                    <thead className="bg-light">
-                                        <tr>
-                                            <th width="5%">
-                                                <Form.Check type="checkbox" />
-                                            </th>
-                                            <th width="40%">Câu hỏi</th>
-                                            <th width="15%">Danh mục</th>
-                                            <th width="15%">Trạng thái</th>
-                                            <th width="15%">Ngày tạo</th>
-                                            <th width="10%">Thao tác</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {faqReports.map((faq) => (
-                                            <tr key={faq.id}>
-                                                <td>
+                                {faqLoading ? (
+                                    <div className="text-center py-5">
+                                        <Spinner animation="border" variant="primary" />
+                                        <p className="mt-2 text-muted">Đang tải dữ liệu...</p>
+                                    </div>
+                                ) : faqs.length === 0 ? (
+                                    <div className="text-center py-5">
+                                        <FaBlog size={48} className="text-muted mb-3" />
+                                        <p className="text-muted">Không có FAQ nào</p>
+                                    </div>
+                                ) : (
+                                    <Table responsive hover className="mb-0">
+                                        <thead className="bg-light">
+                                            <tr>
+                                                <th width="5%">
                                                     <Form.Check type="checkbox" />
-                                                </td>
-                                                <td>
-                                                    <div>
-                                                        <div className="fw-medium">{faq.question}</div>
-                                                        <small className="text-muted">
-                                                            {faq.answer.substring(0, 50)}...
-                                                        </small>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <Badge bg="info">{faq.category}</Badge>
-                                                </td>
-                                                <td>
-                                                    <Badge bg={getStatusBadgeVariant(faq.status)}>
-                                                        {getStatusText(faq.status)}
-                                                    </Badge>
-                                                </td>
-                                                <td>
-                                                    <span className="text-muted">{faq.createdAt}</span>
-                                                </td>
-                                                <td>
-                                                    <div className="d-flex gap-1">
-                                                        <Button variant="outline-info" size="sm">
-                                                            <FaEye />
-                                                        </Button>
-                                                        <Button variant="outline-primary" size="sm">
-                                                            <FaEdit />
-                                                        </Button>
-                                                    </div>
-                                                </td>
+                                                </th>
+                                                <th width="35%">Câu hỏi</th>
+                                                <th width="15%">Mức độ</th>
+                                                <th width="12%">Trạng thái</th>
+                                                <th width="8%">Lượt xem</th>
+                                                <th width="15%">Ngày tạo</th>
+                                                <th width="10%">Thao tác</th>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </Table>
+                                        </thead>
+                                        <tbody>
+                                            {faqs.map((faq) => (
+                                                <tr key={faq.id}>
+                                                    <td>
+                                                        <Form.Check type="checkbox" />
+                                                    </td>
+                                                    <td>
+                                                        <div>
+                                                            <div className="fw-medium">{faq.question}</div>
+                                                            {faq.answer && (
+                                                                <small className="text-muted">
+                                                                    {faq.answer.substring(0, 50)}...
+                                                                </small>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <Badge bg={faq.urgency === 'HIGH' ? 'danger' : faq.urgency === 'MEDIUM' ? 'warning' : 'info'}>
+                                                            {faq.urgency === 'HIGH' ? 'Cao' : faq.urgency === 'MEDIUM' ? 'Trung bình' : 'Thấp'}
+                                                        </Badge>
+                                                    </td>
+                                                    <td>
+                                                        {faq.isPublished ? (
+                                                            <Badge bg="success" className="d-flex align-items-center justify-content-center gap-1" style={{width: 'fit-content'}}>
+                                                                <FaEye size={10} /> Hiện
+                                                            </Badge>
+                                                        ) : (
+                                                            <Badge bg="secondary" className="d-flex align-items-center justify-content-center gap-1" style={{width: 'fit-content'}}>
+                                                                <FaEyeSlash size={10} /> Ẩn
+                                                            </Badge>
+                                                        )}
+                                                    </td>
+                                                    <td>
+                                                        <span className="text-muted">{(faq.viewCount || 0).toLocaleString()}</span>
+                                                    </td>
+                                                    <td>
+                                                        <span className="text-muted">
+                                                            {faq.createdAt ? new Date(faq.createdAt).toLocaleDateString('vi-VN') : 'N/A'}
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <div className="d-flex gap-1 flex-wrap">
+                                                            <Button 
+                                                                variant="outline-info" 
+                                                                size="sm"
+                                                                onClick={() => handleViewFaq(faq)}
+                                                                title="Xem chi tiết"
+                                                            >
+                                                                <FaEye />
+                                                            </Button>
+                                                            <Button 
+                                                                variant={faq.isPublished ? "outline-warning" : "outline-success"}
+                                                                size="sm"
+                                                                onClick={() => handleTogglePublishFaq(faq.id, faq.isPublished)}
+                                                                title={faq.isPublished ? "Ẩn FAQ" : "Hiển thị FAQ"}
+                                                            >
+                                                                {faq.isPublished ? <FaEyeSlash /> : <FaEye />}
+                                                            </Button>
+                                                            <Button 
+                                                                variant="outline-danger" 
+                                                                size="sm"
+                                                                onClick={() => handleDeleteFaq(faq.id)}
+                                                                title="Xóa"
+                                                            >
+                                                                <FaTrash />
+                                                            </Button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </Table>
+                                )}
                             </Card.Body>
+                            {!faqLoading && faqs.length > 0 && (
+                                <Card.Footer className="bg-light">
+                                    <div className="d-flex justify-content-between align-items-center">
+                                        <span className="text-muted">
+                                            Hiển thị {faqPagination.page * faqPagination.size + 1} - {Math.min((faqPagination.page + 1) * faqPagination.size, faqPagination.totalElements)} trong tổng số {faqPagination.totalElements} FAQ
+                                        </span>
+                                        <div className="d-flex gap-2">
+                                            <Button
+                                                variant="outline-secondary"
+                                                size="sm"
+                                                disabled={faqPagination.page === 0}
+                                                onClick={() => setFaqPagination(prev => ({ ...prev, page: prev.page - 1 }))}
+                                            >
+                                                Trước
+                                            </Button>
+                                            <span className="px-3 py-1">
+                                                Trang {faqPagination.page + 1} / {faqPagination.totalPages || 1}
+                                            </span>
+                                            <Button
+                                                variant="outline-secondary"
+                                                size="sm"
+                                                disabled={faqPagination.page >= faqPagination.totalPages - 1}
+                                                onClick={() => setFaqPagination(prev => ({ ...prev, page: prev.page + 1 }))}
+                                            >
+                                                Sau
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </Card.Footer>
+                            )}
                         </Card>
                     </Tab.Pane>
                 </Tab.Content>
@@ -721,23 +891,90 @@ const ContentManagement = () => {
                 </Modal.Footer>
             </Modal>
 
-            {/* Create FAQ Modal */}
-            <Modal show={showFAQModal} onHide={() => setShowFAQModal(false)} size="lg">
+            {/* FAQ Detail Modal */}
+            <Modal show={showFAQModal} onHide={() => { setShowFAQModal(false); setSelectedFaq(null); }} size="lg">
                 <Modal.Header closeButton>
-                    <Modal.Title>Tạo FAQ mới</Modal.Title>
+                    <Modal.Title>Chi tiết FAQ</Modal.Title>
                 </Modal.Header>
                 <Modal.Body>
-                    <Alert variant="info">
-                        <strong>Lưu ý:</strong> Chức năng quản lý FAQ sẽ được phát triển trong phiên bản tiếp theo.
-                    </Alert>
-                    <p className="text-muted">
-                        Hiện tại trang này chỉ tập trung vào quản lý bài viết blog. Chức năng FAQ sẽ được bổ sung sau.
-                    </p>
+                    {selectedFaq ? (
+                        <div>
+                            <Row className="mb-3">
+                                <Col>
+                                    <h5>{selectedFaq.question}</h5>
+                                    <div className="d-flex gap-3 text-muted mb-3">
+                                        <span>
+                                            <FaClock className="me-1" />
+                                            {selectedFaq.createdAt ? new Date(selectedFaq.createdAt).toLocaleString('vi-VN') : 'N/A'}
+                                        </span>
+                                        <span>
+                                            <FaChartLine className="me-1" />
+                                            {(selectedFaq.viewCount || 0).toLocaleString()} lượt xem
+                                        </span>
+                                    </div>
+                                    <div className="d-flex gap-2 mb-3">
+                                        <Badge bg={selectedFaq.urgency === 'HIGH' ? 'danger' : selectedFaq.urgency === 'MEDIUM' ? 'warning' : 'info'}>
+                                            Mức độ: {selectedFaq.urgency === 'HIGH' ? 'Cao' : selectedFaq.urgency === 'MEDIUM' ? 'Trung bình' : 'Thấp'}
+                                        </Badge>
+                                        <Badge bg={selectedFaq.isPublished ? 'success' : 'secondary'}>
+                                            {selectedFaq.isPublished ? 'Đã xuất bản' : 'Chưa xuất bản'}
+                                        </Badge>
+                                    </div>
+                                </Col>
+                            </Row>
+
+                            {selectedFaq.answer ? (
+                                <div className="faq-answer">
+                                    <h6>Câu trả lời:</h6>
+                                    <div className="p-3 bg-light rounded">
+                                        {selectedFaq.answer}
+                                    </div>
+                                </div>
+                            ) : (
+                                <Alert variant="warning">
+                                    <strong>Chưa có câu trả lời</strong>
+                                    <p className="mb-0 mt-2">FAQ này chưa được trả lời. Vui lòng thêm câu trả lời.</p>
+                                </Alert>
+                            )}
+                        </div>
+                    ) : (
+                        <Alert variant="info">
+                            <strong>Lưu ý:</strong> Chức năng quản lý FAQ đang trong quá trình phát triển.
+                        </Alert>
+                    )}
                 </Modal.Body>
                 <Modal.Footer>
-                    <Button variant="secondary" onClick={() => setShowFAQModal(false)}>
+                    <Button variant="secondary" onClick={() => { setShowFAQModal(false); setSelectedFaq(null); }}>
                         Đóng
                     </Button>
+                    {selectedFaq && (
+                        <>
+                            <Button 
+                                variant={selectedFaq.isPublished ? "warning" : "success"}
+                                onClick={() => {
+                                    handleTogglePublishFaq(selectedFaq.id, selectedFaq.isPublished);
+                                    setShowFAQModal(false);
+                                    setSelectedFaq(null);
+                                }}
+                            >
+                                {selectedFaq.isPublished ? (
+                                    <>
+                                        <FaEyeSlash className="me-1" />
+                                        Ẩn FAQ
+                                    </>
+                                ) : (
+                                    <>
+                                        <FaEye className="me-1" />
+                                        Xuất bản
+                                    </>
+                                )}
+                            </Button>
+                            <Button variant="primary" disabled>
+                                <FaEdit className="me-1" />
+                                Chỉnh sửa
+                            </Button>
+                        </>
+                    )}
                 </Modal.Footer>
             </Modal>
         </div>

@@ -1,129 +1,249 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Card, Row, Col, Table, Button, Badge, Form,
-    InputGroup, Modal, Nav, Tab, Alert, ProgressBar
+    InputGroup, Modal, Nav, Tab, Alert, ProgressBar, Spinner
 } from 'react-bootstrap';
 import {
     FaSearch, FaEye, FaCheck, FaTimes, FaDownload,
     FaGraduationCap, FaBriefcase, FaCertificate, FaUser
 } from 'react-icons/fa';
+import {
+    getAllMentors,
+    getMentorById,
+    approveMentor,
+    rejectMentor,
+    bulkApproveMentors,
+    bulkRejectMentors,
+    getMentorStatistics
+} from '../../services/admin/mentorManagementService';
+import { useToast } from '../../contexts/ToastContext';
 
 const MentorApproval = () => {
     const [showModal, setShowModal] = useState(false);
     const [selectedMentor, setSelectedMentor] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatus, setFilterStatus] = useState('all');
-
-    // Mock data - thay thế bằng API call thực tế
-    const mentorApplications = [
-        {
-            id: 1,
-            userId: 123,
-            fullname: 'Nguyễn Văn An',
-            email: 'nguyenvanan@email.com',
-            phone: '0901234567',
-            title: 'Senior Software Engineer',
-            highestDegree: 'MASTER',
-            linkedinUrl: 'https://linkedin.com/in/nguyenvanan',
-            intro: 'Tôi có 8 năm kinh nghiệm trong lĩnh vực phát triển phần mềm...',
-            status: 'PENDING',
-            submittedAt: '2024-01-15',
-            services: [
-                { name: 'Tư vấn career path', description: 'Hỗ trợ định hướng nghề nghiệp' },
-                { name: 'Code review', description: 'Review và cải thiện code' }
-            ],
-            educations: [
-                {
-                    schoolName: 'Đại học Bách Khoa',
-                    major: 'Khoa học máy tính',
-                    startDate: '2012-09-01',
-                    endDate: '2016-06-01',
-                    certificateImage: 'cert1.jpg'
-                }
-            ],
-            experiences: [
-                {
-                    companyName: 'FPT Software',
-                    position: 'Senior Developer',
-                    startDate: '2020-01-01',
-                    endDate: null,
-                    experienceImage: 'exp1.jpg'
-                }
-            ],
-            tests: [
-                {
-                    testName: 'AWS Certified Developer',
-                    score: '850/1000',
-                    scoreImage: 'aws_cert.jpg'
-                }
-            ]
-        },
-        {
-            id: 2,
-            userId: 456,
-            fullname: 'Trần Thị Bình',
-            email: 'tranthibinh@email.com',
-            phone: '0907654321',
-            title: 'Product Manager',
-            highestDegree: 'BACHELOR',
-            linkedinUrl: 'https://linkedin.com/in/tranthibinh',
-            intro: 'Tôi có 6 năm kinh nghiệm làm Product Manager...',
-            status: 'APPROVED',
-            submittedAt: '2024-01-10',
-            approvedAt: '2024-01-14',
-            services: [
-                { name: 'Product Strategy', description: 'Tư vấn chiến lược sản phẩm' }
-            ],
-            educations: [],
-            experiences: [],
-            tests: []
-        }
-    ];
-
-    const getStatusBadgeVariant = (status) => {
-        switch (status) {
-            case 'PENDING': return 'warning';
-            case 'APPROVED': return 'success';
-            case 'REJECTED': return 'danger';
-            default: return 'secondary';
-        }
-    };
-
-    const getStatusText = (status) => {
-        switch (status) {
-            case 'PENDING': return 'Chờ duyệt';
-            case 'APPROVED': return 'Đã duyệt';
-            case 'REJECTED': return 'Từ chối';
-            default: return status;
-        }
-    };
-
-    const handleViewMentor = (mentor) => {
-        setSelectedMentor(mentor);
-        setShowModal(true);
-    };
-
-    const calculateCompleteness = (mentor) => {
-        let score = 0;
-        if (mentor.fullname) score += 10;
-        if (mentor.email) score += 10;
-        if (mentor.phone) score += 10;
-        if (mentor.title) score += 15;
-        if (mentor.intro) score += 15;
-        if (mentor.linkedinUrl) score += 10;
-        if (mentor.services.length > 0) score += 20;
-        if (mentor.educations.length > 0) score += 10;
-
-        return score;
-    };
-
-    const filteredMentors = mentorApplications.filter(mentor => {
-        const matchesSearch = mentor.fullname.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            mentor.email.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesStatus = filterStatus === 'all' || mentor.status === filterStatus;
-
-        return matchesSearch && matchesStatus;
+    const [mentorApplications, setMentorApplications] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [selectedMentorIds, setSelectedMentorIds] = useState([]);
+    const [stats, setStats] = useState({
+        pending: 0,
+        approved: 0,
+        rejected: 0,
+        total: 0
     });
+    const [pagination, setPagination] = useState({
+        page: 1,
+        size: 10,
+        totalPages: 0,
+        totalElements: 0
+    });
+    const { showToast } = useToast();
+
+    // Fetch mentors when component mounts or filters change
+    useEffect(() => {
+        fetchMentors();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [filterStatus, pagination.page]);
+
+    // Fetch statistics
+    useEffect(() => {
+        fetchStatistics();
+    }, []);
+
+    const fetchMentors = async () => {
+        try {
+            setLoading(true);
+            const params = {
+                keySearch: searchTerm || '',
+                status: filterStatus !== 'all' ? getStatusIdFromFilter(filterStatus) : null,
+                page: pagination.page,
+                size: pagination.size
+            };
+
+            const response = await getAllMentors(params);
+            
+            if (response.respCode === "0" || response.success) {
+                const data = response.data;
+                const mentorsList = data.content || [];
+                setMentorApplications(mentorsList);
+                
+                setPagination(prev => ({
+                    ...prev,
+                    page: data.currentPage || 1,
+                    totalPages: data.totalPages || 0,
+                    totalElements: data.totalElements || 0
+                }));
+            } else {
+                showToast(response.description || 'Không thể tải danh sách mentor', 'error');
+            }
+        } catch (error) {
+            console.error('Error fetching mentors:', error);
+            showToast('Không thể tải danh sách mentor', 'error');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchStatistics = async () => {
+        try {
+            const response = await getMentorStatistics();
+            
+            if (response.respCode === "0" || response.success) {
+                setStats(response.data);
+            }
+        } catch (error) {
+            console.error('Error fetching statistics:', error);
+        }
+    };
+
+    const getStatusIdFromFilter = (filterValue) => {
+        // Map filter values to status IDs (adjust based on your backend status table)
+        const statusMap = {
+            'PENDING': 1,
+            'APPROVED': 2,
+            'REJECTED': 3
+        };
+        return statusMap[filterValue] || null;
+    };
+
+    const handleSearch = () => {
+        setPagination(prev => ({ ...prev, page: 1 }));
+        fetchMentors();
+    };
+
+    const getStatusBadgeVariant = (statusName) => {
+        if (!statusName) return 'secondary';
+        const status = statusName.toUpperCase();
+        if (status.includes('PENDING') || status.includes('CHỜ')) return 'warning';
+        if (status.includes('ACTIVE') || status.includes('APPROVED') || status.includes('HOẠT ĐỘNG')) return 'success';
+        if (status.includes('INACTIVE') || status.includes('REJECTED') || status.includes('TỪ CHỐI')) return 'danger';
+        return 'secondary';
+    };
+
+    const getStatusText = (statusName) => {
+        if (!statusName) return 'Không xác định';
+        return statusName;
+    };
+
+    const handleViewMentor = async (mentor) => {
+        try {
+            setLoading(true);
+            const response = await getMentorById(mentor.id);
+            
+            if (response.respCode === "0" || response.success) {
+                setSelectedMentor(response.data);
+                setShowModal(true);
+            } else {
+                showToast('Không thể tải thông tin mentor', 'error');
+            }
+        } catch (error) {
+            console.error('Error fetching mentor details:', error);
+            showToast('Không thể tải thông tin mentor', 'error');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleApproveMentor = async (mentorId) => {
+        try {
+            const response = await approveMentor(mentorId);
+            
+            if (response.respCode === "0" || response.success) {
+                showToast('Đã duyệt mentor thành công', 'success');
+                fetchMentors();
+                fetchStatistics();
+                setShowModal(false);
+            } else {
+                showToast(response.description || 'Không thể duyệt mentor', 'error');
+            }
+        } catch (error) {
+            console.error('Error approving mentor:', error);
+            showToast('Không thể duyệt mentor', 'error');
+        }
+    };
+
+    const handleRejectMentor = async (mentorId) => {
+        try {
+            const response = await rejectMentor(mentorId);
+            
+            if (response.respCode === "0" || response.success) {
+                showToast('Đã từ chối mentor', 'success');
+                fetchMentors();
+                fetchStatistics();
+                setShowModal(false);
+            } else {
+                showToast(response.description || 'Không thể từ chối mentor', 'error');
+            }
+        } catch (error) {
+            console.error('Error rejecting mentor:', error);
+            showToast('Không thể từ chối mentor', 'error');
+        }
+    };
+
+    const handleBulkApprove = async () => {
+        if (selectedMentorIds.length === 0) {
+            showToast('Vui lòng chọn ít nhất một mentor', 'warning');
+            return;
+        }
+
+        try {
+            const response = await bulkApproveMentors(selectedMentorIds);
+            
+            if (response.respCode === "0" || response.success) {
+                showToast(`Đã duyệt ${selectedMentorIds.length} mentor thành công`, 'success');
+                setSelectedMentorIds([]);
+                fetchMentors();
+                fetchStatistics();
+            } else {
+                showToast(response.description || 'Không thể duyệt mentor', 'error');
+            }
+        } catch (error) {
+            console.error('Error bulk approving mentors:', error);
+            showToast('Không thể duyệt mentor', 'error');
+        }
+    };
+
+    const handleBulkReject = async () => {
+        if (selectedMentorIds.length === 0) {
+            showToast('Vui lòng chọn ít nhất một mentor', 'warning');
+            return;
+        }
+
+        try {
+            const response = await bulkRejectMentors(selectedMentorIds);
+            
+            if (response.respCode === "0" || response.success) {
+                showToast(`Đã từ chối ${selectedMentorIds.length} mentor`, 'success');
+                setSelectedMentorIds([]);
+                fetchMentors();
+                fetchStatistics();
+            } else {
+                showToast(response.description || 'Không thể từ chối mentor', 'error');
+            }
+        } catch (error) {
+            console.error('Error bulk rejecting mentors:', error);
+            showToast('Không thể từ chối mentor', 'error');
+        }
+    };
+
+    const handleSelectMentor = (mentorId) => {
+        setSelectedMentorIds(prev => {
+            if (prev.includes(mentorId)) {
+                return prev.filter(id => id !== mentorId);
+            } else {
+                return [...prev, mentorId];
+            }
+        });
+    };
+
+    const handleSelectAll = () => {
+        if (selectedMentorIds.length === mentorApplications.length) {
+            setSelectedMentorIds([]);
+        } else {
+            setSelectedMentorIds(mentorApplications.map(m => m.id));
+        }
+    };
 
     return (
         <div className="mentor-approval">
@@ -153,7 +273,7 @@ const MentorApproval = () => {
                             <div className="d-flex justify-content-between">
                                 <div>
                                     <h6 className="text-muted mb-1">Chờ duyệt</h6>
-                                    <h3 className="mb-0 text-warning">23</h3>
+                                    <h3 className="mb-0 text-warning">{stats.pending || 0}</h3>
                                 </div>
                                 <div className="stats-icon bg-warning">
                                     <FaUser />
@@ -168,7 +288,7 @@ const MentorApproval = () => {
                             <div className="d-flex justify-content-between">
                                 <div>
                                     <h6 className="text-muted mb-1">Đã duyệt</h6>
-                                    <h3 className="mb-0 text-success">156</h3>
+                                    <h3 className="mb-0 text-success">{stats.approved || 0}</h3>
                                 </div>
                                 <div className="stats-icon bg-success">
                                     <FaCheck />
@@ -183,7 +303,7 @@ const MentorApproval = () => {
                             <div className="d-flex justify-content-between">
                                 <div>
                                     <h6 className="text-muted mb-1">Từ chối</h6>
-                                    <h3 className="mb-0 text-danger">12</h3>
+                                    <h3 className="mb-0 text-danger">{stats.rejected || 0}</h3>
                                 </div>
                                 <div className="stats-icon bg-danger">
                                     <FaTimes />
@@ -198,7 +318,7 @@ const MentorApproval = () => {
                             <div className="d-flex justify-content-between">
                                 <div>
                                     <h6 className="text-muted mb-1">Tổng đơn</h6>
-                                    <h3 className="mb-0 text-info">191</h3>
+                                    <h3 className="mb-0 text-info">{stats.total || 0}</h3>
                                 </div>
                                 <div className="stats-icon bg-info">
                                     <FaGraduationCap />
@@ -240,8 +360,13 @@ const MentorApproval = () => {
                             </Form.Select>
                         </Col>
                         <Col md={2}>
-                            <Button variant="outline-secondary" className="w-100">
-                                Lọc
+                            <Button 
+                                variant="outline-secondary" 
+                                className="w-100"
+                                onClick={handleSearch}
+                                disabled={loading}
+                            >
+                                {loading ? <Spinner animation="border" size="sm" /> : 'Lọc'}
                             </Button>
                         </Col>
                     </Row>
@@ -252,101 +377,188 @@ const MentorApproval = () => {
             <Card>
                 <Card.Header className="bg-light">
                     <div className="d-flex justify-content-between align-items-center">
-                        <h6 className="mb-0">Đơn đăng ký mentor ({filteredMentors.length})</h6>
+                        <h6 className="mb-0">Đơn đăng ký mentor ({pagination.totalElements || 0})</h6>
                         <div className="d-flex gap-2">
-                            <Button variant="outline-primary" size="sm">Chọn tất cả</Button>
-                            <Button variant="outline-success" size="sm">Duyệt đã chọn</Button>
+                            <Button 
+                                variant="outline-primary" 
+                                size="sm"
+                                onClick={handleSelectAll}
+                                disabled={mentorApplications.length === 0}
+                            >
+                                {selectedMentorIds.length === mentorApplications.length ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
+                            </Button>
+                            <Button 
+                                variant="outline-success" 
+                                size="sm"
+                                onClick={handleBulkApprove}
+                                disabled={selectedMentorIds.length === 0}
+                            >
+                                Duyệt đã chọn ({selectedMentorIds.length})
+                            </Button>
+                            <Button 
+                                variant="outline-danger" 
+                                size="sm"
+                                onClick={handleBulkReject}
+                                disabled={selectedMentorIds.length === 0}
+                            >
+                                Từ chối đã chọn ({selectedMentorIds.length})
+                            </Button>
                         </div>
                     </div>
                 </Card.Header>
                 <Card.Body className="p-0">
-                    <Table responsive hover className="mb-0">
-                        <thead className="bg-light">
-                            <tr>
-                                <th width="5%">
-                                    <Form.Check type="checkbox" />
-                                </th>
-                                <th width="25%">Thông tin cá nhân</th>
-                                <th width="20%">Chuyên môn</th>
-                                <th width="15%">Độ hoàn thiện</th>
-                                <th width="12%">Trạng thái</th>
-                                <th width="13%">Ngày nộp</th>
-                                <th width="10%">Thao tác</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filteredMentors.map((mentor) => {
-                                const completeness = calculateCompleteness(mentor);
-                                return (
-                                    <tr key={mentor.id}>
-                                        <td>
-                                            <Form.Check type="checkbox" />
-                                        </td>
-                                        <td>
-                                            <div>
-                                                <div className="fw-medium">{mentor.fullname}</div>
-                                                <small className="text-muted">{mentor.email}</small>
-                                                <br />
-                                                <small className="text-muted">{mentor.phone}</small>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div>
-                                                <div className="fw-medium">{mentor.title}</div>
-                                                <Badge bg="secondary" className="me-1">
-                                                    {mentor.highestDegree}
-                                                </Badge>
-                                                <small className="text-muted d-block">
-                                                    {mentor.services.length} dịch vụ
-                                                </small>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div>
-                                                <ProgressBar
-                                                    now={completeness}
-                                                    variant={completeness > 80 ? 'success' : completeness > 60 ? 'warning' : 'danger'}
-                                                    className="mb-1"
-                                                    style={{ height: '6px' }}
+                    {loading ? (
+                        <div className="text-center py-5">
+                            <Spinner animation="border" variant="primary" />
+                            <p className="mt-2 text-muted">Đang tải dữ liệu...</p>
+                        </div>
+                    ) : mentorApplications.length === 0 ? (
+                        <div className="text-center py-5">
+                            <p className="text-muted">Không có dữ liệu</p>
+                        </div>
+                    ) : (
+                        <Table responsive hover className="mb-0">
+                            <thead className="bg-light">
+                                <tr>
+                                    <th width="5%">
+                                        <Form.Check 
+                                            type="checkbox"
+                                            checked={selectedMentorIds.length === mentorApplications.length && mentorApplications.length > 0}
+                                            onChange={handleSelectAll}
+                                        />
+                                    </th>
+                                    <th width="25%">Thông tin cá nhân</th>
+                                    <th width="20%">Chuyên môn</th>
+                                    <th width="15%">Độ hoàn thiện</th>
+                                    <th width="12%">Trạng thái</th>
+                                    <th width="13%">Ngày nộp</th>
+                                    <th width="10%">Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {mentorApplications.map((mentor) => {
+                                    const completeness = mentor.completionPercent || 0;
+                                    const isPending = mentor.statusName && mentor.statusName.toUpperCase().includes('PENDING');
+                                    return (
+                                        <tr key={mentor.id}>
+                                            <td>
+                                                <Form.Check 
+                                                    type="checkbox"
+                                                    checked={selectedMentorIds.includes(mentor.id)}
+                                                    onChange={() => handleSelectMentor(mentor.id)}
                                                 />
-                                                <small className="text-muted">{completeness}%</small>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <Badge bg={getStatusBadgeVariant(mentor.status)}>
-                                                {getStatusText(mentor.status)}
-                                            </Badge>
-                                        </td>
-                                        <td>
-                                            <span className="text-muted">{mentor.submittedAt}</span>
-                                        </td>
-                                        <td>
-                                            <div className="d-flex gap-1">
-                                                <Button
-                                                    variant="outline-info"
-                                                    size="sm"
-                                                    onClick={() => handleViewMentor(mentor)}
-                                                >
-                                                    <FaEye />
-                                                </Button>
-                                                {mentor.status === 'PENDING' && (
-                                                    <>
-                                                        <Button variant="outline-success" size="sm">
-                                                            <FaCheck />
-                                                        </Button>
-                                                        <Button variant="outline-danger" size="sm">
-                                                            <FaTimes />
-                                                        </Button>
-                                                    </>
-                                                )}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </Table>
+                                            </td>
+                                            <td>
+                                                <div>
+                                                    <div className="fw-medium">{mentor.fullname || 'N/A'}</div>
+                                                    <small className="text-muted">{mentor.email || 'N/A'}</small>
+                                                    <br />
+                                                    <small className="text-muted">{mentor.phone || 'N/A'}</small>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div>
+                                                    <div className="fw-medium">{mentor.title || 'N/A'}</div>
+                                                    {mentor.highestDegreeName && (
+                                                        <Badge bg="secondary" className="me-1">
+                                                            {mentor.highestDegreeName}
+                                                        </Badge>
+                                                    )}
+                                                    <small className="text-muted d-block">
+                                                        {mentor.serviceCount || 0} dịch vụ
+                                                    </small>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div>
+                                                    <ProgressBar
+                                                        now={completeness}
+                                                        variant={completeness > 80 ? 'success' : completeness > 60 ? 'warning' : 'danger'}
+                                                        className="mb-1"
+                                                        style={{ height: '6px' }}
+                                                    />
+                                                    <small className="text-muted">{completeness}%</small>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <Badge bg={getStatusBadgeVariant(mentor.statusName)}>
+                                                    {getStatusText(mentor.statusName)}
+                                                </Badge>
+                                            </td>
+                                            <td>
+                                                <span className="text-muted">
+                                                    {mentor.createdAt ? new Date(mentor.createdAt).toLocaleDateString('vi-VN') : 'N/A'}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div className="d-flex gap-1">
+                                                    <Button
+                                                        variant="outline-info"
+                                                        size="sm"
+                                                        onClick={() => handleViewMentor(mentor)}
+                                                        title="Xem chi tiết"
+                                                    >
+                                                        <FaEye />
+                                                    </Button>
+                                                    {isPending && (
+                                                        <>
+                                                            <Button 
+                                                                variant="outline-success" 
+                                                                size="sm"
+                                                                onClick={() => handleApproveMentor(mentor.id)}
+                                                                title="Duyệt"
+                                                            >
+                                                                <FaCheck />
+                                                            </Button>
+                                                            <Button 
+                                                                variant="outline-danger" 
+                                                                size="sm"
+                                                                onClick={() => handleRejectMentor(mentor.id)}
+                                                                title="Từ chối"
+                                                            >
+                                                                <FaTimes />
+                                                            </Button>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </Table>
+                    )}
                 </Card.Body>
+                {!loading && pagination.totalPages > 1 && (
+                    <Card.Footer>
+                        <div className="d-flex justify-content-between align-items-center">
+                            <div className="text-muted">
+                                Hiển thị {mentorApplications.length} / {pagination.totalElements} kết quả
+                            </div>
+                            <div className="d-flex gap-2">
+                                <Button
+                                    variant="outline-secondary"
+                                    size="sm"
+                                    disabled={pagination.page <= 1}
+                                    onClick={() => setPagination(prev => ({ ...prev, page: prev.page - 1 }))}
+                                >
+                                    Trước
+                                </Button>
+                                <span className="align-self-center">
+                                    Trang {pagination.page} / {pagination.totalPages}
+                                </span>
+                                <Button
+                                    variant="outline-secondary"
+                                    size="sm"
+                                    disabled={pagination.page >= pagination.totalPages}
+                                    onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
+                                >
+                                    Sau
+                                </Button>
+                            </div>
+                        </div>
+                    </Card.Footer>
+                )}
             </Card>
 
             {/* Mentor Detail Modal */}
@@ -379,151 +591,82 @@ const MentorApproval = () => {
                                 <Tab.Pane eventKey="personal">
                                     <Row>
                                         <Col md={6}>
-                                            <p><strong>Họ tên:</strong> {selectedMentor.fullname}</p>
-                                            <p><strong>Email:</strong> {selectedMentor.email}</p>
-                                            <p><strong>Điện thoại:</strong> {selectedMentor.phone}</p>
-                                            <p><strong>Chức danh:</strong> {selectedMentor.title}</p>
+                                            <p><strong>Họ tên:</strong> {selectedMentor.fullname || 'N/A'}</p>
+                                            <p><strong>Email:</strong> {selectedMentor.email || 'N/A'}</p>
+                                            <p><strong>Điện thoại:</strong> {selectedMentor.phone || 'N/A'}</p>
+                                            <p><strong>Chức danh:</strong> {selectedMentor.title || 'N/A'}</p>
                                         </Col>
                                         <Col md={6}>
-                                            <p><strong>Bằng cấp cao nhất:</strong> {selectedMentor.highestDegree}</p>
-                                            <p><strong>LinkedIn:</strong>
-                                                <a href={selectedMentor.linkedinUrl} target="_blank" rel="noopener noreferrer" className="ms-2">
-                                                    {selectedMentor.linkedinUrl}
-                                                </a>
-                                            </p>
+                                            <p><strong>Bằng cấp cao nhất:</strong> {selectedMentor.highestDegreeName || 'N/A'}</p>
+                                            {selectedMentor.linkedinUrl && (
+                                                <p><strong>LinkedIn:</strong>
+                                                    <a href={selectedMentor.linkedinUrl} target="_blank" rel="noopener noreferrer" className="ms-2">
+                                                        {selectedMentor.linkedinUrl}
+                                                    </a>
+                                                </p>
+                                            )}
                                             <p><strong>Trạng thái:</strong>
-                                                <Badge bg={getStatusBadgeVariant(selectedMentor.status)} className="ms-2">
-                                                    {getStatusText(selectedMentor.status)}
+                                                <Badge bg={getStatusBadgeVariant(selectedMentor.statusName)} className="ms-2">
+                                                    {getStatusText(selectedMentor.statusName)}
                                                 </Badge>
                                             </p>
+                                            <p><strong>Độ hoàn thiện:</strong> {selectedMentor.completionPercent || 0}%</p>
                                         </Col>
                                     </Row>
-                                    <div>
-                                        <strong>Giới thiệu bản thân:</strong>
-                                        <div className="p-3 bg-light rounded mt-2">
-                                            {selectedMentor.intro}
+                                    {selectedMentor.intro && (
+                                        <div>
+                                            <strong>Giới thiệu bản thân:</strong>
+                                            <div className="p-3 bg-light rounded mt-2">
+                                                {selectedMentor.intro}
+                                            </div>
                                         </div>
-                                    </div>
+                                    )}
                                 </Tab.Pane>
 
                                 <Tab.Pane eventKey="services">
-                                    {selectedMentor.services.length > 0 ? (
-                                        <Row>
-                                            {selectedMentor.services.map((service, index) => (
-                                                <Col md={6} key={index} className="mb-3">
-                                                    <Card>
-                                                        <Card.Body>
-                                                            <h6>{service.name}</h6>
-                                                            <p className="text-muted mb-0">{service.description}</p>
-                                                        </Card.Body>
-                                                    </Card>
-                                                </Col>
-                                            ))}
-                                        </Row>
-                                    ) : (
-                                        <Alert variant="info">Chưa có thông tin dịch vụ</Alert>
-                                    )}
+                                    <Alert variant="info">
+                                        <strong>Số lượng dịch vụ:</strong> {selectedMentor.serviceCount || 0}
+                                    </Alert>
+                                    <Alert variant="secondary">
+                                        Chi tiết dịch vụ cần được tải từ API riêng (đang phát triển)
+                                    </Alert>
                                 </Tab.Pane>
 
                                 <Tab.Pane eventKey="education">
-                                    {selectedMentor.educations.length > 0 ? (
-                                        <div>
-                                            {selectedMentor.educations.map((edu, index) => (
-                                                <Card key={index} className="mb-3">
-                                                    <Card.Body>
-                                                        <Row>
-                                                            <Col>
-                                                                <h6><FaGraduationCap className="me-2" />{edu.schoolName}</h6>
-                                                                <p><strong>Chuyên ngành:</strong> {edu.major}</p>
-                                                                <p><strong>Thời gian:</strong> {edu.startDate} - {edu.endDate || 'Hiện tại'}</p>
-                                                            </Col>
-                                                            {edu.certificateImage && (
-                                                                <Col md={3}>
-                                                                    <Button variant="outline-primary" size="sm">
-                                                                        <FaDownload className="me-1" />
-                                                                        Xem bằng cấp
-                                                                    </Button>
-                                                                </Col>
-                                                            )}
-                                                        </Row>
-                                                    </Card.Body>
-                                                </Card>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <Alert variant="info">Chưa có thông tin học vấn</Alert>
-                                    )}
+                                    <Alert variant="secondary">
+                                        Thông tin học vấn cần được tải từ API riêng (đang phát triển)
+                                    </Alert>
                                 </Tab.Pane>
 
                                 <Tab.Pane eventKey="experience">
-                                    {selectedMentor.experiences.length > 0 ? (
-                                        <div>
-                                            {selectedMentor.experiences.map((exp, index) => (
-                                                <Card key={index} className="mb-3">
-                                                    <Card.Body>
-                                                        <Row>
-                                                            <Col>
-                                                                <h6><FaBriefcase className="me-2" />{exp.companyName}</h6>
-                                                                <p><strong>Vị trí:</strong> {exp.position}</p>
-                                                                <p><strong>Thời gian:</strong> {exp.startDate} - {exp.endDate || 'Hiện tại'}</p>
-                                                            </Col>
-                                                            {exp.experienceImage && (
-                                                                <Col md={3}>
-                                                                    <Button variant="outline-primary" size="sm">
-                                                                        <FaDownload className="me-1" />
-                                                                        Xem minh chứng
-                                                                    </Button>
-                                                                </Col>
-                                                            )}
-                                                        </Row>
-                                                    </Card.Body>
-                                                </Card>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <Alert variant="info">Chưa có thông tin kinh nghiệm</Alert>
-                                    )}
+                                    <Alert variant="secondary">
+                                        Thông tin kinh nghiệm cần được tải từ API riêng (đang phát triển)
+                                    </Alert>
                                 </Tab.Pane>
 
                                 <Tab.Pane eventKey="tests">
-                                    {selectedMentor.tests.length > 0 ? (
-                                        <div>
-                                            {selectedMentor.tests.map((test, index) => (
-                                                <Card key={index} className="mb-3">
-                                                    <Card.Body>
-                                                        <Row>
-                                                            <Col>
-                                                                <h6><FaCertificate className="me-2" />{test.testName}</h6>
-                                                                <p><strong>Điểm số:</strong> {test.score}</p>
-                                                            </Col>
-                                                            {test.scoreImage && (
-                                                                <Col md={3}>
-                                                                    <Button variant="outline-primary" size="sm">
-                                                                        <FaDownload className="me-1" />
-                                                                        Xem chứng chỉ
-                                                                    </Button>
-                                                                </Col>
-                                                            )}
-                                                        </Row>
-                                                    </Card.Body>
-                                                </Card>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <Alert variant="info">Chưa có thông tin chứng chỉ</Alert>
-                                    )}
+                                    <Alert variant="secondary">
+                                        Thông tin chứng chỉ cần được tải từ API riêng (đang phát triển)
+                                    </Alert>
                                 </Tab.Pane>
                             </Tab.Content>
 
-                            {selectedMentor.status === 'PENDING' && (
+                            {selectedMentor.statusName && selectedMentor.statusName.toUpperCase().includes('PENDING') && (
                                 <Alert variant="warning" className="mt-3">
                                     <strong>Đơn đăng ký đang chờ duyệt</strong>
                                     <div className="mt-2">
-                                        <Button variant="success" className="me-2">
+                                        <Button 
+                                            variant="success" 
+                                            className="me-2"
+                                            onClick={() => handleApproveMentor(selectedMentor.id)}
+                                        >
                                             <FaCheck className="me-1" />
                                             Phê duyệt
                                         </Button>
-                                        <Button variant="danger">
+                                        <Button 
+                                            variant="danger"
+                                            onClick={() => handleRejectMentor(selectedMentor.id)}
+                                        >
                                             <FaTimes className="me-1" />
                                             Từ chối
                                         </Button>
