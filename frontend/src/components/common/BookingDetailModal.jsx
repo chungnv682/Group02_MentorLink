@@ -222,39 +222,6 @@ const BookingDetailModal = ({ show, booking, onHide, onBookingCancelled }) => {
                         </Col>
                     </Row>
 
-                    {/* Service and Link Meeting */}
-                    <Row className="mb-4">
-                        <Col md={6}>
-                            <h6 className="text-muted mb-2">Loại dịch vụ</h6>
-                            <p className="fw-bold">{
-                                (function mapService(s) {
-                                    if (!s) return '(Không xác định)';
-                                    switch (s) {
-                                        case 'SCHOLARSHIP': return 'Học bổng';
-                                        case 'JOBS': return 'Việc làm';
-                                        case 'SOFT_SKILLS': return 'Kỹ năng mềm';
-                                        case 'PROCEDURES': return 'Thủ tục';
-                                        case 'ORIENTATION': return 'Định hướng';
-                                        case 'OTHERS': return 'Khác';
-                                        default: return s;
-                                    }
-                                })(booking.service)
-                            }</p>
-                        </Col>
-                        <Col md={6}>
-                            <h6 className="text-muted mb-2">Link cuộc họp</h6>
-                            <p className="fw-bold mb-0">
-                                {booking.linkMeeting ? (
-                                    <a href={booking.linkMeeting} target="_blank" rel="noreferrer">
-                                        {booking.linkMeeting}
-                                    </a>
-                                ) : (
-                                    '(Chưa có)'
-                                )}
-                            </p>
-                        </Col>
-                    </Row>
-
                     {/* Schedule Info */}
                     {booking.schedule && (
                         <Row className="mb-4">

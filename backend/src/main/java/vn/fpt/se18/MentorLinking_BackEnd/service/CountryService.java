@@ -31,4 +31,10 @@ public interface CountryService {
     
     // Get popular countries (most mentors)
     List<CountryResponse> getPopularCountries(int limit);
+
+    // Get countries by continent name
+    List<CountryResponse> getCountriesByContinent(String continentName);
+
+    // Get approved countries by continent
+    List<CountryResponse> getApprovedCountriesByContinent(String continentName);
 }

@@ -5,6 +5,12 @@
     transition: background-color 0.3s ease;
 }
 
+/* Ensure header and dropdowns appear above floating widgets (chat/snippet tools) */
+.main-header {
+    position: relative;
+    z-index: 2147483646; /* one less than dropdown to keep dropdown on top */
+}
+
 .brand-logo {
     font-size: 28px;
     font-weight: 700;
@@ -46,6 +52,8 @@
     border: 1px solid var(--border-color);
     padding: 10px;
     background-color: var(--card-background);
+    z-index: 2147483647 !important; /* bring to very front */
+    position: absolute !important;
 }
 
 .account-dropdown .dropdown-item {
