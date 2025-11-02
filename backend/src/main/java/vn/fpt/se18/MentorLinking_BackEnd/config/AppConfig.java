@@ -53,7 +53,7 @@ public class AppConfig {
                                 "/blogs", "/blogs/**",
                                 "/mentor-policies/**", "/customer-policies/**", "/banners/**", "/blogs/**",
                                 "/mentor-countries/**", "/faqs/**", "/schedules/**",
-                                "/countries", "/api/countries/popular", "/api/countries/search")
+                                "/countries/**", "/api/countries/popular", "/api/countries/search")
                         .permitAll()
                         .requestMatchers("/auth/**", "/profile/**", "/bookings/**", "/payments/**", "/comments/**",
                                 "/ratings/**", "/chat/**", "/recommendations/**","/chatbot/**")
