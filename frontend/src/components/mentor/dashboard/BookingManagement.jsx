@@ -268,7 +268,7 @@ const BookingManagement = () => {
                                             <Button
                                                 variant="outline-danger"
                                                 size="sm"
-                                                onClick={() => handleBookingAction(booking.id, 'CANCELED')}
+                                                onClick={() => handleBookingAction(booking.id, 'CANCELLED')}
                                             >
                                                 <i className="bi bi-x-lg"></i>
                                             </Button>
