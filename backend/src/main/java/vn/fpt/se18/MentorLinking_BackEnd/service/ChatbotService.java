@@ -99,26 +99,38 @@ public class ChatbotService {
      */
     private String generateDbBasedResponse(String userMessage) {
         if (userMessage == null || userMessage.isBlank()) {
-            return "Xin chào! Bạn có thể hỏi về mentor, cách đặt lịch, hoặc chính sách. Hãy mô tả câu hỏi rõ hơn.";
+            return "Xin chào! Tôi là trợ lý của MentorLink. Bạn có thể hỏi về mentor, đặt lịch, thanh toán, chính sách hoặc bất kỳ điều gì về nền tảng. Hãy mô tả câu hỏi của bạn!";
         }
 
         // Tokenize user message
         Set<String> userTokens = tokenize(userMessage);
-
-        // Detect intent words
         String userLower = userMessage.toLowerCase();
-        boolean mentionsMentor = userLower.contains("mentor") || userLower.contains("cố vấn") || userLower.contains("hỗ trợ") || userLower.contains("tìm mentor") || userLower.contains("tìm cố vấn");
 
-        // If the user is explicitly asking for mentors, handle that first to avoid blog/policy false positives
-        if (mentionsMentor) {
+        // Enhanced FAQ pattern matching with 10 categories - highest priority
+        String structuredResponse = handleStructuredFAQ(userMessage, userLower, userTokens);
+        if (structuredResponse != null) {
+            return structuredResponse;
+        }
+
+        // Handle specific mentor search requests
+        boolean mentionsMentor = userLower.contains("mentor") || userLower.contains("cố vấn") || 
+                                userLower.contains("tìm mentor") || userLower.contains("tìm cố vấn") ||
+                                userLower.contains("gợi ý mentor") || userLower.contains("mentor nào");
+
+        if (mentionsMentor && !userLower.contains("blog") && !userLower.contains("bài viết")) {
             List<MentorRecommendationDTO> mentorResults = extractAndRecommendMentorsFromDbWithScoring(userMessage, userTokens);
             if (!mentorResults.isEmpty()) {
                 StringBuilder sb = new StringBuilder();
-                sb.append("Tôi tìm thấy các mentor phù hợp:\n");
-                mentorResults.stream().limit(5).forEach(m -> sb.append("- ").append(m.getName()).append("\n"));
+                sb.append("🎯 Gợi ý mentor phù hợp với bạn:\n");
+                mentorResults.stream().limit(3).forEach(m -> {
+                    sb.append("\n👨‍🎓 ").append(m.getName())
+                      .append("\n   📚 ").append(m.getExpertise())
+                      .append("\n   ⭐ Rating: ").append(String.format("%.1f", m.getRating()))
+                      .append("/5\n");
+                });
+                sb.append("\n💡 Bạn có thể xem chi tiết và đặt lịch tại trang 'Tìm Cố vấn'!");
                 return sb.toString();
             }
-            // if no mentors found, continue to other matching strategies
         }
 
         // 1) FAQ — compute token overlap / Jaccard and pick best match
@@ -301,6 +313,182 @@ public class ChatbotService {
         Set<String> union = new HashSet<>(a);
         union.addAll(b);
         return (double) intersection.size() / (double) union.size();
+    }
+
+    /**
+     * Handle structured FAQ patterns with 10 comprehensive categories
+     */
+    private String handleStructuredFAQ(String userMessage, String userLower, Set<String> userTokens) {
+        // Special handling for frequently asked questions with improved patterns
+        
+        // Blog-related questions - handle these specifically
+        if (matchesPattern(userLower, "số câu hỏi thường xuyên", "câu hỏi thường gặp", "câu hỏi phổ biến", "hỏi thường xuyên")) {
+            return "Các câu hỏi thường gặp về MentorLink:\n• Cách tìm và chọn mentor phù hợp\n• Quy trình đặt lịch và thanh toán\n• Chính sách hoàn tiền và hủy lịch\n• Các quốc gia và chương trình du học được hỗ trợ\n• Cách trở thành mentor trên nền tảng\n\nBạn có thể hỏi cụ thể về bất kỳ chủ đề nào!";
+        }
+
+        // Booking/Schedule related
+        if (matchesPattern(userLower, "đặt lịch", "book", "hẹn", "lịch hẹn", "booking")) {
+            return "Hướng dẫn đặt lịch với mentor:\n1. Vào trang 'Tìm Cố vấn' để chọn mentor\n2. Xem hồ sơ và đánh giá của mentor\n3. Chọn thời gian phù hợp trong lịch trống\n4. Thanh toán qua VNPay/MoMo/Credit Card\n5. Nhận email xác nhận và link meeting\n\n💡 Lưu ý: Có thể hủy/đổi lịch trước 3 tiếng để được hoàn tiền 100%";
+        }
+
+        // Mentor finding
+        if (matchesPattern(userLower, "tìm mentor", "chọn mentor", "mentor phù hợp", "tìm cố vấn")) {
+            return "Cách tìm mentor phù hợp:\n• Sử dụng bộ lọc theo quốc gia (Mỹ, Hàn, Úc, Canada...)\n• Chọn theo chuyên ngành (Business, IT, Y khoa...)\n• Xem rating và review từ học viên trước\n• So sánh mức giá và kinh nghiệm\n• Đọc bio và background của mentor\n\n🔍 Tip: Nên đọc kỹ hồ sơ và đặt câu hỏi cụ thể khi booking!";
+        }
+
+        // Policy questions - Customer policies
+        if (matchesPattern(userLower, "chính sách người dùng", "chính sách khách hàng", "quy định người dùng", "điều khoản sử dụng")) {
+            if (customerPolicyRepository != null) {
+                List<vn.fpt.se18.MentorLinking_BackEnd.entity.CustomerPolicy> policies = customerPolicyRepository.findAll();
+                if (!policies.isEmpty()) {
+                    StringBuilder sb = new StringBuilder();
+                    sb.append("Chính sách dành cho người dùng MentorLink:\n");
+                    policies.stream().limit(5).forEach(p -> sb.append("• ").append(p.getTitle()).append("\n"));
+                    sb.append("\nXem chi tiết tại mục 'Chính sách' trên website.");
+                    return sb.toString();
+                }
+            }
+            return "Chính sách người dùng MentorLink bao gồm:\n• Quy định sử dụng dịch vụ\n• Chính sách bảo mật thông tin\n• Quy trình khiếu nại và hỗ trợ\n• Điều khoản thanh toán và hoàn tiền\n\nVui lòng xem chi tiết tại mục 'Chính sách' trên website.";
+        }
+
+        // Policy questions - Mentor policies  
+        if (matchesPattern(userLower, "chính sách mentor", "quy định mentor", "chính sách cố vấn")) {
+            if (mentorPolicyRepository != null) {
+                List<vn.fpt.se18.MentorLinking_BackEnd.entity.MentorPolicy> policies = mentorPolicyRepository.findAll();
+                if (!policies.isEmpty()) {
+                    StringBuilder sb = new StringBuilder();
+                    sb.append("Chính sách dành cho mentor:\n");
+                    policies.stream().limit(5).forEach(p -> sb.append("• ").append(p.getTitle()).append("\n"));
+                    sb.append("\nCác mentor cần tuân thủ nghiêm ngặt các quy định này.");
+                    return sb.toString();
+                }
+            }
+            return "Chính sách dành cho mentor:\n• Tiêu chuẩn tuyển chọn và xác minh\n• Quy định về chất lượng tư vấn\n• Chính sách hoa hồng và thanh toán\n• Quy trình xử lý khiếu nại\n• Điều khoản hợp tác\n\nXem chi tiết tại mục dành cho mentor.";
+        }
+
+        // Countries and programs
+        if (matchesPattern(userLower, "quốc gia", "nước nào", "hỗ trợ quốc gia", "mentor ở đâu", "châu á", "châu âu")) {
+            if (mentorCountryRepository != null) {
+                List<vn.fpt.se18.MentorLinking_BackEnd.entity.MentorCountry> mentorCountries = mentorCountryRepository.findAll();
+                Set<String> countries = mentorCountries.stream()
+                    .filter(mc -> mc.getCountry() != null && mc.getCountry().getName() != null)
+                    .map(mc -> mc.getCountry().getName())
+                    .collect(Collectors.toSet());
+                
+                if (!countries.isEmpty()) {
+                    StringBuilder sb = new StringBuilder();
+                    sb.append("MentorLink hiện có mentor từ các quốc gia:\n");
+                    countries.stream().limit(10).forEach(country -> sb.append("• ").append(country).append("\n"));
+                    sb.append("\n🔍 Bạn có thể lọc mentor theo quốc gia cụ thể tại trang 'Tìm Cố vấn'");
+                    return sb.toString();
+                }
+            }
+            return "MentorLink hỗ trợ mentor từ nhiều quốc gia:\n• Hoa Kỳ (USA)\n• Hàn Quốc (Korea) \n• Úc (Australia)\n• Canada\n• Nhật Bản\n• Singapore\n• Các nước Châu Âu\n\n🌍 Danh sách đang được mở rộng thường xuyên!";
+        }
+
+        // I. Platform & Concept Questions
+        if (matchesPattern(userLower, "mentorlink là gì", "nền tảng là gì", "giới thiệu mentorlink", "mentorlink hoạt động")) {
+            return "MentorLink là nền tảng kết nối bạn với các mentor - những người đã từng du học tại các quốc gia khác nhau. Chúng tôi giúp bạn tìm mentor phù hợp, đặt lịch tư vấn trực tuyến và nhận hướng dẫn cá nhân về du học, học bổng và định hướng nghề nghiệp.";
+        }
+
+        if (matchesPattern(userLower, "ai có thể tham gia", "đối tượng sử dụng", "ai dùng được mentorlink")) {
+            return "MentorLink phù hợp với:\n• Học sinh, sinh viên có ý định du học\n• Người muốn tìm hiểu về cuộc sống và học tập ở nước ngoài\n• Ai cần hỗ trợ chuẩn bị hồ sơ, học bổng\n• Người muốn được tư vấn từ những người có kinh nghiệm thực tế";
+        }
+
+        if (matchesPattern(userLower, "có phải trả phí", "miễn phí", "chi phí sử dụng")) {
+            return "Việc đăng ký và tìm kiếm mentor trên MentorLink hoàn toàn miễn phí. Bạn chỉ trả phí cho các buổi tư vấn trực tiếp với mentor theo giá mà từng mentor đặt ra.";
+        }
+
+        // II. Mentor & Services Questions
+        if (matchesPattern(userLower, "mentor được kiểm duyệt", "mentor có thật", "xác minh mentor", "mentor tin cậy")) {
+            return "Tất cả mentor trên MentorLink đều được kiểm duyệt kỹ lưỡng:\n• Xác minh danh tính và bằng cấp\n• Kiểm tra kinh nghiệm du học thực tế\n• Đánh giá hồ sơ và năng lực tư vấn\n• Theo dõi feedback từ học viên";
+        }
+
+        if (matchesPattern(userLower, "tìm mentor phù hợp", "chọn mentor", "lọc mentor")) {
+            return "Bạn có thể tìm mentor phù hợp bằng cách:\n• Lọc theo quốc gia du học (Mỹ, Hàn, Úc, Canada...)\n• Chọn theo chuyên ngành (Business, IT, Y khoa...)\n• Xem đánh giá và review từ học viên trước\n• So sánh giá và kinh nghiệm của các mentor";
+        }
+
+        if (matchesPattern(userLower, "mentor giúp gì", "dịch vụ mentor", "mentor hỗ trợ", "mentor làm gì")) {
+            return "Mentor có thể hỗ trợ bạn:\n• Tư vấn chọn trường, chọn ngành phù hợp\n• Hướng dẫn chuẩn bị hồ sơ du học\n• Viết và sửa SOP, Personal Statement\n• Luyện phỏng vấn xin học bổng/visa\n• Chia sẻ kinh nghiệm sống và học tập";
+        }
+
+        // III. Booking Questions
+        if (matchesPattern(userLower, "đặt lịch", "book lịch", "hẹn mentor", "đặt hẹn")) {
+            return "Để đặt lịch với mentor:\n1. Chọn mentor phù hợp\n2. Xem lịch trống của mentor\n3. Chọn thời gian phù hợp\n4. Thanh toán qua hệ thống\n5. Nhận email xác nhận và link meeting";
+        }
+
+        if (matchesPattern(userLower, "hủy lịch", "đổi giờ", "thay đổi lịch hẹn")) {
+            return "Bạn có thể hủy hoặc đổi lịch hẹn:\n• Hủy/đổi trước 3 tiếng: hoàn tiền 100%\n• Hủy/đổi trước 12h: hoàn tiền 50%\n• Hủy trong 12h: không hoàn tiền\n• Nếu mentor hủy: hoàn tiền 100%";
+        }
+
+        // IV. Session Questions
+        if (matchesPattern(userLower, "buổi tư vấn", "mentoring session", "buổi mentoring", "buổi hẹn")) {
+            return "Buổi mentoring diễn ra:\n• Thời gian: 45-60 phút\n• Hình thức: Video call trực tuyến\n• Chuẩn bị: Danh sách câu hỏi, hồ sơ hiện tại\n• Sau buổi: Nhận summary và tài liệu hỗ trợ";
+        }
+
+        // V. Payment Questions
+        if (matchesPattern(userLower, "thanh toán", "payment", "trả tiền", "phương thức thanh toán")) {
+            return "MentorLink hỗ trợ thanh toán qua:\n• VNPay (ATM, QR Code)\n• MoMo, ZaloPay\n• Thẻ tín dụng/ghi nợ\n• Chuyển khoản ngân hàng\nTất cả giao dịch đều được bảo mật SSL.";
+        }
+
+        if (matchesPattern(userLower, "hoàn tiền", "refund", "chính sách hoàn tiền")) {
+            return "Chính sách hoàn tiền MentorLink:\n• Hủy trước 3 tiếng: hoàn 100%\n• Mentor không xuất hiện: hoàn 100%\n• Sự cố kỹ thuật: hoàn 100%\n• Thời gian hoàn tiền: 3-7 ngày làm việc\n• Hoàn về tài khoản/ví điện tử gốc";
+        }
+
+        // VI. Notification Questions
+        if (matchesPattern(userLower, "email xác nhận", "thông báo", "notification", "nhắc lịch")) {
+            return "Hệ thống thông báo MentorLink:\n• Email xác nhận sau khi đặt lịch\n• SMS/Email nhắc trước 24h và 2h\n• Thông báo qua app (nếu có)\n• Link meeting được gửi trước 30 phút";
+        }
+
+        // VII. Account Questions
+        if (matchesPattern(userLower, "đăng ký", "tạo tài khoản", "register", "sign up")) {
+            return "Đăng ký tài khoản MentorLink:\n1. Click 'Đăng ký' trên trang chủ\n2. Nhập email và tạo mật khẩu\n3. Xác nhận qua email\n4. Hoàn thiện hồ sơ cá nhân\n5. Bắt đầu tìm mentor phù hợp!";
+        }
+
+        if (matchesPattern(userLower, "quên mật khẩu", "reset password", "khôi phục mật khẩu")) {
+            return "Để khôi phục mật khẩu:\n1. Click 'Quên mật khẩu' tại trang đăng nhập\n2. Nhập email đã đăng ký\n3. Kiểm tra email và click link reset\n4. Tạo mật khẩu mới\n5. Đăng nhập với mật khẩu mới";
+        }
+
+        if (matchesPattern(userLower, "lịch sử", "history", "đơn hàng", "booking history")) {
+            return "Xem lịch sử đặt lịch tại:\n• Trang 'Tài khoản của tôi'\n• Mục 'Lịch sử booking'\n• Bao gồm: lịch hẹn, trạng thái, mentor, thời gian\n• Có thể tải hóa đơn và đánh giá mentor";
+        }
+
+        // VIII. Country Questions
+        if (matchesPattern(userLower, "quốc gia", "mentor ở đâu", "nước nào", "châu á", "châu âu", "mỹ", "hàn", "úc", "canada")) {
+            return "MentorLink hiện có mentor từ:\n• Mỹ (USA) - nhiều nhất\n• Hàn Quốc (Korea)\n• Úc (Australia)\n• Canada\n• Nhật Bản, Singapore\n• Châu Âu (Đức, Anh, Pháp)\nBạn có thể lọc mentor theo quốc gia ở trang tìm kiếm.";
+        }
+
+        // IX. Policy & Support Questions
+        if (matchesPattern(userLower, "chính sách", "điều khoản", "bảo mật", "privacy")) {
+            return "Chính sách MentorLink:\n• Bảo mật thông tin cá nhân tuyệt đối\n• Không chia sẻ dữ liệu với bên thứ 3\n• Tuân thủ GDPR và luật bảo vệ dữ liệu\n• Xem chi tiết tại mục 'Điều khoản sử dụng'";
+        }
+
+        if (matchesPattern(userLower, "hỗ trợ", "support", "liên hệ", "khiếu nại")) {
+            return "Liên hệ hỗ trợ MentorLink:\n• Email: support@mentorlink.vn\n• Hotline: 1900-xxx-xxx\n• Live chat tại website\n• Thời gian: 8h-22h hàng ngày\n• Phản hồi trong 24h";
+        }
+
+        // X. General Questions
+        if (matchesPattern(userLower, "trở thành mentor", "đăng ký mentor", "apply mentor")) {
+            return "Để trở thành mentor trên MentorLink:\n• Có kinh nghiệm du học ít nhất 1 năm\n• Tốt nghiệp hoặc đang học tại trường uy tín\n• Gửi CV, bằng cấp, chứng minh tài chính\n• Vượt qua phỏng vấn và đào tạo\n• Bắt đầu nhận học viên sau khi được duyệt";
+        }
+
+        if (matchesPattern(userLower, "fpt", "startup", "sinh viên fpt", "trường fpt")) {
+            return "MentorLink là dự án khởi nghiệp được phát triển bởi sinh viên FPT University, với mục tiêu kết nối cộng đồng du học Việt Nam và tạo cơ hội cho các bạn trẻ tiếp cận mentor chất lượng.";
+        }
+
+        return null; // No structured match found
+    }
+
+    /**
+     * Helper method to check if user message matches any of the given patterns
+     */
+    private boolean matchesPattern(String userLower, String... patterns) {
+        for (String pattern : patterns) {
+            if (userLower.contains(pattern)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
