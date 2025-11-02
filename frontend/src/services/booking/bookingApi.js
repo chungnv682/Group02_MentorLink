@@ -1,7 +1,7 @@
 // API Booking
 import { instance } from '../../api/axios';
 
-export const createBookingAndGetPaymentUrl = async (scheduleId, description, service) => {
+export const createBookingAndGetPaymentUrl = async (scheduleId, description, service = 'OTHERS') => {
     try {
         console.log('Sending booking request:', { scheduleId, description, service });
         const response = await instance.post('/api/bookings/create-payment', {
