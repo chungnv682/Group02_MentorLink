@@ -2,37 +2,86 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
   <meta charset="UTF-8">
-  <title>Buổi học bị từ chối</title>
+  <title>Thông báo từ chối buổi học</title>
   <style>
-    body { font-family: Arial, sans-serif; background: #f7f9fc; color: #333; }
+    body {
+      font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+      background-color: #f4f6f8;
+      color: #333;
+      margin: 0;
+      padding: 0;
+    }
     .container {
       max-width: 600px;
-      margin: 30px auto;
-      background: white;
+      margin: 40px auto;
+      background-color: #ffffff;
       border-radius: 10px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-      padding: 20px 30px;
+      overflow: hidden;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      border: 1px solid #e3e6ea;
     }
     .header {
-      background: #e74c3c;
-      color: white;
-      padding: 10px 20px;
-      border-radius: 8px 8px 0 0;
+      background: linear-gradient(135deg, #e74c3c, #c0392b);
+      color: #fff;
+      padding: 20px;
       text-align: center;
     }
-    .content { padding: 20px; }
+    .header h2 {
+      margin: 0;
+      font-size: 22px;
+      letter-spacing: 0.5px;
+    }
+    .content {
+      padding: 25px 30px;
+      line-height: 1.6;
+    }
+    .content p {
+      margin: 12px 0;
+    }
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 15px 0;
+    }
+    ul li {
+      margin-bottom: 8px;
+    }
+    ul strong {
+      color: #2c3e50;
+    }
     .reason {
-      background: #fff3f3;
+      background: #fff5f5;
       border-left: 5px solid #e74c3c;
-      padding: 10px 15px;
-      border-radius: 5px;
-      color: #c0392b;
+      padding: 12px 15px;
+      border-radius: 6px;
+      margin: 20px 0;
+      color: #b63b2a;
+    }
+    .reason strong {
+      color: #a93226;
     }
     .footer {
-      font-size: 12px;
-      color: #777;
+      font-size: 13px;
+      color: #888;
       text-align: center;
-      margin-top: 20px;
+      padding: 15px;
+      border-top: 1px solid #eee;
+      background: #fafafa;
+    }
+    .cta {
+      display: inline-block;
+      margin-top: 15px;
+      background: #3498db;
+      color: #fff !important;
+      text-decoration: none;
+      padding: 10px 18px;
+      border-radius: 6px;
+      font-weight: 500;
+      font-size: 14px;
+      transition: background 0.2s ease;
+    }
+    .cta:hover {
+      background: #2d86c6;
     }
   </style>
 </head>
@@ -41,22 +90,34 @@
   <div class="header">
     <h2>Thông báo từ chối buổi học</h2>
   </div>
+
   <div class="content">
     <p>Chào <strong th:text="${studentName}">Học viên</strong>,</p>
 
-    <p>Mentor của bạn rất tiếc phải thông báo rằng buổi học của bạn đã bị <strong>từ chối</strong>.</p>
+    <p>Rất tiếc, <strong th:text="${mentorName}">Mentor của MentorLink</strong> đã từ chối buổi học của bạn.</p>
+
+    <ul>
+      <li><strong>Dịch vụ:</strong> <span th:text="${serviceName}">Tư vấn học tập</span></li>
+      <li><strong>Ngày:</strong> <span th:text="${date}">2025-11-01</span></li>
+      <li><strong>Thời gian:</strong> <span th:text="${time}">10:00 - 11:00</span></li>
+    </ul>
 
     <div class="reason">
-      <p><strong>Lý do:</strong> Mentor xin lỗi, hiện đang bận vì lý do cá nhân nên không thể tham gia buổi học này.</p>
+      <p><strong>Lý do:</strong> <span th:text="${reason}">Mentor xin lỗi, hiện đang bận vì lý do cá nhân nên không thể tham gia buổi học này.</span></p>
     </div>
 
-    <p>Bạn có thể đặt lại buổi học khác trong thời gian tới.</p>
+    <p>Bạn có thể đặt lại buổi học khác trong thời gian phù hợp.</p>
 
-    <p>Trân trọng,<br/>MentorLink Team</p>
+    <p>
+      <a class="cta" href="https://mentorlink.vn" target="_blank">Đặt buổi học mới</a>
+    </p>
+
+    <p>Trân trọng,<br/><strong>Đội ngũ MentorLink</strong></p>
   </div>
 
   <div class="footer">
-    Đây là email tự động, vui lòng không phản hồi lại.
+    Đây là email tự động, vui lòng không phản hồi lại.<br/>
+    © 2025 MentorLink. Mọi quyền được bảo lưu.
   </div>
 </div>
 </body>
