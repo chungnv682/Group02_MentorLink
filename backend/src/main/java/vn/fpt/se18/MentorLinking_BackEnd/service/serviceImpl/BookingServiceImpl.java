@@ -74,6 +74,7 @@ public class BookingServiceImpl implements BookingService {
             throw new RuntimeException("Lịch này đã được đặt bởi người khác");
         }
 
+<<<<<<< HEAD
         // Enforce booking rule: cannot create a booking if the earliest timeslot
         // of the schedule starts within 3 hours from now.
         if (schedule.getTimeSlots() == null || schedule.getTimeSlots().isEmpty()) {
@@ -93,6 +94,8 @@ public class BookingServiceImpl implements BookingService {
             throw new RuntimeException("Không thể đặt lịch trong vòng 3 giờ trước khi buổi học bắt đầu");
         }
 
+=======
+>>>>>>> 1cbb84ee52c3c7e89de0706aa458716d0cd487df
         // Get mentor from schedule
         User mentor = schedule.getUser();
 
@@ -352,24 +355,24 @@ public class BookingServiceImpl implements BookingService {
             throw new RuntimeException("Không thể hủy trong vòng 3 giờ trước khi buổi học bắt đầu");
         }
 
-        // Get CANCELED status
-        Status canceledStatus = statusRepository.findByCode("CANCELED")
-                .orElseThrow(() -> new RuntimeException("Status CANCELED không tồn tại"));
+        // Get CANCELLED status
+        Status cancelledStatus = statusRepository.findByCode("CANCELLED")
+                .orElseThrow(() -> new RuntimeException("Status CANCELLED không tồn tại"));
 
         // Update booking status and payment process
-        booking.setStatus(canceledStatus);
+        booking.setStatus(cancelledStatus);
         booking.setPaymentProcess(PaymentProcess.WAIT_REFUND);
         bookingRepository.save(booking);
 
         // Create history record for audit
         History history = History.builder()
                 .booking(booking)
-                .description("Customer canceled booking before start time")
+                .description("Customer cancelled booking before start time")
                 .createdBy(booking.getCustomer())
                 .build();
         historyRepository.save(history);
 
-        log.info("Booking {} canceled and paymentProcess set to WAIT_REFUND", bookingId);
+        log.info("Booking {} cancelled and paymentProcess set to WAIT_REFUND", bookingId);
     }
 
 
@@ -411,8 +414,8 @@ public class BookingServiceImpl implements BookingService {
             // send email to mentor
             emailService.sendConfirmBooking(mentor.getEmail(), "Thông báo bổi học", mentee.getFullname(), booking.getSchedule().getDate(), earliestStart, latestEnd, googlemeet_link.get(randomIndex));
 
-        }else if(action.equals("CANCELED")){
-            Optional<Status> status = statusRepository.findByCode("CANCELED");
+        }else if(action.equals("CANCELLED")){
+            Optional<Status> status = statusRepository.findByCode("CANCELLED");
             booking.setStatus(status.get());
             bookingRepository.save(booking);
 

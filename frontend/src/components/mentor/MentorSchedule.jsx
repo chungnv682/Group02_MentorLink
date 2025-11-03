@@ -61,8 +61,21 @@ const MentorSchedule = ({ mentorId, mentorName = 'Mentor' }) => {
     const [bookingError, setBookingError] = useState(null);
     const [bookingSuccess, setBookingSuccess] = useState(false);
     const [description, setDescription] = useState('');
+<<<<<<< HEAD
     const [service, setService] = useState('');
     const [descriptionError, setDescriptionError] = useState(null);
+=======
+    const [descriptionError, setDescriptionError] = useState(null);
+    const [service, setService] = useState('SCHOLARSHIP');
+    const serviceOptions = [
+        { value: 'SCHOLARSHIP', label: 'Học bổng' },
+        { value: 'JOBS', label: 'Việc làm' },
+        { value: 'SOFT_SKILLS', label: 'Kỹ năng mềm' },
+        { value: 'PROCEDURES', label: 'Thủ tục' },
+        { value: 'ORIENTATION', label: 'Định hướng' },
+        { value: 'OTHERS', label: 'Khác' },
+    ];
+>>>>>>> 1cbb84ee52c3c7e89de0706aa458716d0cd487df
 
     // Initialize selectedDate on first load
     React.useEffect(() => {
@@ -72,6 +85,7 @@ const MentorSchedule = ({ mentorId, mentorName = 'Mentor' }) => {
     }, [availableDates, selectedDate]);
 
     // Get schedules for selected date
+<<<<<<< HEAD
     const schedulesForSelectedDate = React.useMemo(() => {
         const list = (selectedDate && groupedSchedules[selectedDate]) || [];
 
@@ -105,6 +119,12 @@ const MentorSchedule = ({ mentorId, mentorName = 'Mentor' }) => {
 
         return list;
     }, [selectedDate, groupedSchedules]);
+=======
+    const schedulesForSelectedDate = React.useMemo(
+        () => (selectedDate && groupedSchedules[selectedDate]) || [],
+        [selectedDate, groupedSchedules]
+    );
+>>>>>>> 1cbb84ee52c3c7e89de0706aa458716d0cd487df
 
     /**
      * Check if schedule is booked (has a completed payment booking)
@@ -134,7 +154,10 @@ const MentorSchedule = ({ mentorId, mentorName = 'Mentor' }) => {
         setBookingError(null);
         setDescriptionError(null);
         setDescription('');
+<<<<<<< HEAD
         setService('');
+=======
+>>>>>>> 1cbb84ee52c3c7e89de0706aa458716d0cd487df
     };
 
     /**
@@ -149,11 +172,14 @@ const MentorSchedule = ({ mentorId, mentorName = 'Mentor' }) => {
             return;
         }
 
+<<<<<<< HEAD
         if (!service) {
             setBookingError('Vui lòng chọn loại dịch vụ');
             return;
         }
 
+=======
+>>>>>>> 1cbb84ee52c3c7e89de0706aa458716d0cd487df
         setBookingLoading(true);
         setBookingError(null);
         setDescriptionError(null);
@@ -482,6 +508,23 @@ const MentorSchedule = ({ mentorId, mentorName = 'Mentor' }) => {
                                     </ListGroup>
 
                                     {/* Description Input */}
+<<<<<<< HEAD
+=======
+                                    {/* Service Selector */}
+                                    <Form.Group className="mb-3">
+                                        <Form.Label className="fw-semibold">Lựa chọn dịch vụ <span className="text-danger">*</span></Form.Label>
+                                        <Form.Select
+                                            value={service}
+                                            onChange={(e) => setService(e.target.value)}
+                                            disabled={bookingLoading}
+                                        >
+                                            {serviceOptions.map((opt) => (
+                                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                            ))}
+                                        </Form.Select>
+                                    </Form.Group>
+
+>>>>>>> 1cbb84ee52c3c7e89de0706aa458716d0cd487df
                                     <Form.Group className="mb-3">
                                         <Form.Label className="fw-semibold">
                                             Nội dung muốn hỏi <span className="text-danger">*</span>
@@ -507,6 +550,7 @@ const MentorSchedule = ({ mentorId, mentorName = 'Mentor' }) => {
                                             {description.length}/10 ký tự tối thiểu
                                         </small>
                                     </Form.Group>
+<<<<<<< HEAD
 
                                         {/* Service select */}
                                         <Form.Group className="mb-3">
@@ -527,6 +571,8 @@ const MentorSchedule = ({ mentorId, mentorName = 'Mentor' }) => {
                                                 <option value={'OTHERS'}>Khác</option>
                                             </Form.Select>
                                         </Form.Group>
+=======
+>>>>>>> 1cbb84ee52c3c7e89de0706aa458716d0cd487df
                                 </>
                             )}
                         </>

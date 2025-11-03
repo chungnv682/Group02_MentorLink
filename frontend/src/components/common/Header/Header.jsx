@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Container, Nav, Navbar, NavDropdown, Button } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth, useTheme } from '../../../contexts';
-import { ThemeToggle } from '../';
+import { ThemeToggle, ServicesDropdown } from '../';
 import '../../../styles/components/Header.css';
 
 const Header = () => {
@@ -39,7 +39,7 @@ const Header = () => {
                     <Navbar.Collapse id="basic-navbar-nav">
                         <Nav className="ms-auto align-items-center">
                             <Nav.Link as={Link} to="/about" className="nav-link">Về MentorLink</Nav.Link>
-                            <Nav.Link as={Link} to="/services" className="nav-link">Dịch vụ</Nav.Link>
+                            <ServicesDropdown />
                             <Nav.Link as={Link} to="/find-mentor" className="nav-link">Tìm Cố vấn</Nav.Link>
                             <Nav.Link as={Link} to="/become-mentor" className="nav-link">Trở thành Cố vấn</Nav.Link>
                             <Nav.Link as={Link} to="/blogs" className="nav-link">Xem Blogs</Nav.Link>
@@ -57,6 +57,9 @@ const Header = () => {
                                     show={showDropdown}
                                     onMouseEnter={() => setShowDropdown(true)}
                                     onMouseLeave={() => setShowDropdown(false)}
+                                    align="end"
+                                    renderMenuOnMount
+                                    popperConfig={{ strategy: 'fixed' }}   // <-- tránh bị che bởi stacking/overflow
                                 >
                                     <NavDropdown.Item as={Link} to="/profile">
                                         <i className="bi bi-person me-2"></i>Hồ sơ
@@ -98,6 +101,9 @@ const Header = () => {
                                     show={showDropdown}
                                     onMouseEnter={() => setShowDropdown(true)}
                                     onMouseLeave={() => setShowDropdown(false)}
+                                    align="end"
+                                    renderMenuOnMount
+                                    popperConfig={{ strategy: 'fixed' }}   // <-- tương tự cho menu khách
                                 >
                                     <NavDropdown.Item as={Link} to="/login">Đăng nhập</NavDropdown.Item>
                                     <NavDropdown.Item as={Link} to="/register">Đăng ký</NavDropdown.Item>

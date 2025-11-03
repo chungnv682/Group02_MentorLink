@@ -127,6 +127,24 @@ class CountryService {
             throw error;
         }
     }
+
+    /**
+     * Get approved countries for a specific continent
+     * @param {string} continent - The continent code (ASIA, EUROPE, AFRICA, NORTH_AMERICA, SOUTH_AMERICA, AUSTRALIA, ANTARCTICA)
+     * @returns {Promise} Response with list of countries
+     */
+    static async getCountriesByContinent(continent) {
+        try {
+            const response = await instance.get(`/api/countries/continent/${continent}/approved`);
+            if (response.respCode === '0') {
+                return response.data || [];
+            }
+            return [];
+        } catch (error) {
+            console.error(`Error fetching countries for ${continent}:`, error);
+            return [];
+        }
+    }
 }
 
 export default CountryService;
