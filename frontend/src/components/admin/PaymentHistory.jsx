@@ -1,92 +1,180 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-    Card, Row, Col, Table, Button, Badge, Form,
-    InputGroup, Modal, Alert
+    Card, Row, Col, Table, Button, Badge, Form, Dropdown,
+    InputGroup, Modal, Alert, Spinner
 } from 'react-bootstrap';
 import {
     FaSearch, FaEye, FaDownload, FaMoneyBillWave,
-    FaCreditCard, FaHistory, FaCheckCircle, FaTimesCircle
+    FaCreditCard, FaHistory, FaCheckCircle, FaTimesCircle, FaUndo
 } from 'react-icons/fa';
+import { BsThreeDotsVertical } from 'react-icons/bs';
+import { useToast } from '../../contexts/ToastContext';
+import {
+    getAllPayments,
+    getPaymentById,
+    markPaymentAsCompleted,
+    markPaymentAsFailed,
+    processRefund,
+    getPaymentStatistics
+} from '../../services/admin';
 
 const PaymentHistory = () => {
+    // State for payments
+    const [paymentHistory, setPaymentHistory] = useState([]);
+    const [statistics, setStatistics] = useState({
+        totalRevenue: 0,
+        totalCommission: 0,
+        totalRefunded: 0,
+        pending: 0
+    });
+    
+    // UI State
     const [showModal, setShowModal] = useState(false);
     const [selectedPayment, setSelectedPayment] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
-    const [filterStatus, setFilterStatus] = useState('all');
-    const [filterMethod, setFilterMethod] = useState('all');
+    const [filterStatus, setFilterStatus] = useState('');
+    const [filterMethod, setFilterMethod] = useState('');
     const [dateRange, setDateRange] = useState({ from: '', to: '' });
+    
+    // Pagination
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalElements, setTotalElements] = useState(0);
+    const [pageSize] = useState(10);
+    
+    // Loading states
+    const [loading, setLoading] = useState(false);
+    const [loadingStatistics, setLoadingStatistics] = useState(false);
+    
+    // Action modals
+    const [showActionModal, setShowActionModal] = useState(false);
+    const [actionType, setActionType] = useState(''); // 'fail' or 'refund'
+    const [actionReason, setActionReason] = useState('');
+    const [paymentToAction, setPaymentToAction] = useState(null);
+    
+    const { showToast } = useToast();
 
-    // Mock data - thay thế bằng API call thực tế
-    const paymentHistory = [
-        {
-            id: 1,
-            bookingId: 101,
-            transactionCode: 'TXN2024011501',
-            amount: 500000,
-            paymentMethod: 'VNPAY',
-            status: 'COMPLETED',
-            createdAt: '2024-01-15 10:30:00',
-            mentorName: 'Nguyễn Văn An',
-            customerName: 'Trần Thị Bình',
-            customerEmail: 'thibinh@email.com',
-            service: 'Tư vấn career path',
-            gatewayResponse: 'Payment successful',
-            refundAmount: 0,
-            commission: 50000
-        },
-        {
-            id: 2,
-            bookingId: 102,
-            transactionCode: 'TXN2024011502',
-            amount: 300000,
-            paymentMethod: 'MOMO',
-            status: 'PENDING',
-            createdAt: '2024-01-15 14:20:00',
-            mentorName: 'Lê Minh Hoàng',
-            customerName: 'Phạm Văn Đức',
-            customerEmail: 'vanduc@email.com',
-            service: 'Code review',
-            gatewayResponse: 'Processing',
-            refundAmount: 0,
-            commission: 30000
-        },
-        {
-            id: 3,
-            bookingId: 103,
-            transactionCode: 'TXN2024011403',
-            amount: 400000,
-            paymentMethod: 'BANK_TRANSFER',
-            status: 'FAILED',
-            createdAt: '2024-01-14 09:15:00',
-            failedAt: '2024-01-14 09:18:00',
-            mentorName: 'Nguyễn Văn An',
-            customerName: 'Ngô Thị Mai',
-            customerEmail: 'thimai@email.com',
-            service: 'Tư vấn kỹ thuật',
-            gatewayResponse: 'Insufficient funds',
-            refundAmount: 0,
-            commission: 0
-        },
-        {
-            id: 4,
-            bookingId: 104,
-            transactionCode: 'TXN2024011004',
-            amount: 600000,
-            paymentMethod: 'VNPAY',
-            status: 'REFUNDED',
-            createdAt: '2024-01-10 16:45:00',
-            refundedAt: '2024-01-12 10:00:00',
-            mentorName: 'Hoàng Thị Lan',
-            customerName: 'Vũ Minh Tâm',
-            customerEmail: 'minhtam@email.com',
-            service: 'Phỏng vấn mock',
-            gatewayResponse: 'Refund processed',
-            refundAmount: 600000,
-            commission: 0,
-            refundReason: 'Mentor không thể tham gia'
+    // Fetch payments from API
+    const fetchPayments = async () => {
+        setLoading(true);
+        try {
+            const response = await getAllPayments({
+                keySearch: searchTerm || null,
+                status: filterStatus || null,
+                paymentMethod: filterMethod || null,
+                dateFrom: dateRange.from || null,
+                dateTo: dateRange.to || null,
+                page: currentPage,
+                size: pageSize
+            });
+            
+            if (response.respCode === '0') {
+                setPaymentHistory(response.data.content || []);
+                setTotalPages(response.data.totalPages || 1);
+                setTotalElements(response.data.totalElements || 0);
+            } else {
+                showToast('error', response.description || 'Không thể tải danh sách thanh toán');
+            }
+        } catch (error) {
+            console.error('Error fetching payments:', error);
+            showToast('error', 'Có lỗi xảy ra khi tải danh sách thanh toán');
+        } finally {
+            setLoading(false);
         }
-    ];
+    };
 
+    // Fetch statistics
+    const fetchStatistics = async () => {
+        setLoadingStatistics(true);
+        try {
+            const response = await getPaymentStatistics();
+            if (response.respCode === '0') {
+                setStatistics(response.data);
+            }
+        } catch (error) {
+            console.error('Error fetching statistics:', error);
+        } finally {
+            setLoadingStatistics(false);
+        }
+    };
+
+    // Load data on mount and when filters change
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            fetchPayments();
+            fetchStatistics();
+        }, searchTerm ? 500 : 0);
+
+        return () => clearTimeout(timer);
+    }, [currentPage, searchTerm, filterStatus, filterMethod, dateRange]);
+
+    // Handlers
+    const handleViewPaymentById = async (paymentId) => {
+        try {
+            const response = await getPaymentById(paymentId);
+            if (response.respCode === '0') {
+                setSelectedPayment(response.data);
+                setShowModal(true);
+            } else {
+                showToast('error', response.description || 'Không thể tải thông tin thanh toán');
+            }
+        } catch (error) {
+            console.error('Error fetching payment details:', error);
+            showToast('error', 'Có lỗi xảy ra khi tải thông tin thanh toán');
+        }
+    };
+
+    const handleMarkCompleted = async (paymentId) => {
+        try {
+            const response = await markPaymentAsCompleted(paymentId);
+            if (response.respCode === '0') {
+                showToast('success', 'Đánh dấu thanh toán thành công');
+                fetchPayments();
+                fetchStatistics();
+            } else {
+                showToast('error', response.description || 'Không thể đánh dấu thanh toán');
+            }
+        } catch (error) {
+            console.error('Error marking payment as completed:', error);
+            showToast('error', 'Có lỗi xảy ra khi đánh dấu thanh toán');
+        }
+    };
+
+    const openActionModal = (paymentId, type) => {
+        setPaymentToAction(paymentId);
+        setActionType(type);
+        setShowActionModal(true);
+    };
+
+    const handleActionSubmit = async () => {
+        if (!paymentToAction) return;
+        
+        try {
+            let response;
+            if (actionType === 'fail') {
+                response = await markPaymentAsFailed(paymentToAction, actionReason);
+            } else if (actionType === 'refund') {
+                response = await processRefund(paymentToAction, actionReason);
+            }
+            
+            if (response.respCode === '0') {
+                showToast('success', actionType === 'fail' ? 'Đánh dấu thất bại thành công' : 'Xử lý hoàn tiền thành công');
+                setShowActionModal(false);
+                setPaymentToAction(null);
+                setActionReason('');
+                setActionType('');
+                fetchPayments();
+                fetchStatistics();
+            } else {
+                showToast('error', response.description || 'Không thể thực hiện thao tác');
+            }
+        } catch (error) {
+            console.error('Error processing action:', error);
+            showToast('error', 'Có lỗi xảy ra khi thực hiện thao tác');
+        }
+    };
+
+    // Helper functions
     const getStatusBadgeVariant = (status) => {
         switch (status) {
             case 'PENDING': return 'warning';
@@ -117,29 +205,6 @@ const PaymentHistory = () => {
         }
     };
 
-    const handleViewPayment = (payment) => {
-        setSelectedPayment(payment);
-        setShowModal(true);
-    };
-
-    const filteredPayments = paymentHistory.filter(payment => {
-        const matchesSearch = payment.transactionCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            payment.mentorName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            payment.customerName.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesStatus = filterStatus === 'all' || payment.status === filterStatus;
-        const matchesMethod = filterMethod === 'all' || payment.paymentMethod === filterMethod;
-
-        // Date range filter
-        let matchesDate = true;
-        if (dateRange.from || dateRange.to) {
-            const paymentDate = new Date(payment.createdAt).toISOString().split('T')[0];
-            if (dateRange.from && paymentDate < dateRange.from) matchesDate = false;
-            if (dateRange.to && paymentDate > dateRange.to) matchesDate = false;
-        }
-
-        return matchesSearch && matchesStatus && matchesMethod && matchesDate;
-    });
-
     const formatCurrency = (amount) => {
         return new Intl.NumberFormat('vi-VN', {
             style: 'currency',
@@ -151,20 +216,9 @@ const PaymentHistory = () => {
         return new Date(dateTime).toLocaleString('vi-VN');
     };
 
-    // Calculate statistics
-    const totalRevenue = paymentHistory
-        .filter(p => p.status === 'COMPLETED')
-        .reduce((sum, p) => sum + p.amount, 0);
-
-    const totalCommission = paymentHistory
-        .filter(p => p.status === 'COMPLETED')
-        .reduce((sum, p) => sum + p.commission, 0);
-
-    const totalRefunded = paymentHistory
-        .filter(p => p.status === 'REFUNDED')
-        .reduce((sum, p) => sum + p.refundAmount, 0);
-
-    const pendingCount = paymentHistory.filter(p => p.status === 'PENDING').length;
+    const handlePageChange = (page) => {
+        setCurrentPage(page);
+    };
 
     return (
         <div className="payment-history">
@@ -186,65 +240,45 @@ const PaymentHistory = () => {
                 </div>
             </div>
 
-            {/* Stats Cards */}
-            <Row className="mb-4">
+            {/* Stats Cards - simple version */}
+            <Row className="mb-3 g-3">
                 <Col md={3}>
-                    <Card className="stats-card border-start border-success border-4">
-                        <Card.Body>
-                            <div className="d-flex justify-content-between">
-                                <div>
-                                    <h6 className="text-muted mb-1">Tổng doanh thu</h6>
-                                    <h5 className="mb-0 text-success">{formatCurrency(totalRevenue)}</h5>
-                                </div>
-                                <div className="stats-icon bg-success">
-                                    <FaMoneyBillWave />
-                                </div>
-                            </div>
+                    <Card className="shadow-sm border-0">
+                        <Card.Body className="text-center">
+                            <h6 className="text-muted mb-1">Tổng doanh thu</h6>
+                            <h4 className="fw-semibold mb-0">
+                                {loadingStatistics ? <Spinner animation="border" size="sm" /> : formatCurrency(statistics.totalRevenue || 0)}
+                            </h4>
                         </Card.Body>
                     </Card>
                 </Col>
                 <Col md={3}>
-                    <Card className="stats-card border-start border-info border-4">
-                        <Card.Body>
-                            <div className="d-flex justify-content-between">
-                                <div>
-                                    <h6 className="text-muted mb-1">Hoa hồng</h6>
-                                    <h5 className="mb-0 text-info">{formatCurrency(totalCommission)}</h5>
-                                </div>
-                                <div className="stats-icon bg-info">
-                                    <FaCreditCard />
-                                </div>
-                            </div>
+                    <Card className="shadow-sm border-0">
+                        <Card.Body className="text-center">
+                            <h6 className="text-muted mb-1">Hoa hồng</h6>
+                            <h4 className="fw-semibold mb-0">
+                                {loadingStatistics ? <Spinner animation="border" size="sm" /> : formatCurrency(statistics.totalCommission || 0)}
+                            </h4>
                         </Card.Body>
                     </Card>
                 </Col>
                 <Col md={3}>
-                    <Card className="stats-card border-start border-warning border-4">
-                        <Card.Body>
-                            <div className="d-flex justify-content-between">
-                                <div>
-                                    <h6 className="text-muted mb-1">Chờ xử lý</h6>
-                                    <h3 className="mb-0 text-warning">{pendingCount}</h3>
-                                </div>
-                                <div className="stats-icon bg-warning">
-                                    <FaTimesCircle />
-                                </div>
-                            </div>
+                    <Card className="shadow-sm border-0">
+                        <Card.Body className="text-center">
+                            <h6 className="text-muted mb-1">Chờ xử lý</h6>
+                            <h4 className="fw-semibold mb-0">
+                                {loadingStatistics ? <Spinner animation="border" size="sm" /> : (statistics.pendingCount || 0)}
+                            </h4>
                         </Card.Body>
                     </Card>
                 </Col>
                 <Col md={3}>
-                    <Card className="stats-card border-start border-danger border-4">
-                        <Card.Body>
-                            <div className="d-flex justify-content-between">
-                                <div>
-                                    <h6 className="text-muted mb-1">Đã hoàn tiền</h6>
-                                    <h5 className="mb-0 text-danger">{formatCurrency(totalRefunded)}</h5>
-                                </div>
-                                <div className="stats-icon bg-danger">
-                                    <FaHistory />
-                                </div>
-                            </div>
+                    <Card className="shadow-sm border-0">
+                        <Card.Body className="text-center">
+                            <h6 className="text-muted mb-1">Đã hoàn tiền</h6>
+                            <h4 className="fw-semibold mb-0">
+                                {loadingStatistics ? <Spinner animation="border" size="sm" /> : formatCurrency(statistics.totalRefunded || 0)}
+                            </h4>
                         </Card.Body>
                     </Card>
                 </Col>
@@ -272,9 +306,12 @@ const PaymentHistory = () => {
                             <Form.Label>Trạng thái</Form.Label>
                             <Form.Select
                                 value={filterStatus}
-                                onChange={(e) => setFilterStatus(e.target.value)}
+                                onChange={(e) => {
+                                    setFilterStatus(e.target.value);
+                                    setCurrentPage(1);
+                                }}
                             >
-                                <option value="all">Tất cả</option>
+                                <option value="">Tất cả</option>
                                 <option value="PENDING">Đang xử lý</option>
                                 <option value="COMPLETED">Thành công</option>
                                 <option value="FAILED">Thất bại</option>
@@ -285,9 +322,12 @@ const PaymentHistory = () => {
                             <Form.Label>Phương thức</Form.Label>
                             <Form.Select
                                 value={filterMethod}
-                                onChange={(e) => setFilterMethod(e.target.value)}
+                                onChange={(e) => {
+                                    setFilterMethod(e.target.value);
+                                    setCurrentPage(1);
+                                }}
                             >
-                                <option value="all">Tất cả</option>
+                                <option value="">Tất cả</option>
                                 <option value="VNPAY">VNPay</option>
                                 <option value="MOMO">MoMo</option>
                                 <option value="BANK_TRANSFER">Chuyển khoản</option>
@@ -299,7 +339,10 @@ const PaymentHistory = () => {
                             <Form.Control
                                 type="date"
                                 value={dateRange.from}
-                                onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}
+                                onChange={(e) => {
+                                    setDateRange({ ...dateRange, from: e.target.value });
+                                    setCurrentPage(1);
+                                }}
                             />
                         </Col>
                         <Col md={2}>
@@ -307,12 +350,25 @@ const PaymentHistory = () => {
                             <Form.Control
                                 type="date"
                                 value={dateRange.to}
-                                onChange={(e) => setDateRange({ ...dateRange, to: e.target.value })}
+                                onChange={(e) => {
+                                    setDateRange({ ...dateRange, to: e.target.value });
+                                    setCurrentPage(1);
+                                }}
                             />
                         </Col>
                         <Col md={1}>
-                            <Button variant="outline-secondary" className="w-100">
-                                Lọc
+                            <Button 
+                                variant="outline-secondary" 
+                                className="w-100"
+                                onClick={() => {
+                                    setSearchTerm('');
+                                    setFilterStatus('');
+                                    setFilterMethod('');
+                                    setDateRange({ from: '', to: '' });
+                                    setCurrentPage(1);
+                                }}
+                            >
+                                Xóa
                             </Button>
                         </Col>
                     </Row>
@@ -323,93 +379,146 @@ const PaymentHistory = () => {
             <Card>
                 <Card.Header className="bg-light">
                     <div className="d-flex justify-content-between align-items-center">
-                        <h6 className="mb-0">Lịch sử giao dịch ({filteredPayments.length})</h6>
+                        <h6 className="mb-0">Lịch sử giao dịch ({totalElements})</h6>
                         <div className="d-flex gap-2">
-                            <Button variant="outline-primary" size="sm">Chọn tất cả</Button>
-                            <Button variant="outline-success" size="sm">Xử lý đã chọn</Button>
+                            <span className="text-muted">Trang {currentPage}/{totalPages}</span>
                         </div>
                     </div>
                 </Card.Header>
                 <Card.Body className="p-0">
-                    <Table responsive hover className="mb-0">
-                        <thead className="bg-light">
-                            <tr>
-                                <th width="5%">
-                                    <Form.Check type="checkbox" />
-                                </th>
-                                <th width="15%">Mã giao dịch</th>
-                                <th width="15%">Booking</th>
-                                <th width="15%">Người dùng</th>
-                                <th width="12%">Số tiền</th>
-                                <th width="10%">Phương thức</th>
-                                <th width="10%">Trạng thái</th>
-                                <th width="13%">Thời gian</th>
-                                <th width="5%">Thao tác</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filteredPayments.map((payment) => (
-                                <tr key={payment.id}>
-                                    <td>
-                                        <Form.Check type="checkbox" />
-                                    </td>
-                                    <td>
-                                        <div>
-                                            <div className="fw-medium">{payment.transactionCode}</div>
-                                            <small className="text-muted">ID: {payment.id}</small>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div>
-                                            <div className="fw-medium">#{payment.bookingId}</div>
-                                            <small className="text-muted">{payment.service}</small>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div>
-                                            <div className="fw-medium">{payment.customerName}</div>
-                                            <small className="text-muted">với {payment.mentorName}</small>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div>
-                                            <div className="fw-medium">{formatCurrency(payment.amount)}</div>
-                                            {payment.commission > 0 && (
-                                                <small className="text-success">
-                                                    HH: {formatCurrency(payment.commission)}
-                                                </small>
-                                            )}
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <Badge bg={getMethodBadgeVariant(payment.paymentMethod)}>
-                                            {payment.paymentMethod}
-                                        </Badge>
-                                    </td>
-                                    <td>
-                                        <Badge bg={getStatusBadgeVariant(payment.status)}>
-                                            {getStatusText(payment.status)}
-                                        </Badge>
-                                    </td>
-                                    <td>
-                                        <span className="text-muted">
-                                            {formatDateTime(payment.createdAt)}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <Button
-                                            variant="outline-info"
-                                            size="sm"
-                                            onClick={() => handleViewPayment(payment)}
-                                        >
-                                            <FaEye />
-                                        </Button>
-                                    </td>
+                    {loading ? (
+                        <div className="text-center py-5">
+                            <Spinner animation="border" />
+                            <p className="mt-2 text-muted">Đang tải dữ liệu...</p>
+                        </div>
+                    ) : paymentHistory.length === 0 ? (
+                        <div className="text-center py-5">
+                            <FaTimesCircle size={48} className="text-muted mb-3" />
+                            <p className="text-muted">Không có giao dịch nào</p>
+                        </div>
+                    ) : (
+                        <Table responsive hover className="mb-0">
+                            <thead className="bg-light">
+                                <tr>
+                                    <th width="15%">Mã giao dịch</th>
+                                    <th width="15%">Booking</th>
+                                    <th width="15%">Người dùng</th>
+                                    <th width="12%">Số tiền</th>
+                                    <th width="10%">Phương thức</th>
+                                    <th width="10%">Trạng thái</th>
+                                    <th width="13%">Thời gian</th>
+                                    <th width="10%">Thao tác</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </Table>
+                            </thead>
+                            <tbody>
+                                {paymentHistory.map((payment) => (
+                                    <tr key={payment.id}>
+                                        <td>
+                                            <div>
+                                                <div className="fw-medium">{payment.transactionCode}</div>
+                                                <small className="text-muted">ID: {payment.id}</small>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div>
+                                                <div className="fw-medium">#{payment.bookingId}</div>
+                                                <small className="text-muted">{payment.scheduleName || 'N/A'}</small>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div>
+                                                <div className="fw-medium">{payment.customerName}</div>
+                                                <small className="text-muted">với {payment.mentorName}</small>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div>
+                                                <div className="fw-medium">{formatCurrency(payment.amount)}</div>
+                                                {payment.commission > 0 && (
+                                                    <small className="text-success">
+                                                        HH: {formatCurrency(payment.commission)}
+                                                    </small>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <Badge bg={getMethodBadgeVariant(payment.paymentMethod)}>
+                                                {payment.paymentMethod}
+                                            </Badge>
+                                        </td>
+                                        <td>
+                                            <Badge bg={getStatusBadgeVariant(payment.statusCode)}>
+                                                {payment.statusName || getStatusText(payment.statusCode)}
+                                            </Badge>
+                                        </td>
+                                        <td>
+                                            <span className="text-muted">
+                                                {formatDateTime(payment.createdAt)}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <Dropdown align="end">
+                                                <Dropdown.Toggle variant="light" size="sm" className="no-caret p-1">
+                                                    <BsThreeDotsVertical />
+                                                </Dropdown.Toggle>
+                                                <Dropdown.Menu>
+                                                    <Dropdown.Item onClick={() => handleViewPaymentById(payment.id)}>
+                                                        Xem
+                                                    </Dropdown.Item>
+                                                    {payment.statusCode === 'PENDING' && (
+                                                        <>
+                                                            <Dropdown.Item onClick={() => handleMarkCompleted(payment.id)}>
+                                                                Đánh dấu thành công
+                                                            </Dropdown.Item>
+                                                            <Dropdown.Item onClick={() => openActionModal(payment.id, 'fail')}>
+                                                                Đánh dấu thất bại
+                                                            </Dropdown.Item>
+                                                        </>
+                                                    )}
+                                                    {payment.statusCode === 'COMPLETED' && (
+                                                        <Dropdown.Item onClick={() => openActionModal(payment.id, 'refund')}>
+                                                            Hoàn tiền
+                                                        </Dropdown.Item>
+                                                    )}
+                                                </Dropdown.Menu>
+                                            </Dropdown>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </Table>
+                    )}
                 </Card.Body>
+                {!loading && paymentHistory.length > 0 && (
+                    <Card.Footer className="bg-light">
+                        <div className="d-flex justify-content-between align-items-center">
+                            <div className="text-muted">
+                                Hiển thị {((currentPage - 1) * 10) + 1} - {Math.min(currentPage * 10, totalElements)} trong số {totalElements} giao dịch
+                            </div>
+                            <div className="d-flex gap-2">
+                                <Button
+                                    variant="outline-secondary"
+                                    size="sm"
+                                    disabled={currentPage === 1}
+                                    onClick={() => handlePageChange(currentPage - 1)}
+                                >
+                                    Trước
+                                </Button>
+                                <Button variant="light" size="sm" disabled>
+                                    Trang {currentPage}/{totalPages}
+                                </Button>
+                                <Button
+                                    variant="outline-secondary"
+                                    size="sm"
+                                    disabled={currentPage === totalPages}
+                                    onClick={() => handlePageChange(currentPage + 1)}
+                                >
+                                    Sau
+                                </Button>
+                            </div>
+                        </div>
+                    </Card.Footer>
+                )}
             </Card>
 
             {/* Payment Detail Modal */}
@@ -435,16 +544,13 @@ const PaymentHistory = () => {
                                 <Col md={6}>
                                     <h6>Trạng thái & Thời gian</h6>
                                     <p><strong>Trạng thái:</strong>
-                                        <Badge bg={getStatusBadgeVariant(selectedPayment.status)} className="ms-2">
-                                            {getStatusText(selectedPayment.status)}
+                                        <Badge bg={getStatusBadgeVariant(selectedPayment.statusCode)} className="ms-2">
+                                            {selectedPayment.statusName || getStatusText(selectedPayment.statusCode)}
                                         </Badge>
                                     </p>
                                     <p><strong>Thời gian tạo:</strong> {formatDateTime(selectedPayment.createdAt)}</p>
-                                    {selectedPayment.refundedAt && (
-                                        <p><strong>Thời gian hoàn tiền:</strong> {formatDateTime(selectedPayment.refundedAt)}</p>
-                                    )}
-                                    {selectedPayment.failedAt && (
-                                        <p><strong>Thời gian thất bại:</strong> {formatDateTime(selectedPayment.failedAt)}</p>
+                                    {selectedPayment.completedAt && (
+                                        <p><strong>Thời gian hoàn thành:</strong> {formatDateTime(selectedPayment.completedAt)}</p>
                                     )}
                                 </Col>
                             </Row>
@@ -453,12 +559,12 @@ const PaymentHistory = () => {
                                 <Col md={6}>
                                     <h6>Thông tin khách hàng</h6>
                                     <p><strong>Tên:</strong> {selectedPayment.customerName}</p>
-                                    <p><strong>Email:</strong> {selectedPayment.customerEmail}</p>
+                                    <p><strong>Email:</strong> {selectedPayment.customerEmail || 'N/A'}</p>
                                 </Col>
                                 <Col md={6}>
                                     <h6>Thông tin mentor</h6>
                                     <p><strong>Tên:</strong> {selectedPayment.mentorName}</p>
-                                    <p><strong>Dịch vụ:</strong> {selectedPayment.service}</p>
+                                    <p><strong>Email:</strong> {selectedPayment.mentorEmail || 'N/A'}</p>
                                 </Col>
                             </Row>
 
@@ -472,9 +578,9 @@ const PaymentHistory = () => {
                                                 <p><strong>Hoa hồng hệ thống:</strong> {formatCurrency(selectedPayment.commission)}</p>
                                             </Col>
                                             <Col md={6}>
-                                                <p><strong>Tiền mentor nhận:</strong> {formatCurrency(selectedPayment.amount - selectedPayment.commission)}</p>
+                                                <p><strong>Tiền mentor nhận:</strong> {formatCurrency(selectedPayment.mentorAmount)}</p>
                                                 {selectedPayment.refundAmount > 0 && (
-                                                    <p><strong>Số tiền hoàn:</strong> {formatCurrency(selectedPayment.refundAmount)}</p>
+                                                    <p className="text-danger"><strong>Số tiền hoàn:</strong> {formatCurrency(selectedPayment.refundAmount)}</p>
                                                 )}
                                             </Col>
                                         </Row>
@@ -482,44 +588,18 @@ const PaymentHistory = () => {
                                 </Col>
                             </Row>
 
-                            <div className="mb-3">
-                                <h6>Phản hồi từ cổng thanh toán</h6>
-                                <div className="p-3 bg-light rounded">
-                                    {selectedPayment.gatewayResponse}
+                            {selectedPayment.gatewayResponse && (
+                                <div className="mb-3">
+                                    <h6>Phản hồi từ cổng thanh toán</h6>
+                                    <div className="p-3 bg-light rounded">
+                                        {selectedPayment.gatewayResponse}
+                                    </div>
                                 </div>
-                            </div>
+                            )}
 
-                            {selectedPayment.refundReason && (
+                            {selectedPayment.notes && (
                                 <Alert variant="info">
-                                    <strong>Lý do hoàn tiền:</strong> {selectedPayment.refundReason}
-                                </Alert>
-                            )}
-
-                            {selectedPayment.status === 'FAILED' && (
-                                <Alert variant="danger">
-                                    <strong>Giao dịch thất bại</strong>
-                                    <div className="mt-2">
-                                        <Button variant="primary" size="sm">
-                                            <FaHistory className="me-1" />
-                                            Thử lại giao dịch
-                                        </Button>
-                                    </div>
-                                </Alert>
-                            )}
-
-                            {selectedPayment.status === 'PENDING' && (
-                                <Alert variant="warning">
-                                    <strong>Giao dịch đang chờ xử lý</strong>
-                                    <div className="mt-2">
-                                        <Button variant="success" size="sm" className="me-2">
-                                            <FaCheckCircle className="me-1" />
-                                            Xác nhận thành công
-                                        </Button>
-                                        <Button variant="danger" size="sm">
-                                            <FaTimesCircle className="me-1" />
-                                            Đánh dấu thất bại
-                                        </Button>
-                                    </div>
+                                    <strong>Ghi chú:</strong> {selectedPayment.notes}
                                 </Alert>
                             )}
                         </div>
@@ -529,9 +609,47 @@ const PaymentHistory = () => {
                     <Button variant="secondary" onClick={() => setShowModal(false)}>
                         Đóng
                     </Button>
-                    <Button variant="primary">
-                        <FaDownload className="me-1" />
-                        Xuất hóa đơn
+                </Modal.Footer>
+            </Modal>
+
+            {/* Action Modal (Fail/Refund) */}
+            <Modal show={showActionModal} onHide={() => setShowActionModal(false)}>
+                <Modal.Header closeButton>
+                    <Modal.Title>
+                        {actionType === 'fail' ? 'Đánh dấu thanh toán thất bại' : 'Xử lý hoàn tiền'}
+                    </Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    <Form.Group>
+                        <Form.Label>Lý do {actionType === 'fail' ? 'thất bại' : 'hoàn tiền'}</Form.Label>
+                        <Form.Control
+                            as="textarea"
+                            rows={4}
+                            placeholder={`Nhập lý do ${actionType === 'fail' ? 'thất bại' : 'hoàn tiền'}...`}
+                            value={actionReason}
+                            onChange={(e) => setActionReason(e.target.value)}
+                        />
+                    </Form.Group>
+                    {actionType === 'fail' && (
+                        <Alert variant="warning" className="mt-3">
+                            <small>Thanh toán sẽ được đánh dấu là thất bại và không thể khôi phục.</small>
+                        </Alert>
+                    )}
+                    {actionType === 'refund' && (
+                        <Alert variant="info" className="mt-3">
+                            <small>Tiền sẽ được hoàn lại cho khách hàng theo quy định.</small>
+                        </Alert>
+                    )}
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="secondary" onClick={() => setShowActionModal(false)}>
+                        Hủy
+                    </Button>
+                    <Button
+                        variant={actionType === 'fail' ? 'danger' : 'warning'}
+                        onClick={handleActionSubmit}
+                    >
+                        {actionType === 'fail' ? 'Xác nhận thất bại' : 'Xác nhận hoàn tiền'}
                     </Button>
                 </Modal.Footer>
             </Modal>

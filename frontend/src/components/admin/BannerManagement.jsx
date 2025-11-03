@@ -1,22 +1,122 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
-    Card, Row, Col, Table, Button, Badge, Form,
-    InputGroup, Modal, Alert, Image
+    Card, Row, Col, Table, Button, Badge, Form, Dropdown,
+    InputGroup, Modal, Alert, Image, Spinner
 } from 'react-bootstrap';
 import {
     FaSearch, FaEye, FaEdit, FaTrash, FaPlus,
-    FaBullhorn, FaImage, FaCalendarAlt, FaToggleOn, FaToggleOff
+    FaBullhorn, FaImage, FaCalendarAlt, FaToggleOn, FaToggleOff, FaUndo
 } from 'react-icons/fa';
+import { BsThreeDotsVertical } from 'react-icons/bs';
+import { useToast } from '../../contexts/ToastContext';
+import {
+    getAllBanners,
+    getBannerById,
+    createBanner,
+    updateBanner,
+    deleteBanner,
+    publishBanner,
+    unpublishBanner,
+    updateBannerStatus,
+    bulkDeleteBanners,
+    getBannerStatistics
+} from '../../services/admin';
 
 const BannerManagement = () => {
+    const { showToast } = useToast();
+    
+    // State management
+    const [banners, setBanners] = useState([]);
+    const [statistics, setStatistics] = useState({
+        totalBanners: 0,
+        activeBanners: 0,
+        inactiveBanners: 0,
+        pendingBanners: 0,
+        expiredBanners: 0,
+        totalViews: 0,
+        totalClicks: 0,
+        averageCTR: 0
+    });
+    
     const [showModal, setShowModal] = useState(false);
     const [selectedBanner, setSelectedBanner] = useState(null);
     const [modalType, setModalType] = useState('view'); // 'view', 'create', 'edit'
     const [searchTerm, setSearchTerm] = useState('');
-    const [filterStatus, setFilterStatus] = useState('all');
+    const [filterStatus, setFilterStatus] = useState('');
+    const [filterPublished, setFilterPublished] = useState(null);
+    
+    // Pagination
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize] = useState(10);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalElements, setTotalElements] = useState(0);
+    
+    // Loading states
+    const [loading, setLoading] = useState(false);
+    const [loadingStatistics, setLoadingStatistics] = useState(false);
+    
+    // Selection state
+    const [selectedBannerIds, setSelectedBannerIds] = useState([]);
+    const [selectAll, setSelectAll] = useState(false);
+    const headerCheckboxRef = useRef(null);
 
-    // Mock data - thay thế bằng API call thực tế
-    const banners = [
+    // Fetch banners from API
+    const fetchBanners = async () => {
+        setLoading(true);
+        try {
+            const response = await getAllBanners({
+                keySearch: searchTerm || null,
+                status: filterStatus || null,
+                isPublished: filterPublished,
+                page: currentPage,
+                size: pageSize
+            });
+            
+            if (response.respCode === '0') {
+                setBanners(response.data.content || []);
+                setTotalPages(response.data.totalPages || 1);
+                setTotalElements(response.data.totalElements || 0);
+            } else {
+                showToast('error', response.description || 'Không thể tải danh sách banner');
+            }
+        } catch (error) {
+            console.error('Error fetching banners:', error);
+            showToast('error', 'Có lỗi xảy ra khi tải danh sách banner');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Fetch statistics
+    const fetchStatistics = async () => {
+        setLoadingStatistics(true);
+        try {
+            const response = await getBannerStatistics();
+            if (response.respCode === '0') {
+                setStatistics(response.data);
+            }
+        } catch (error) {
+            console.error('Error fetching statistics:', error);
+        } finally {
+            setLoadingStatistics(false);
+        }
+    };
+
+    // useEffect hooks
+    useEffect(() => {
+        fetchStatistics();
+    }, []);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            fetchBanners();
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, [searchTerm, filterStatus, filterPublished, currentPage]);
+
+    // Mock data removed - using API data
+    const oldBanners = [
         {
             id: 1,
             title: 'Khuyến mãi tháng 1 - Giảm 30% tất cả dịch vụ',
@@ -99,10 +199,17 @@ const BannerManagement = () => {
         }
     };
 
-    const handleViewBanner = (banner) => {
-        setSelectedBanner(banner);
-        setModalType('view');
-        setShowModal(true);
+    const handleViewBanner = async (bannerId) => {
+        try {
+            const response = await getBannerById(bannerId);
+            if (response.respCode === '0') {
+                setSelectedBanner(response.data);
+                setModalType('view');
+                setShowModal(true);
+            }
+        } catch (error) {
+            showToast('error', 'Không thể tải thông tin banner');
+        }
     };
 
     const handleCreateBanner = () => {
@@ -117,25 +224,128 @@ const BannerManagement = () => {
         setShowModal(true);
     };
 
-    const filteredBanners = banners.filter(banner => {
-        const matchesSearch = banner.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            banner.createdBy.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesStatus = filterStatus === 'all' || banner.status === filterStatus;
+    const handlePublishBanner = async (bannerId) => {
+        try {
+            const response = await publishBanner(bannerId);
+            if (response.respCode === '0') {
+                showToast('success', 'Xuất bản banner thành công');
+                fetchBanners();
+                fetchStatistics();
+                setShowModal(false);
+            } else {
+                showToast('error', response.description);
+            }
+        } catch (error) {
+            showToast('error', 'Có lỗi xảy ra khi xuất bản banner');
+        }
+    };
 
-        return matchesSearch && matchesStatus;
-    });
+    const handleUnpublishBanner = async (bannerId) => {
+        try {
+            const response = await unpublishBanner(bannerId);
+            if (response.respCode === '0') {
+                showToast('success', 'Hủy xuất bản banner thành công');
+                fetchBanners();
+                fetchStatistics();
+                setShowModal(false);
+            } else {
+                showToast('error', response.description);
+            }
+        } catch (error) {
+            showToast('error', 'Có lỗi xảy ra khi hủy xuất bản banner');
+        }
+    };
+
+    const handleDeleteBanner = async (bannerId) => {
+        if (!window.confirm('Bạn có chắc chắn muốn xóa banner này?')) return;
+        
+        try {
+            const response = await deleteBanner(bannerId);
+            if (response.respCode === '0') {
+                showToast('success', 'Xóa banner thành công');
+                fetchBanners();
+                fetchStatistics();
+                setShowModal(false);
+            } else {
+                showToast('error', response.description);
+            }
+        } catch (error) {
+            showToast('error', 'Có lỗi xảy ra khi xóa banner');
+        }
+    };
+
+    const handleBulkDelete = async () => {
+        if (selectedBannerIds.length === 0) {
+            showToast('warning', 'Vui lòng chọn ít nhất một banner');
+            return;
+        }
+        
+        if (!window.confirm(`Bạn có chắc chắn muốn xóa ${selectedBannerIds.length} banner đã chọn?`)) return;
+        
+        try {
+            const response = await bulkDeleteBanners(selectedBannerIds);
+            if (response.respCode === '0') {
+                showToast('success', 'Xóa banner thành công');
+                setSelectedBannerIds([]);
+                setSelectAll(false);
+                fetchBanners();
+                fetchStatistics();
+            } else {
+                showToast('error', response.description);
+            }
+        } catch (error) {
+            showToast('error', 'Có lỗi xảy ra khi xóa banner');
+        }
+    };
+
+    const handleSelectAll = () => {
+        const allIdsOnPage = banners.map(b => b.id);
+        const allSelected = allIdsOnPage.length > 0 && allIdsOnPage.every(id => selectedBannerIds.includes(id));
+        if (allSelected) {
+            setSelectedBannerIds(prev => prev.filter(id => !allIdsOnPage.includes(id)));
+            setSelectAll(false);
+        } else {
+            setSelectedBannerIds(prev => Array.from(new Set([...prev, ...allIdsOnPage])));
+            setSelectAll(true);
+        }
+    };
+
+    // Indeterminate state for header checkbox
+    useEffect(() => {
+        if (!headerCheckboxRef.current) return;
+        const allIdsOnPage = banners.map(b => b.id);
+        const selectedOnPage = allIdsOnPage.filter(id => selectedBannerIds.includes(id));
+        const allSelectedOnPage = selectedOnPage.length === allIdsOnPage.length && allIdsOnPage.length > 0;
+        const someSelectedOnPage = selectedOnPage.length > 0 && !allSelectedOnPage;
+        headerCheckboxRef.current.indeterminate = someSelectedOnPage;
+    }, [banners, selectedBannerIds]);
+
+    const handleSelectBanner = (bannerId) => {
+        setSelectedBannerIds(prev => {
+            if (prev.includes(bannerId)) {
+                return prev.filter(id => id !== bannerId);
+            } else {
+                return [...prev, bannerId];
+            }
+        });
+    };
+
+    const handleResetFilters = () => {
+        setSearchTerm('');
+        setFilterStatus('');
+        setFilterPublished(null);
+        setCurrentPage(1);
+    };
 
     const formatDate = (dateString) => {
+        if (!dateString) return '-';
         return new Date(dateString).toLocaleDateString('vi-VN');
     };
 
-    // Calculate statistics
-    const totalBanners = banners.length;
-    const activeBanners = banners.filter(b => b.status === 'ACTIVE').length;
-    const pendingBanners = banners.filter(b => b.status === 'PENDING').length;
-    const totalViews = banners.reduce((sum, b) => sum + b.viewCount, 0);
-    const totalClicks = banners.reduce((sum, b) => sum + b.clickCount, 0);
-    const avgCTR = totalViews > 0 ? ((totalClicks / totalViews) * 100).toFixed(2) : 0;
+    const formatDateTime = (dateTimeString) => {
+        if (!dateTimeString) return '-';
+        return new Date(dateTimeString).toLocaleString('vi-VN');
+    };
 
     return (
         <div className="banner-management">
@@ -157,65 +367,45 @@ const BannerManagement = () => {
                 </div>
             </div>
 
-            {/* Stats Cards */}
-            <Row className="mb-4">
+            {/* Stats Cards - simple version */}
+            <Row className="mb-3 g-3">
                 <Col md={3}>
-                    <Card className="stats-card border-start border-primary border-4">
-                        <Card.Body>
-                            <div className="d-flex justify-content-between">
-                                <div>
-                                    <h6 className="text-muted mb-1">Tổng banner</h6>
-                                    <h3 className="mb-0 text-primary">{totalBanners}</h3>
-                                </div>
-                                <div className="stats-icon bg-primary">
-                                    <FaBullhorn />
-                                </div>
-                            </div>
+                    <Card className="shadow-sm border-0">
+                        <Card.Body className="text-center">
+                            <h6 className="text-muted mb-1">Tổng banner</h6>
+                            <h4 className="fw-semibold mb-0">
+                                {loadingStatistics ? <Spinner animation="border" size="sm" /> : statistics.totalBanners}
+                            </h4>
                         </Card.Body>
                     </Card>
                 </Col>
                 <Col md={3}>
-                    <Card className="stats-card border-start border-success border-4">
-                        <Card.Body>
-                            <div className="d-flex justify-content-between">
-                                <div>
-                                    <h6 className="text-muted mb-1">Đang hoạt động</h6>
-                                    <h3 className="mb-0 text-success">{activeBanners}</h3>
-                                </div>
-                                <div className="stats-icon bg-success">
-                                    <FaToggleOn />
-                                </div>
-                            </div>
+                    <Card className="shadow-sm border-0">
+                        <Card.Body className="text-center">
+                            <h6 className="text-muted mb-1">Đang hoạt động</h6>
+                            <h4 className="fw-semibold mb-0">
+                                {loadingStatistics ? <Spinner animation="border" size="sm" /> : statistics.activeBanners}
+                            </h4>
                         </Card.Body>
                     </Card>
                 </Col>
                 <Col md={3}>
-                    <Card className="stats-card border-start border-info border-4">
-                        <Card.Body>
-                            <div className="d-flex justify-content-between">
-                                <div>
-                                    <h6 className="text-muted mb-1">Lượt xem</h6>
-                                    <h3 className="mb-0 text-info">{totalViews.toLocaleString()}</h3>
-                                </div>
-                                <div className="stats-icon bg-info">
-                                    <FaEye />
-                                </div>
-                            </div>
+                    <Card className="shadow-sm border-0">
+                        <Card.Body className="text-center">
+                            <h6 className="text-muted mb-1">Lượt xem</h6>
+                            <h4 className="fw-semibold mb-0">
+                                {loadingStatistics ? <Spinner animation="border" size="sm" /> : (statistics.totalViews || 0).toLocaleString()}
+                            </h4>
                         </Card.Body>
                     </Card>
                 </Col>
                 <Col md={3}>
-                    <Card className="stats-card border-start border-warning border-4">
-                        <Card.Body>
-                            <div className="d-flex justify-content-between">
-                                <div>
-                                    <h6 className="text-muted mb-1">CTR trung bình</h6>
-                                    <h3 className="mb-0 text-warning">{avgCTR}%</h3>
-                                </div>
-                                <div className="stats-icon bg-warning">
-                                    <FaBullhorn />
-                                </div>
-                            </div>
+                    <Card className="shadow-sm border-0">
+                        <Card.Body className="text-center">
+                            <h6 className="text-muted mb-1">CTR trung bình</h6>
+                            <h4 className="fw-semibold mb-0">
+                                {loadingStatistics ? <Spinner animation="border" size="sm" /> : `${(statistics.averageCTR || 0).toFixed(2)}%`}
+                            </h4>
                         </Card.Body>
                     </Card>
                 </Col>
@@ -239,13 +429,13 @@ const BannerManagement = () => {
                                 />
                             </InputGroup>
                         </Col>
-                        <Col md={4}>
+                        <Col md={3}>
                             <Form.Label>Trạng thái</Form.Label>
                             <Form.Select
                                 value={filterStatus}
                                 onChange={(e) => setFilterStatus(e.target.value)}
                             >
-                                <option value="all">Tất cả trạng thái</option>
+                                <option value="">Tất cả trạng thái</option>
                                 <option value="ACTIVE">Đang hoạt động</option>
                                 <option value="INACTIVE">Không hoạt động</option>
                                 <option value="PENDING">Chờ duyệt</option>
@@ -253,8 +443,24 @@ const BannerManagement = () => {
                             </Form.Select>
                         </Col>
                         <Col md={2}>
-                            <Button variant="outline-secondary" className="w-100">
-                                Lọc
+                            <Form.Label>Xuất bản</Form.Label>
+                            <Form.Select
+                                value={filterPublished === null ? '' : filterPublished}
+                                onChange={(e) => setFilterPublished(e.target.value === '' ? null : e.target.value === 'true')}
+                            >
+                                <option value="">Tất cả</option>
+                                <option value="true">Đã xuất bản</option>
+                                <option value="false">Chưa xuất bản</option>
+                            </Form.Select>
+                        </Col>
+                        <Col md={1}>
+                            <Button 
+                                variant="outline-secondary" 
+                                className="w-100"
+                                onClick={handleResetFilters}
+                                title="Đặt lại bộ lọc"
+                            >
+                                <FaUndo />
                             </Button>
                         </Col>
                     </Row>
@@ -263,7 +469,7 @@ const BannerManagement = () => {
 
             {/* Banner Preview Cards */}
             <Row className="mb-4">
-                {filteredBanners.slice(0, 2).map((banner) => (
+                {banners.slice(0, 2).map((banner) => (
                     <Col md={6} key={`preview-${banner.id}`}>
                         <Card className="mb-3">
                             <div className="position-relative">
@@ -301,19 +507,45 @@ const BannerManagement = () => {
             <Card>
                 <Card.Header className="bg-light">
                     <div className="d-flex justify-content-between align-items-center">
-                        <h6 className="mb-0">Danh sách banner ({filteredBanners.length})</h6>
+                        <h6 className="mb-0">
+                            Danh sách banner ({totalElements})
+                            {loading && <Spinner animation="border" size="sm" className="ms-2" />}
+                        </h6>
                         <div className="d-flex gap-2">
-                            <Button variant="outline-primary" size="sm">Sắp xếp vị trí</Button>
-                            <Button variant="outline-success" size="sm">Kích hoạt hàng loạt</Button>
+                            <Button 
+                                variant="outline-danger" 
+                                size="sm"
+                                onClick={handleBulkDelete}
+                                disabled={selectedBannerIds.length === 0}
+                            >
+                                <FaTrash className="me-1" />
+                                Xóa đã chọn ({selectedBannerIds.length})
+                            </Button>
                         </div>
                     </div>
                 </Card.Header>
                 <Card.Body className="p-0">
+                    {loading ? (
+                        <div className="text-center py-5">
+                            <Spinner animation="border" variant="primary" />
+                            <p className="mt-2 text-muted">Đang tải dữ liệu...</p>
+                        </div>
+                    ) : banners.length === 0 ? (
+                        <div className="text-center py-5">
+                            <FaBullhorn size={48} className="text-muted mb-3" />
+                            <p className="text-muted">Không có banner nào</p>
+                        </div>
+                    ) : (
                     <Table responsive hover className="mb-0">
                         <thead className="bg-light">
                             <tr>
                                 <th width="5%">
-                                    <Form.Check type="checkbox" />
+                                    <Form.Check 
+                                        type="checkbox"
+                                        ref={headerCheckboxRef}
+                                        checked={banners.length > 0 && banners.every(b => selectedBannerIds.includes(b.id))}
+                                        onChange={handleSelectAll}
+                                    />
                                 </th>
                                 <th width="10%">Hình ảnh</th>
                                 <th width="25%">Tiêu đề</th>
@@ -325,10 +557,14 @@ const BannerManagement = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {filteredBanners.map((banner) => (
+                            {banners.map((banner) => (
                                 <tr key={banner.id}>
                                     <td>
-                                        <Form.Check type="checkbox" />
+                                        <Form.Check 
+                                            type="checkbox"
+                                            checked={selectedBannerIds.includes(banner.id)}
+                                            onChange={() => handleSelectBanner(banner.id)}
+                                        />
                                     </td>
                                     <td>
                                         <Image
@@ -388,32 +624,61 @@ const BannerManagement = () => {
                                         </div>
                                     </td>
                                     <td>
-                                        <div className="d-flex gap-1">
-                                            <Button
-                                                variant="outline-info"
-                                                size="sm"
-                                                onClick={() => handleViewBanner(banner)}
-                                            >
-                                                <FaEye />
-                                            </Button>
-                                            <Button
-                                                variant="outline-primary"
-                                                size="sm"
-                                                onClick={() => handleEditBanner(banner)}
-                                            >
-                                                <FaEdit />
-                                            </Button>
-                                            <Button variant="outline-danger" size="sm">
-                                                <FaTrash />
-                                            </Button>
-                                        </div>
+                                        <Dropdown align="end">
+                                            <Dropdown.Toggle variant="light" size="sm" className="no-caret p-1">
+                                                <BsThreeDotsVertical />
+                                            </Dropdown.Toggle>
+                                            <Dropdown.Menu>
+                                                <Dropdown.Item onClick={() => handleViewBanner(banner.id)}>
+                                                    Xem
+                                                </Dropdown.Item>
+                                                <Dropdown.Item onClick={() => handleEditBanner(banner)}>
+                                                    Chỉnh sửa
+                                                </Dropdown.Item>
+                                                <Dropdown.Divider />
+                                                <Dropdown.Item className="text-danger" onClick={() => handleDeleteBanner(banner.id)}>
+                                                    Xóa
+                                                </Dropdown.Item>
+                                            </Dropdown.Menu>
+                                        </Dropdown>
                                     </td>
                                 </tr>
                             ))}
                         </tbody>
                     </Table>
+                    )}
                 </Card.Body>
             </Card>
+
+            {/* Pagination */}
+            {!loading && banners.length > 0 && (
+                <div className="d-flex justify-content-between align-items-center mt-3">
+                    <div className="text-muted">
+                        Hiển thị {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, totalElements)} trong tổng số {totalElements} banner
+                    </div>
+                    <div className="d-flex gap-2">
+                        <Button
+                            variant="outline-primary"
+                            size="sm"
+                            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                            disabled={currentPage === 1}
+                        >
+                            Trang trước
+                        </Button>
+                        <div className="d-flex align-items-center">
+                            <span className="text-muted">Trang {currentPage} / {totalPages}</span>
+                        </div>
+                        <Button
+                            variant="outline-primary"
+                            size="sm"
+                            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                            disabled={currentPage === totalPages}
+                        >
+                            Trang sau
+                        </Button>
+                    </div>
+                </div>
+            )}
 
             {/* Banner Detail/Create/Edit Modal */}
             <Modal show={showModal} onHide={() => setShowModal(false)} size="lg">
@@ -601,11 +866,37 @@ const BannerManagement = () => {
                     <Button variant="secondary" onClick={() => setShowModal(false)}>
                         Đóng
                     </Button>
-                    {modalType === 'view' && (
-                        <Button variant="primary" onClick={() => handleEditBanner(selectedBanner)}>
-                            <FaEdit className="me-1" />
-                            Chỉnh sửa
-                        </Button>
+                    {modalType === 'view' && selectedBanner && (
+                        <>
+                            {selectedBanner.isPublished ? (
+                                <Button 
+                                    variant="warning" 
+                                    onClick={() => handleUnpublishBanner(selectedBanner.id)}
+                                >
+                                    <FaToggleOff className="me-1" />
+                                    Hủy xuất bản
+                                </Button>
+                            ) : (
+                                <Button 
+                                    variant="success" 
+                                    onClick={() => handlePublishBanner(selectedBanner.id)}
+                                >
+                                    <FaToggleOn className="me-1" />
+                                    Xuất bản
+                                </Button>
+                            )}
+                            <Button variant="primary" onClick={() => handleEditBanner(selectedBanner)}>
+                                <FaEdit className="me-1" />
+                                Chỉnh sửa
+                            </Button>
+                            <Button 
+                                variant="danger" 
+                                onClick={() => handleDeleteBanner(selectedBanner.id)}
+                            >
+                                <FaTrash className="me-1" />
+                                Xóa
+                            </Button>
+                        </>
                     )}
                     {(modalType === 'create' || modalType === 'edit') && (
                         <Button variant="primary">

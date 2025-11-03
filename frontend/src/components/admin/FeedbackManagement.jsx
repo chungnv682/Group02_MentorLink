@@ -1,12 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
-    Card, Row, Col, Table, Button, Badge, Form,
-    InputGroup, Modal, Alert, Nav, Tab
+    Card, Row, Col, Table, Button, Badge, Form, Dropdown,
+    InputGroup, Modal, Alert, Spinner
 } from 'react-bootstrap';
 import {
     FaSearch, FaEye, FaReply, FaTrash,
     FaExclamationTriangle, FaCommentDots, FaFlag
 } from 'react-icons/fa';
+import { BsThreeDotsVertical } from 'react-icons/bs';
+import {
+    getAllFeedbacks,
+    getFeedbackById,
+    respondToFeedback,
+    markFeedbackInProgress,
+    markFeedbackResolved,
+    rejectFeedback,
+    deleteFeedback,
+    bulkResolveFeedbacks,
+    getFeedbackStatistics
+} from '../../services/admin/feedbackManagementService';
+import { useToast } from '../../contexts/ToastContext';
 
 const FeedbackManagement = () => {
     const [showModal, setShowModal] = useState(false);
@@ -14,9 +27,250 @@ const FeedbackManagement = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [filterType, setFilterType] = useState('all');
     const [filterStatus, setFilterStatus] = useState('all');
+    const [feedbackReports, setFeedbackReports] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [selectedFeedbackIds, setSelectedFeedbackIds] = useState([]);
+    const [responseText, setResponseText] = useState('');
+    const [stats, setStats] = useState({
+        pending: 0,
+        inProgress: 0,
+        resolved: 0,
+        highPriority: 0,
+        total: 0
+    });
+    const [pagination, setPagination] = useState({
+        page: 1,
+        size: 10,
+        totalPages: 0,
+        totalElements: 0
+    });
+    const { showToast } = useToast();
+    const headerCheckboxRef = useRef(null);
 
-    // Mock data - thay thế bằng API call thực tế
-    const feedbackReports = [
+    // Fetch feedbacks when component mounts or filters change
+    useEffect(() => {
+        fetchFeedbacks();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [filterType, filterStatus, pagination.page]);
+
+    // Fetch statistics
+    useEffect(() => {
+        fetchStatistics();
+    }, []);
+
+    const fetchFeedbacks = async () => {
+        try {
+            setLoading(true);
+            const params = {
+                keySearch: searchTerm || '',
+                type: filterType !== 'all' ? filterType : null,
+                status: filterStatus !== 'all' ? filterStatus : null,
+                page: pagination.page,
+                size: pagination.size
+            };
+
+            const response = await getAllFeedbacks(params);
+            
+            if (response.respCode === "0" || response.success) {
+                const data = response.data;
+                const feedbacksList = data.content || [];
+                setFeedbackReports(feedbacksList);
+                
+                setPagination(prev => ({
+                    ...prev,
+                    page: data.currentPage || 1,
+                    totalPages: data.totalPages || 0,
+                    totalElements: data.totalElements || 0
+                }));
+            } else {
+                showToast(response.description || 'Không thể tải danh sách feedback', 'error');
+            }
+        } catch (error) {
+            console.error('Error fetching feedbacks:', error);
+            showToast('Không thể tải danh sách feedback', 'error');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchStatistics = async () => {
+        try {
+            const response = await getFeedbackStatistics();
+            
+            if (response.respCode === "0" || response.success) {
+                setStats(response.data);
+            }
+        } catch (error) {
+            console.error('Error fetching statistics:', error);
+        }
+    };
+
+    const handleSearch = () => {
+        setPagination(prev => ({ ...prev, page: 1 }));
+        fetchFeedbacks();
+    };
+
+    const handleViewFeedback = async (feedback) => {
+        try {
+            setLoading(true);
+            const response = await getFeedbackById(feedback.id);
+            
+            if (response.respCode === "0" || response.success) {
+                setSelectedFeedback(response.data);
+                setShowModal(true);
+                setResponseText('');
+            } else {
+                showToast('Không thể tải thông tin feedback', 'error');
+            }
+        } catch (error) {
+            console.error('Error fetching feedback details:', error);
+            showToast('Không thể tải thông tin feedback', 'error');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleRespondAndResolve = async () => {
+        if (!responseText.trim()) {
+            showToast('Vui lòng nhập nội dung phản hồi', 'warning');
+            return;
+        }
+
+        try {
+            const response = await respondToFeedback(selectedFeedback.id, responseText, true);
+            
+            if (response.respCode === "0" || response.success) {
+                showToast('Đã gửi phản hồi và đánh dấu đã giải quyết', 'success');
+                fetchFeedbacks();
+                fetchStatistics();
+                setShowModal(false);
+                setResponseText('');
+            } else {
+                showToast(response.description || 'Không thể gửi phản hồi', 'error');
+            }
+        } catch (error) {
+            console.error('Error responding to feedback:', error);
+            showToast('Không thể gửi phản hồi', 'error');
+        }
+    };
+
+    const handleMarkInProgress = async (feedbackId) => {
+        try {
+            const response = await markFeedbackInProgress(feedbackId);
+            
+            if (response.respCode === "0" || response.success) {
+                showToast('Đã đánh dấu đang xử lý', 'success');
+                fetchFeedbacks();
+                fetchStatistics();
+                if (selectedFeedback && selectedFeedback.id === feedbackId) {
+                    setShowModal(false);
+                }
+            } else {
+                showToast(response.description || 'Không thể cập nhật trạng thái', 'error');
+            }
+        } catch (error) {
+            console.error('Error marking feedback in progress:', error);
+            showToast('Không thể cập nhật trạng thái', 'error');
+        }
+    };
+
+    const handleReject = async (feedbackId) => {
+        try {
+            const response = await rejectFeedback(feedbackId);
+            
+            if (response.respCode === "0" || response.success) {
+                showToast('Đã từ chối feedback', 'success');
+                fetchFeedbacks();
+                fetchStatistics();
+                if (selectedFeedback && selectedFeedback.id === feedbackId) {
+                    setShowModal(false);
+                }
+            } else {
+                showToast(response.description || 'Không thể từ chối feedback', 'error');
+            }
+        } catch (error) {
+            console.error('Error rejecting feedback:', error);
+            showToast('Không thể từ chối feedback', 'error');
+        }
+    };
+
+    const handleDelete = async (feedbackId) => {
+        if (!window.confirm('Bạn có chắc muốn xóa feedback này?')) return;
+
+        try {
+            const response = await deleteFeedback(feedbackId);
+            
+            if (response.respCode === "0" || response.success) {
+                showToast('Đã xóa feedback', 'success');
+                fetchFeedbacks();
+                fetchStatistics();
+                if (selectedFeedback && selectedFeedback.id === feedbackId) {
+                    setShowModal(false);
+                }
+            } else {
+                showToast(response.description || 'Không thể xóa feedback', 'error');
+            }
+        } catch (error) {
+            console.error('Error deleting feedback:', error);
+            showToast('Không thể xóa feedback', 'error');
+        }
+    };
+
+    const handleBulkResolve = async () => {
+        if (selectedFeedbackIds.length === 0) {
+            showToast('Vui lòng chọn ít nhất một feedback', 'warning');
+            return;
+        }
+
+        try {
+            const response = await bulkResolveFeedbacks(selectedFeedbackIds);
+            
+            if (response.respCode === "0" || response.success) {
+                showToast(`Đã đánh dấu ${selectedFeedbackIds.length} feedback là đã giải quyết`, 'success');
+                setSelectedFeedbackIds([]);
+                fetchFeedbacks();
+                fetchStatistics();
+            } else {
+                showToast(response.description || 'Không thể xử lý hàng loạt', 'error');
+            }
+        } catch (error) {
+            console.error('Error bulk resolving feedbacks:', error);
+            showToast('Không thể xử lý hàng loạt', 'error');
+        }
+    };
+
+    const handleSelectFeedback = (feedbackId) => {
+        setSelectedFeedbackIds(prev => {
+            if (prev.includes(feedbackId)) {
+                return prev.filter(id => id !== feedbackId);
+            } else {
+                return [...prev, feedbackId];
+            }
+        });
+    };
+
+    const handleSelectAll = () => {
+        const allIdsOnPage = feedbackReports.map(f => f.id);
+        const allSelected = allIdsOnPage.length > 0 && allIdsOnPage.every(id => selectedFeedbackIds.includes(id));
+        if (allSelected) {
+            setSelectedFeedbackIds(prev => prev.filter(id => !allIdsOnPage.includes(id)));
+        } else {
+            setSelectedFeedbackIds(prev => Array.from(new Set([...prev, ...allIdsOnPage])));
+        }
+    };
+
+    // Indeterminate state for header checkbox
+    useEffect(() => {
+        if (!headerCheckboxRef.current) return;
+        const allIdsOnPage = feedbackReports.map(f => f.id);
+        const selectedOnPage = allIdsOnPage.filter(id => selectedFeedbackIds.includes(id));
+        const allSelectedOnPage = selectedOnPage.length === allIdsOnPage.length && allIdsOnPage.length > 0;
+        const someSelectedOnPage = selectedOnPage.length > 0 && !allSelectedOnPage;
+        headerCheckboxRef.current.indeterminate = someSelectedOnPage;
+    }, [feedbackReports, selectedFeedbackIds]);
+
+    // Mock data - REMOVED
+    const feedbackReportsMock = [
         {
             id: 1,
             reporterId: 123,
@@ -108,20 +362,6 @@ const FeedbackManagement = () => {
         }
     };
 
-    const handleViewFeedback = (feedback) => {
-        setSelectedFeedback(feedback);
-        setShowModal(true);
-    };
-
-    const filteredFeedbacks = feedbackReports.filter(feedback => {
-        const matchesSearch = feedback.reporterName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            feedback.content.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesType = filterType === 'all' || feedback.type === filterType;
-        const matchesStatus = filterStatus === 'all' || feedback.status === filterStatus;
-
-        return matchesSearch && matchesType && matchesStatus;
-    });
-
     return (
         <div className="feedback-management">
             {/* Header */}
@@ -142,65 +382,37 @@ const FeedbackManagement = () => {
                 </div>
             </div>
 
-            {/* Stats Cards */}
-            <Row className="mb-4">
+            {/* Stats Cards - simple version */}
+            <Row className="mb-3 g-3">
                 <Col md={3}>
-                    <Card className="stats-card border-start border-warning border-4">
-                        <Card.Body>
-                            <div className="d-flex justify-content-between">
-                                <div>
-                                    <h6 className="text-muted mb-1">Chờ xử lý</h6>
-                                    <h3 className="mb-0 text-warning">15</h3>
-                                </div>
-                                <div className="stats-icon bg-warning">
-                                    <FaExclamationTriangle />
-                                </div>
-                            </div>
+                    <Card className="shadow-sm border-0">
+                        <Card.Body className="text-center">
+                            <h6 className="text-muted mb-1">Chờ xử lý</h6>
+                            <h4 className="fw-semibold mb-0">{stats.pending || 0}</h4>
                         </Card.Body>
                     </Card>
                 </Col>
                 <Col md={3}>
-                    <Card className="stats-card border-start border-primary border-4">
-                        <Card.Body>
-                            <div className="d-flex justify-content-between">
-                                <div>
-                                    <h6 className="text-muted mb-1">Đang xử lý</h6>
-                                    <h3 className="mb-0 text-primary">8</h3>
-                                </div>
-                                <div className="stats-icon bg-primary">
-                                    <FaCommentDots />
-                                </div>
-                            </div>
+                    <Card className="shadow-sm border-0">
+                        <Card.Body className="text-center">
+                            <h6 className="text-muted mb-1">Đang xử lý</h6>
+                            <h4 className="fw-semibold mb-0">{stats.inProgress || 0}</h4>
                         </Card.Body>
                     </Card>
                 </Col>
                 <Col md={3}>
-                    <Card className="stats-card border-start border-success border-4">
-                        <Card.Body>
-                            <div className="d-flex justify-content-between">
-                                <div>
-                                    <h6 className="text-muted mb-1">Đã giải quyết</h6>
-                                    <h3 className="mb-0 text-success">127</h3>
-                                </div>
-                                <div className="stats-icon bg-success">
-                                    <FaReply />
-                                </div>
-                            </div>
+                    <Card className="shadow-sm border-0">
+                        <Card.Body className="text-center">
+                            <h6 className="text-muted mb-1">Đã giải quyết</h6>
+                            <h4 className="fw-semibold mb-0">{stats.resolved || 0}</h4>
                         </Card.Body>
                     </Card>
                 </Col>
                 <Col md={3}>
-                    <Card className="stats-card border-start border-danger border-4">
-                        <Card.Body>
-                            <div className="d-flex justify-content-between">
-                                <div>
-                                    <h6 className="text-muted mb-1">Ưu tiên cao</h6>
-                                    <h3 className="mb-0 text-danger">5</h3>
-                                </div>
-                                <div className="stats-icon bg-danger">
-                                    <FaFlag />
-                                </div>
-                            </div>
+                    <Card className="shadow-sm border-0">
+                        <Card.Body className="text-center">
+                            <h6 className="text-muted mb-1">Ưu tiên cao</h6>
+                            <h4 className="fw-semibold mb-0">{stats.highPriority || 0}</h4>
                         </Card.Body>
                     </Card>
                 </Col>
@@ -250,8 +462,13 @@ const FeedbackManagement = () => {
                             </Form.Select>
                         </Col>
                         <Col md={2}>
-                            <Button variant="outline-secondary" className="w-100">
-                                Lọc
+                            <Button 
+                                variant="outline-secondary" 
+                                className="w-100"
+                                onClick={handleSearch}
+                                disabled={loading}
+                            >
+                                {loading ? <Spinner animation="border" size="sm" /> : 'Lọc'}
                             </Button>
                         </Col>
                     </Row>
@@ -262,40 +479,75 @@ const FeedbackManagement = () => {
             <Card>
                 <Card.Header className="bg-light">
                     <div className="d-flex justify-content-between align-items-center">
-                        <h6 className="mb-0">Danh sách phản hồi & báo cáo ({filteredFeedbacks.length})</h6>
+                        <h6 className="mb-0">Danh sách phản hồi & báo cáo ({pagination.totalElements || 0})</h6>
                         <div className="d-flex gap-2">
-                            <Button variant="outline-primary" size="sm">Chọn tất cả</Button>
-                            <Button variant="outline-success" size="sm">Xử lý đã chọn</Button>
+                            <Button 
+                                variant="outline-primary" 
+                                size="sm"
+                                onClick={handleSelectAll}
+                                disabled={feedbackReports.length === 0}
+                            >
+                                {selectedFeedbackIds.length === feedbackReports.length ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
+                            </Button>
+                            <Button 
+                                variant="outline-success" 
+                                size="sm"
+                                onClick={handleBulkResolve}
+                                disabled={selectedFeedbackIds.length === 0}
+                            >
+                                Xử lý đã chọn ({selectedFeedbackIds.length})
+                            </Button>
                         </div>
                     </div>
                 </Card.Header>
                 <Card.Body className="p-0">
-                    <Table responsive hover className="mb-0">
-                        <thead className="bg-light">
-                            <tr>
-                                <th width="5%">
-                                    <Form.Check type="checkbox" />
-                                </th>
-                                <th width="20%">Người gửi</th>
-                                <th width="15%">Loại</th>
-                                <th width="30%">Nội dung</th>
-                                <th width="10%">Mức độ</th>
-                                <th width="10%">Trạng thái</th>
-                                <th width="10%">Thao tác</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filteredFeedbacks.map((feedback) => (
+                    {loading ? (
+                        <div className="text-center py-5">
+                            <Spinner animation="border" variant="primary" />
+                            <p className="mt-2 text-muted">Đang tải dữ liệu...</p>
+                        </div>
+                    ) : feedbackReports.length === 0 ? (
+                        <div className="text-center py-5">
+                            <p className="text-muted">Không có dữ liệu</p>
+                        </div>
+                    ) : (
+                        <Table responsive hover className="mb-0">
+                            <thead className="bg-light">
+                                <tr>
+                                    <th width="5%">
+                                        <Form.Check 
+                                            type="checkbox"
+                                            ref={headerCheckboxRef}
+                                            checked={feedbackReports.length > 0 && feedbackReports.every(f => selectedFeedbackIds.includes(f.id))}
+                                            onChange={handleSelectAll}
+                                        />
+                                    </th>
+                                    <th width="20%">Người gửi</th>
+                                    <th width="15%">Loại</th>
+                                    <th width="30%">Nội dung</th>
+                                    <th width="10%">Mức độ</th>
+                                    <th width="10%">Trạng thái</th>
+                                    <th width="10%">Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {feedbackReports.map((feedback) => (
                                 <tr key={feedback.id}>
                                     <td>
-                                        <Form.Check type="checkbox" />
+                                        <Form.Check 
+                                            type="checkbox"
+                                            checked={selectedFeedbackIds.includes(feedback.id)}
+                                            onChange={() => handleSelectFeedback(feedback.id)}
+                                        />
                                     </td>
                                     <td>
                                         <div>
-                                            <div className="fw-medium">{feedback.reporterName}</div>
-                                            <small className="text-muted">{feedback.reporterEmail}</small>
+                                            <div className="fw-medium">{feedback.reporterName || 'N/A'}</div>
+                                            <small className="text-muted">{feedback.reporterEmail || 'N/A'}</small>
                                             <br />
-                                            <small className="text-muted">{feedback.createdAt}</small>
+                                            <small className="text-muted">
+                                                {feedback.createdAt ? new Date(feedback.createdAt).toLocaleDateString('vi-VN') : 'N/A'}
+                                            </small>
                                         </div>
                                     </td>
                                     <td>
@@ -327,29 +579,62 @@ const FeedbackManagement = () => {
                                         </Badge>
                                     </td>
                                     <td>
-                                        <div className="d-flex gap-1">
-                                            <Button
-                                                variant="outline-info"
-                                                size="sm"
-                                                onClick={() => handleViewFeedback(feedback)}
-                                            >
-                                                <FaEye />
-                                            </Button>
-                                            {feedback.status !== 'RESOLVED' && (
-                                                <Button variant="outline-primary" size="sm">
-                                                    <FaReply />
-                                                </Button>
-                                            )}
-                                            <Button variant="outline-danger" size="sm">
-                                                <FaTrash />
-                                            </Button>
-                                        </div>
+                                        <Dropdown align="end">
+                                            <Dropdown.Toggle variant="light" size="sm" className="no-caret p-1">
+                                                <BsThreeDotsVertical />
+                                            </Dropdown.Toggle>
+                                            <Dropdown.Menu>
+                                                <Dropdown.Item onClick={() => handleViewFeedback(feedback)}>
+                                                    Xem
+                                                </Dropdown.Item>
+                                                {feedback.status !== 'RESOLVED' && (
+                                                    <Dropdown.Item onClick={() => handleViewFeedback(feedback)}>
+                                                        Phản hồi
+                                                    </Dropdown.Item>
+                                                )}
+                                                <Dropdown.Divider />
+                                                <Dropdown.Item className="text-danger" onClick={() => handleDelete(feedback.id)}>
+                                                    Xóa
+                                                </Dropdown.Item>
+                                            </Dropdown.Menu>
+                                        </Dropdown>
                                     </td>
                                 </tr>
                             ))}
                         </tbody>
                     </Table>
+                    )}
                 </Card.Body>
+                {!loading && pagination.totalPages > 1 && (
+                    <Card.Footer>
+                        <div className="d-flex justify-content-between align-items-center">
+                            <div className="text-muted">
+                                Hiển thị {feedbackReports.length} / {pagination.totalElements} kết quả
+                            </div>
+                            <div className="d-flex gap-2">
+                                <Button
+                                    variant="outline-secondary"
+                                    size="sm"
+                                    disabled={pagination.page <= 1}
+                                    onClick={() => setPagination(prev => ({ ...prev, page: prev.page - 1 }))}
+                                >
+                                    Trước
+                                </Button>
+                                <span className="align-self-center">
+                                    Trang {pagination.page} / {pagination.totalPages}
+                                </span>
+                                <Button
+                                    variant="outline-secondary"
+                                    size="sm"
+                                    disabled={pagination.page >= pagination.totalPages}
+                                    onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
+                                >
+                                    Sau
+                                </Button>
+                            </div>
+                        </div>
+                    </Card.Footer>
+                )}
             </Card>
 
             {/* Feedback Detail Modal */}
@@ -415,16 +700,27 @@ const FeedbackManagement = () => {
                                         rows={3}
                                         placeholder="Nhập phản hồi của bạn..."
                                         className="mb-3"
+                                        value={responseText}
+                                        onChange={(e) => setResponseText(e.target.value)}
                                     />
                                     <div className="d-flex gap-2">
-                                        <Button variant="success">
+                                        <Button 
+                                            variant="success"
+                                            onClick={handleRespondAndResolve}
+                                        >
                                             <FaReply className="me-1" />
                                             Gửi phản hồi & Đánh dấu đã giải quyết
                                         </Button>
-                                        <Button variant="warning">
+                                        <Button 
+                                            variant="warning"
+                                            onClick={() => handleMarkInProgress(selectedFeedback.id)}
+                                        >
                                             Đánh dấu đang xử lý
                                         </Button>
-                                        <Button variant="danger">
+                                        <Button 
+                                            variant="danger"
+                                            onClick={() => handleReject(selectedFeedback.id)}
+                                        >
                                             Từ chối
                                         </Button>
                                     </div>
