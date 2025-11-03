@@ -74,7 +74,7 @@ public class BookingServiceImpl implements BookingService {
             throw new RuntimeException("Lịch này đã được đặt bởi người khác");
         }
 
-<<<<<<< HEAD
+
         // Enforce booking rule: cannot create a booking if the earliest timeslot
         // of the schedule starts within 3 hours from now.
         if (schedule.getTimeSlots() == null || schedule.getTimeSlots().isEmpty()) {
@@ -94,8 +94,6 @@ public class BookingServiceImpl implements BookingService {
             throw new RuntimeException("Không thể đặt lịch trong vòng 3 giờ trước khi buổi học bắt đầu");
         }
 
-=======
->>>>>>> 1cbb84ee52c3c7e89de0706aa458716d0cd487df
         // Get mentor from schedule
         User mentor = schedule.getUser();
 
