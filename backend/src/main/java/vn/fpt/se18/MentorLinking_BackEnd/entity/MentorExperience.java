@@ -32,6 +32,10 @@ public class MentorExperience extends AbstractEntity<Long> {
     private String experienceImage;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "status_id", nullable = false)
+    private Status status; // PENDING / APPROVED / REJECTED
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by")
     private User createdBy;
 

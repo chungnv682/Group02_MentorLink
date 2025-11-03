@@ -1,96 +1,160 @@
-import React, { useState } from 'react';
-import { Row, Col, Card, Button, Table, Badge, Modal, Form, Alert, Tab, Nav } from 'react-bootstrap';
+import React, { useState, useEffect, useContext } from 'react';
+import { Row, Col, Card, Button, Table, Badge, Modal, Form, Alert, Tab, Nav, Spinner } from 'react-bootstrap';
+import 'quill/dist/quill.snow.css';
+import '../../../styles/components/quill-editor.css';
+import { createBlog, updateBlog, getBlogsByMentor, deleteBlogByMentor } from '../../../services/blog';
+import { instance } from '../../../api/axios';
+import { API_ENDPOINTS } from '../../../utils';
+import { AuthContext } from '../../../contexts/AuthContext';
+import { useToast } from '../../../contexts/ToastContext';
+import RichTextEditor from '../../common/RichTextEditor';
 
 const ContentManagement = () => {
+    const { user } = useContext(AuthContext);
+    const userId = user?.userId || user?.id; // unify token-derived user (userId) vs API user (id)
+    const [resolvedUserId, setResolvedUserId] = useState(null);
+    const { showToast } = useToast();
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [selectedBlog, setSelectedBlog] = useState(null);
     const [activeTab, setActiveTab] = useState('blogs');
+    const [loading, setLoading] = useState(false);
+    const [blogs, setBlogs] = useState([]);
+    const [pagination, setPagination] = useState({
+        page: 1,
+        size: 10,
+        totalElements: 0,
+        totalPages: 0
+    });
     const [formData, setFormData] = useState({
         title: '',
         content: '',
-        status: 'draft'
+        isPublished: false
     });
 
-    // Mock data cho blogs
-    const blogs = [
-        {
-            id: 1,
-            title: '10 Bí quyết để có một CV ấn tượng trong lĩnh vực IT',
-            content: 'Trong thời đại số hóa ngày nay, việc sở hữu một CV ấn tượng là chìa khóa để mở ra cánh cửa cơ hội trong lĩnh vực công nghệ thông tin...',
-            status: 'PUBLISHED',
-            view_count: 1250,
-            isPublished: true,
-            created_at: '2024-01-10T14:30:00',
-            updated_at: '2024-01-12T09:15:00',
-            moderationStatus: 'APPROVED'
-        },
-        {
-            id: 2,
-            title: 'Hướng dẫn chuẩn bị hồ sơ du học Mỹ từ A đến Z',
-            content: 'Du học Mỹ là ước mơ của nhiều sinh viên Việt Nam. Tuy nhiên, quá trình chuẩn bị hồ sơ đòi hỏi sự tỉ mỉ và hiểu biết sâu sắc...',
-            status: 'PENDING',
-            view_count: 0,
-            isPublished: false,
-            created_at: '2024-01-15T16:45:00',
-            updated_at: '2024-01-15T16:45:00',
-            moderationStatus: 'PENDING'
-        },
-        {
-            id: 3,
-            title: 'Top 5 kỹ năng mềm cần thiết cho sinh viên IT',
-            content: 'Bên cạnh kiến thức chuyên môn vững chắc, các kỹ năng mềm đóng vai trò không kém phần quan trọng trong sự nghiệp của một lập trình viên...',
-            status: 'DRAFT',
-            view_count: 0,
-            isPublished: false,
-            created_at: '2024-01-08T11:20:00',
-            updated_at: '2024-01-14T13:30:00',
-            moderationStatus: null
-        },
-        {
-            id: 4,
-            title: 'Kinh nghiệm luyện thi IELTS Speaking đạt 8.0',
-            content: 'Sau 6 tháng luyện tập không ngừng nghỉ, tôi đã đạt được band điểm 8.0 cho phần Speaking trong kỳ thi IELTS. Hôm nay tôi muốn chia sẻ...',
-            status: 'PUBLISHED',
-            view_count: 890,
-            isPublished: true,
-            created_at: '2024-01-05T10:15:00',
-            updated_at: '2024-01-06T08:45:00',
-            moderationStatus: 'APPROVED'
+    // Resolve user id from profile if token lacks userId
+    useEffect(() => {
+        const resolveId = async () => {
+            try {
+                if (!userId) {
+                    const res = await instance.get(API_ENDPOINTS.USERS.PROFILE);
+                    const data = res?.data || res;
+                    if (data?.id) setResolvedUserId(data.id);
+                }
+            } catch (e) {
+                console.error('Failed to resolve user id from profile', e);
+            }
+        };
+        resolveId();
+    }, [userId]);
+
+    const effectiveUserId = userId || resolvedUserId;
+
+    useEffect(() => {
+        if (effectiveUserId) {
+            fetchBlogs();
         }
-    ];
+    }, [effectiveUserId, pagination.page]);
+
+    const toServerPage = (clientPage) => Math.max(0, (clientPage || 1) - 1);
+
+    const fetchBlogs = async () => {
+    if (!effectiveUserId) return;
+        
+        try {
+            setLoading(true);
+            const res = await getBlogsByMentor(effectiveUserId, {
+                // Backend uses 0-based page index
+                page: toServerPage(pagination.page),
+                size: pagination.size
+            });
+
+            // Normalize possible response shapes from axios/backend
+            // Possible shapes we may receive (examples):
+            // 1) res = { requestDateTime, respCode, description, data: { pageNumber, blogs, ... } }
+            // 2) res = { pageNumber, blogs, ... } (already inner data)
+            // 3) res = axiosResponse (unlikely due to interceptor)
+            let pagePayload = null;
+            if (res && res.data && res.data.pageNumber !== undefined) {
+                // shape 1: wrapper with .data
+                pagePayload = res.data;
+            } else if (res && res.pageNumber !== undefined) {
+                // shape 2: inner data
+                pagePayload = res;
+            } else if (res && res.data && res.data.data) {
+                // double-wrapped
+                pagePayload = res.data.data;
+            }
+
+            if (pagePayload) {
+                const { blogs = [], totalElements = 0, totalPages = 0, pageNumber = 0 } = pagePayload;
+                console.debug('fetchBlogs: pagePayload', { pageNumber, totalElements, totalPages, blogsCount: Array.isArray(blogs) ? blogs.length : 0 });
+                setBlogs(Array.isArray(blogs) ? blogs : []);
+                setPagination(prev => ({
+                    ...prev,
+                    page: (pageNumber ?? 0) + 1,
+                    totalElements,
+                    totalPages
+                }));
+            } else {
+                setBlogs([]);
+            }
+        } catch (error) {
+            console.error('Error fetching blogs:', error);
+            showToast('Không thể tải danh sách bài viết', 'error');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const formatDateTime = (dateString) => {
+        if (!dateString) return 'N/A';
         return new Date(dateString).toLocaleString('vi-VN');
     };
 
-    const getStatusBadge = (status) => {
+    const getStatusBadge = (statusName) => {
+        if (!statusName) return <Badge bg="secondary">Không xác định</Badge>;
+        
         const statusMap = {
-            'PUBLISHED': { bg: 'success', text: 'Đã xuất bản' },
-            'PENDING': { bg: 'warning', text: 'Chờ duyệt' },
-            'DRAFT': { bg: 'secondary', text: 'Bản nháp' },
-            'REJECTED': { bg: 'danger', text: 'Bị từ chối' }
+            'Approved': { bg: 'success', text: 'Đã duyệt' },
+            'Pending': { bg: 'warning', text: 'Chờ duyệt' },
+            'Rejected': { bg: 'danger', text: 'Từ chối' },
         };
-        const statusInfo = statusMap[status] || { bg: 'secondary', text: status };
+        const statusInfo = statusMap[statusName] || { bg: 'secondary', text: statusName };
         return <Badge bg={statusInfo.bg}>{statusInfo.text}</Badge>;
     };
 
-    const getModerationBadge = (status) => {
-        if (!status) return null;
-        const statusMap = {
-            'APPROVED': { bg: 'success', text: 'Đã duyệt' },
-            'PENDING': { bg: 'warning', text: 'Chờ duyệt' },
-            'REJECTED': { bg: 'danger', text: 'Từ chối' }
-        };
-        const statusInfo = statusMap[status] || { bg: 'secondary', text: status };
-        return <Badge bg={statusInfo.bg}>{statusInfo.text}</Badge>;
-    };
+    const handleCreateBlog = async () => {
+        if (!effectiveUserId) {
+            showToast('Không tìm thấy thông tin người dùng', 'error');
+            return;
+        }
 
-    const handleCreateBlog = () => {
-        console.log('Creating blog:', formData);
-        // Logic tạo blog mới
-        setShowCreateModal(false);
-        resetForm();
+        if (!formData.title.trim() || !formData.content.trim()) {
+            showToast('Vui lòng điền đầy đủ thông tin', 'warning');
+            return;
+        }
+
+        try {
+            setLoading(true);
+            const request = {
+                title: formData.title,
+                content: formData.content,
+                isPublished: formData.isPublished || false
+            };
+
+            await createBlog(request, effectiveUserId);
+            showToast('Tạo bài viết thành công! Bài viết đang chờ duyệt.', 'success');
+            setShowCreateModal(false);
+            resetForm();
+            fetchBlogs();
+        } catch (error) {
+            console.error('Error creating blog:', error);
+            const msg = error?.description || error?.message || error?.response?.data?.description || 'Không thể tạo bài viết';
+            showToast(msg, 'error');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleEditBlog = (blog) => {
@@ -98,44 +162,84 @@ const ContentManagement = () => {
         setFormData({
             title: blog.title,
             content: blog.content,
-            status: blog.status.toLowerCase()
+            isPublished: blog.isPublished || false
         });
         setShowEditModal(true);
     };
 
-    const handleUpdateBlog = () => {
-        console.log('Updating blog:', selectedBlog.id, formData);
-        // Logic cập nhật blog
-        setShowEditModal(false);
-        resetForm();
-    };
+    const handleUpdateBlog = async () => {
+        if (!effectiveUserId || !selectedBlog) {
+            showToast('Không tìm thấy thông tin người dùng', 'error');
+            return;
+        }
 
-    const handleDeleteBlog = (blogId) => {
-        if (window.confirm('Bạn có chắc chắn muốn xóa bài viết này?')) {
-            console.log('Deleting blog:', blogId);
-            // Logic xóa blog
+        if (!formData.title.trim() || !formData.content.trim()) {
+            showToast('Vui lòng điền đầy đủ thông tin', 'warning');
+            return;
+        }
+
+        try {
+            setLoading(true);
+            const request = {
+                title: formData.title,
+                content: formData.content,
+                isPublished: formData.isPublished || false
+            };
+
+            await updateBlog(selectedBlog.id, request, effectiveUserId);
+            showToast('Cập nhật bài viết thành công! Bài viết sẽ được kiểm duyệt lại.', 'success');
+            setShowEditModal(false);
+            resetForm();
+            fetchBlogs();
+        } catch (error) {
+            console.error('Error updating blog:', error);
+            const msg = error?.description || error?.message || error?.response?.data?.description || 'Không thể cập nhật bài viết';
+            showToast(msg, 'error');
+        } finally {
+            setLoading(false);
         }
     };
 
-    const handlePublishBlog = (blogId) => {
-        console.log('Publishing blog:', blogId);
-        // Logic xuất bản blog
+    const handleDeleteBlog = async (blogId) => {
+        if (!window.confirm('Bạn có chắc chắn muốn xóa bài viết này?')) {
+            return;
+        }
+
+        try {
+            setLoading(true);
+            await deleteBlogByMentor(blogId);
+            showToast('Xóa bài viết thành công', 'success');
+            fetchBlogs();
+        } catch (error) {
+            console.error('Error deleting blog:', error);
+            const msg = error?.description || error?.message || error?.response?.data?.description || 'Không thể xóa bài viết';
+            showToast(msg, 'error');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const resetForm = () => {
         setFormData({
             title: '',
             content: '',
-            status: 'draft'
+            isPublished: false
         });
         setSelectedBlog(null);
     };
 
     const handleInputChange = (e) => {
-        const { name, value } = e.target;
+        const { name, value, type, checked } = e.target;
         setFormData(prev => ({
             ...prev,
-            [name]: value
+            [name]: type === 'checkbox' ? checked : value
+        }));
+    };
+
+    const handleContentChange = (value) => {
+        setFormData(prev => ({
+            ...prev,
+            content: value
         }));
     };
 
@@ -153,7 +257,7 @@ const ContentManagement = () => {
                     className="btn-mentor"
                 >
                     <i className="bi bi-plus-circle me-2"></i>
-                    Viết bài mới
+                    Tạo blog
                 </Button>
             </div>
 
@@ -176,8 +280,8 @@ const ContentManagement = () => {
                             <div className="stat-icon success">
                                 <i className="bi bi-check-circle"></i>
                             </div>
-                            <div className="stat-value">{blogs.filter(b => b.status === 'PUBLISHED').length}</div>
-                            <p className="stat-label">Đã xuất bản</p>
+                            <div className="stat-value">{blogs.filter(b => b.statusName === 'Approved').length}</div>
+                            <p className="stat-label">Đã duyệt</p>
                         </Card.Body>
                     </Card>
                 </Col>
@@ -188,7 +292,7 @@ const ContentManagement = () => {
                                 <i className="bi bi-eye"></i>
                             </div>
                             <div className="stat-value">
-                                {blogs.reduce((sum, b) => sum + b.view_count, 0)}
+                                {blogs.reduce((sum, b) => sum + (b.viewCount || 0), 0)}
                             </div>
                             <p className="stat-label">Lượt xem</p>
                         </Card.Body>
@@ -200,7 +304,7 @@ const ContentManagement = () => {
                             <div className="stat-icon warning">
                                 <i className="bi bi-clock-history"></i>
                             </div>
-                            <div className="stat-value">{blogs.filter(b => b.status === 'PENDING').length}</div>
+                            <div className="stat-value">{blogs.filter(b => b.statusName === 'Pending').length}</div>
                             <p className="stat-label">Chờ duyệt</p>
                         </Card.Body>
                     </Card>
@@ -218,12 +322,7 @@ const ContentManagement = () => {
                                     Bài viết Blog
                                 </Nav.Link>
                             </Nav.Item>
-                            <Nav.Item>
-                                <Nav.Link eventKey="guides">
-                                    <i className="bi bi-book me-2"></i>
-                                    Hướng dẫn
-                                </Nav.Link>
-                            </Nav.Item>
+                            
                         </Nav>
                     </Tab.Container>
                 </Card.Header>
@@ -231,77 +330,86 @@ const ContentManagement = () => {
                     <Tab.Container activeKey={activeTab}>
                         <Tab.Content>
                             <Tab.Pane eventKey="blogs">
-                                <Table className="custom-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Tiêu đề</th>
-                                            <th>Trạng thái</th>
-                                            <th>Kiểm duyệt</th>
-                                            <th>Lượt xem</th>
-                                            <th>Ngày tạo</th>
-                                            <th>Thao tác</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {blogs.map((blog) => (
-                                            <tr key={blog.id}>
-                                                <td>
-                                                    <div>
-                                                        <div className="fw-medium">{blog.title}</div>
-                                                        <small className="text-muted">
-                                                            {blog.content.substring(0, 100)}...
-                                                        </small>
-                                                    </div>
-                                                </td>
-                                                <td>{getStatusBadge(blog.status)}</td>
-                                                <td>{getModerationBadge(blog.moderationStatus)}</td>
-                                                <td>
-                                                    <div className="d-flex align-items-center">
-                                                        <i className="bi bi-eye me-1 text-muted"></i>
-                                                        {blog.view_count.toLocaleString()}
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <small>{formatDateTime(blog.created_at)}</small>
-                                                </td>
-                                                <td>
-                                                    <div className="d-flex gap-1">
-                                                        <Button
-                                                            variant="outline-primary"
-                                                            size="sm"
-                                                            onClick={() => handleEditBlog(blog)}
-                                                        >
-                                                            <i className="bi bi-pencil"></i>
-                                                        </Button>
-                                                        {blog.status === 'DRAFT' && (
-                                                            <Button
-                                                                variant="outline-success"
-                                                                size="sm"
-                                                                onClick={() => handlePublishBlog(blog.id)}
-                                                            >
-                                                                <i className="bi bi-upload"></i>
-                                                            </Button>
-                                                        )}
-                                                        <Button
-                                                            variant="outline-info"
-                                                            size="sm"
-                                                            title="Xem trước"
-                                                        >
-                                                            <i className="bi bi-eye"></i>
-                                                        </Button>
-                                                        <Button
-                                                            variant="outline-danger"
-                                                            size="sm"
-                                                            onClick={() => handleDeleteBlog(blog.id)}
-                                                        >
-                                                            <i className="bi bi-trash"></i>
-                                                        </Button>
-                                                    </div>
-                                                </td>
+                                {loading ? (
+                                    <div className="text-center py-5">
+                                        <Spinner animation="border" variant="primary" />
+                                        <p className="mt-3 text-muted">Đang tải dữ liệu...</p>
+                                    </div>
+                                ) : blogs.length === 0 ? (
+                                    <div className="text-center py-5">
+                                        <i className="bi bi-journal-x display-1 text-muted"></i>
+                                        <h5 className="mt-3 text-muted">Chưa có bài viết nào</h5>
+                                        <p className="text-muted">Hãy tạo bài viết đầu tiên của bạn!</p>
+                                        <Button variant="primary" onClick={() => setShowCreateModal(true)}>
+                                            <i className="bi bi-plus-circle me-2"></i>
+                                            Viết bài mới
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    <Table className="custom-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Tiêu đề</th>
+                                                <th>Trạng thái</th>
+                                                <th>Xuất bản</th>
+                                                <th>Lượt xem</th>
+                                                <th>Ngày tạo</th>
+                                                <th>Thao tác</th>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </Table>
+                                        </thead>
+                                        <tbody>
+                                            {blogs.map((blog) => (
+                                                <tr key={blog.id}>
+                                                    <td>
+                                                        <div>
+                                                            <div className="fw-medium">{blog.title}</div>
+                                                            <small className="text-muted">
+                                                                {blog.content ? blog.content.replace(/<[^>]*>/g, '').substring(0, 100) : ''}...
+                                                            </small>
+                                                        </div>
+                                                    </td>
+                                                    <td>{getStatusBadge(blog.statusName)}</td>
+                                                    <td>
+                                                        {blog.isPublished ? (
+                                                            <Badge bg="success">Công khai</Badge>
+                                                        ) : (
+                                                            <Badge bg="secondary">Riêng tư</Badge>
+                                                        )}
+                                                    </td>
+                                                    <td>
+                                                        <div className="d-flex align-items-center">
+                                                            <i className="bi bi-eye me-1 text-muted"></i>
+                                                            {(blog.viewCount || 0).toLocaleString()}
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <small>{formatDateTime(blog.createdAt)}</small>
+                                                    </td>
+                                                    <td>
+                                                        <div className="d-flex gap-1">
+                                                            <Button
+                                                                variant="outline-primary"
+                                                                size="sm"
+                                                                onClick={() => handleEditBlog(blog)}
+                                                                disabled={loading}
+                                                            >
+                                                                <i className="bi bi-pencil"></i>
+                                                            </Button>
+                                                            <Button
+                                                                variant="outline-danger"
+                                                                size="sm"
+                                                                onClick={() => handleDeleteBlog(blog.id)}
+                                                                disabled={loading}
+                                                            >
+                                                                <i className="bi bi-trash"></i>
+                                                            </Button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </Table>
+                                )}
                             </Tab.Pane>
                             <Tab.Pane eventKey="guides">
                                 <div className="text-center py-5">
@@ -317,39 +425,7 @@ const ContentManagement = () => {
 
             {/* Popular Posts */}
             <Row className="mt-4">
-                <Col lg={6}>
-                    <Card className="dashboard-card">
-                        <Card.Header className="bg-transparent border-0">
-                            <h5 className="mb-0">Bài viết phổ biến</h5>
-                        </Card.Header>
-                        <Card.Body>
-                            {blogs
-                                .filter(blog => blog.status === 'PUBLISHED')
-                                .sort((a, b) => b.view_count - a.view_count)
-                                .slice(0, 3)
-                                .map((blog, index) => (
-                                    <div key={blog.id} className="popular-post-item d-flex align-items-center mb-3">
-                                        <div className="rank-number me-3">
-                                            <div className={`rank-badge rank-${index + 1}`}>
-                                                {index + 1}
-                                            </div>
-                                        </div>
-                                        <div className="flex-grow-1">
-                                            <h6 className="mb-1">{blog.title}</h6>
-                                            <div className="d-flex align-items-center text-muted small">
-                                                <i className="bi bi-eye me-1"></i>
-                                                {blog.view_count} lượt xem
-                                                <span className="mx-2">•</span>
-                                                <i className="bi bi-calendar me-1"></i>
-                                                {formatDateTime(blog.created_at)}
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))
-                            }
-                        </Card.Body>
-                    </Card>
-                </Col>
+                
                 <Col lg={6}>
                     <Card className="dashboard-card">
                         <Card.Header className="bg-transparent border-0">
@@ -358,33 +434,33 @@ const ContentManagement = () => {
                         <Card.Body>
                             <div className="content-stats">
                                 <div className="stat-row d-flex justify-content-between align-items-center mb-3">
-                                    <span>Bài viết đã xuất bản:</span>
+                                    <span>Đã duyệt:</span>
                                     <span className="fw-bold text-success">
-                                        {blogs.filter(b => b.status === 'PUBLISHED').length}
+                                        {blogs.filter(b => b.statusName === 'Approved').length}
                                     </span>
                                 </div>
                                 <div className="stat-row d-flex justify-content-between align-items-center mb-3">
                                     <span>Đang chờ duyệt:</span>
                                     <span className="fw-bold text-warning">
-                                        {blogs.filter(b => b.status === 'PENDING').length}
+                                        {blogs.filter(b => b.statusName === 'Pending').length}
                                     </span>
                                 </div>
                                 <div className="stat-row d-flex justify-content-between align-items-center mb-3">
-                                    <span>Bản nháp:</span>
-                                    <span className="fw-bold text-secondary">
-                                        {blogs.filter(b => b.status === 'DRAFT').length}
+                                    <span>Bị từ chối:</span>
+                                    <span className="fw-bold text-danger">
+                                        {blogs.filter(b => b.statusName === 'Rejected').length}
                                     </span>
                                 </div>
                                 <div className="stat-row d-flex justify-content-between align-items-center mb-3">
                                     <span>Tổng lượt xem:</span>
                                     <span className="fw-bold text-primary">
-                                        {blogs.reduce((sum, b) => sum + b.view_count, 0).toLocaleString()}
+                                        {blogs.reduce((sum, b) => sum + (b.viewCount || 0), 0).toLocaleString()}
                                     </span>
                                 </div>
                                 <div className="stat-row d-flex justify-content-between align-items-center">
                                     <span>Trung bình lượt xem/bài:</span>
                                     <span className="fw-bold text-info">
-                                        {Math.round(blogs.reduce((sum, b) => sum + b.view_count, 0) / blogs.length)}
+                                        {blogs.length > 0 ? Math.round(blogs.reduce((sum, b) => sum + (b.viewCount || 0), 0) / blogs.length) : 0}
                                     </span>
                                 </div>
                             </div>
@@ -413,26 +489,23 @@ const ContentManagement = () => {
 
                         <Form.Group className="mb-3">
                             <Form.Label>Nội dung <span className="text-danger">*</span></Form.Label>
-                            <Form.Control
-                                as="textarea"
-                                rows={8}
-                                name="content"
-                                placeholder="Viết nội dung bài viết của bạn..."
-                                value={formData.content}
-                                onChange={handleInputChange}
-                            />
+                            <div className="quill-editor-wrapper">
+                                <RichTextEditor
+                                    value={formData.content}
+                                    onChange={handleContentChange}
+                                    placeholder="Viết nội dung bài viết của bạn..."
+                                />
+                            </div>
                         </Form.Group>
 
                         <Form.Group className="mb-3">
-                            <Form.Label>Trạng thái</Form.Label>
-                            <Form.Select
-                                name="status"
-                                value={formData.status}
+                            <Form.Check
+                                type="checkbox"
+                                name="isPublished"
+                                label="Công khai bài viết (hiển thị trên trang chủ khi được duyệt)"
+                                checked={formData.isPublished}
                                 onChange={handleInputChange}
-                            >
-                                <option value="draft">Lưu nháp</option>
-                                <option value="pending">Gửi duyệt</option>
-                            </Form.Select>
+                            />
                         </Form.Group>
 
                         <Alert variant="info">
@@ -443,16 +516,25 @@ const ContentManagement = () => {
                     </Form>
                 </Modal.Body>
                 <Modal.Footer>
-                    <Button variant="secondary" onClick={() => setShowCreateModal(false)}>
+                    <Button variant="secondary" onClick={() => setShowCreateModal(false)} disabled={loading}>
                         Hủy
                     </Button>
                     <Button
                         variant="primary"
                         onClick={handleCreateBlog}
-                        disabled={!formData.title || !formData.content}
+                        disabled={!formData.title || !formData.content || loading}
                     >
-                        <i className="bi bi-save me-2"></i>
-                        {formData.status === 'draft' ? 'Lưu nháp' : 'Gửi duyệt'}
+                        {loading ? (
+                            <>
+                                <Spinner animation="border" size="sm" className="me-2" />
+                                Đang xử lý...
+                            </>
+                        ) : (
+                            <>
+                                <i className="bi bi-save me-2"></i>
+                                Tạo bài viết
+                            </>
+                        )}
                     </Button>
                 </Modal.Footer>
             </Modal>
@@ -477,41 +559,52 @@ const ContentManagement = () => {
 
                         <Form.Group className="mb-3">
                             <Form.Label>Nội dung <span className="text-danger">*</span></Form.Label>
-                            <Form.Control
-                                as="textarea"
-                                rows={8}
-                                name="content"
-                                placeholder="Viết nội dung bài viết của bạn..."
-                                value={formData.content}
+                            <div className="quill-editor-wrapper">
+                                <RichTextEditor
+                                    value={formData.content}
+                                    onChange={handleContentChange}
+                                    placeholder="Viết nội dung bài viết của bạn..."
+                                />
+                            </div>
+                        </Form.Group>
+
+                        <Form.Group className="mb-3">
+                            <Form.Check
+                                type="checkbox"
+                                name="isPublished"
+                                label="Công khai bài viết (hiển thị trên trang chủ khi được duyệt)"
+                                checked={formData.isPublished}
                                 onChange={handleInputChange}
                             />
                         </Form.Group>
 
-                        <Form.Group className="mb-3">
-                            <Form.Label>Trạng thái</Form.Label>
-                            <Form.Select
-                                name="status"
-                                value={formData.status}
-                                onChange={handleInputChange}
-                            >
-                                <option value="draft">Lưu nháp</option>
-                                <option value="pending">Gửi duyệt</option>
-                                <option value="published">Xuất bản</option>
-                            </Form.Select>
-                        </Form.Group>
+                        <Alert variant="warning">
+                            <i className="bi bi-exclamation-triangle me-2"></i>
+                            <strong>Lưu ý:</strong> Khi cập nhật bài viết, trạng thái sẽ được đặt lại về "Chờ duyệt" 
+                            và cần được kiểm duyệt lại trước khi xuất bản.
+                        </Alert>
                     </Form>
                 </Modal.Body>
                 <Modal.Footer>
-                    <Button variant="secondary" onClick={() => setShowEditModal(false)}>
+                    <Button variant="secondary" onClick={() => setShowEditModal(false)} disabled={loading}>
                         Hủy
                     </Button>
                     <Button
                         variant="primary"
                         onClick={handleUpdateBlog}
-                        disabled={!formData.title || !formData.content}
+                        disabled={!formData.title || !formData.content || loading}
                     >
-                        <i className="bi bi-save me-2"></i>
-                        Cập nhật
+                        {loading ? (
+                            <>
+                                <Spinner animation="border" size="sm" className="me-2" />
+                                Đang xử lý...
+                            </>
+                        ) : (
+                            <>
+                                <i className="bi bi-save me-2"></i>
+                                Cập nhật
+                            </>
+                        )}
                     </Button>
                 </Modal.Footer>
             </Modal>
