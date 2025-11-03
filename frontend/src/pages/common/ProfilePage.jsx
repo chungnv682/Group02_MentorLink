@@ -77,11 +77,8 @@ const ProfilePage = () => {
 
     if (loading) {
         return (
-<<<<<<< HEAD
-            <Container className="py-5">
-=======
             <Container fluid className="py-5 px-0">
->>>>>>> 1cbb84ee52c3c7e89de0706aa458716d0cd487df
+
                 <Row>
                     <Col className="text-center">
                         <Spinner animation="border" />
@@ -111,11 +108,8 @@ const ProfilePage = () => {
     }
 
     const isCustomer = (user?.role || '').toUpperCase() === USER_ROLES.CUSTOMER;
-<<<<<<< HEAD
-    const avatarUrl = form.avatarUrl || '/images/default-avatar.png';
-=======
     const avatarUrl = form.avatarUrl || '/images/default-avatar.svg';
->>>>>>> 1cbb84ee52c3c7e89de0706aa458716d0cd487df
+
 
     return (
         <div className="profile-page">
@@ -135,13 +129,8 @@ const ProfilePage = () => {
                                             <div className="profile-avatar-wrapper">
                                                 <Image
                                                     src={avatarUrl}
-<<<<<<< HEAD
-                                                    onError={(e) => {
-                                                        e.target.src = '/images/default-avatar.png';
-                                                    }}
-=======
                                                     onError={(e) => { e.target.src = '/images/default-avatar.svg'; }}
->>>>>>> 1cbb84ee52c3c7e89de0706aa458716d0cd487df
+
                                                     roundedCircle
                                                     className="profile-avatar"
                                                     alt={form.fullname || 'User Avatar'}
@@ -345,7 +334,7 @@ const ProfilePage = () => {
                                                             className="btn-cancel"
                                                             onClick={() => window.history.back()}
                                                         >
-                                                            Hủy
+                                                            Quay lại
                                                         </Button>
                                                         <Button
                                                             type="submit"

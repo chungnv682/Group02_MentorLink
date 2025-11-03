@@ -16,30 +16,34 @@ const BookingHistoryPage = () => {
     const [showDetail, setShowDetail] = useState(false);
 
     useEffect(() => {
+        // Helper: compute a timestamp for sorting a booking by its schedule date and latest timeslot
+        const computeBookingTimestamp = (booking) => {
+            if (!booking || !booking.schedule) return 0;
+            const dateStr = booking.schedule.date;
+            const dateMs = dateStr ? new Date(dateStr).setHours(0, 0, 0, 0) : 0;
+            const slots = booking.schedule.timeSlots || [];
+            // Use the latest timeStart (so bookings with later times appear first for same date)
+            const maxStart = slots.length > 0 ? Math.max(...slots.map(s => Number(s.timeStart || 0))) : 0;
+            return dateMs + (Number(maxStart) * 60 * 60 * 1000);
+        };
+
         const fetchBookingHistory = async () => {
             try {
                 setLoading(true);
                 const res = await instance.get('/api/bookings/mine');
                 const data = res?.data || res;
-<<<<<<< HEAD
-                // Sort bookings by schedule date descending (newest first).
                 if (Array.isArray(data)) {
                     const sorted = data.slice().sort((a, b) => {
-                        const aDate = a?.schedule?.date ? new Date(a.schedule.date) : null;
-                        const bDate = b?.schedule?.date ? new Date(b.schedule.date) : null;
-
-                        if (aDate && bDate) return bDate - aDate; // desc
-                        if (aDate && !bDate) return -1;
-                        if (!aDate && bDate) return 1;
-                        // fallback to bookingId desc
-                        return (b.bookingId || 0) - (a.bookingId || 0);
+                        const ta = computeBookingTimestamp(a);
+                        const tb = computeBookingTimestamp(b);
+                        // descending
+                        return tb - ta || (b.bookingId - a.bookingId);
                     });
                     setBookings(sorted);
-=======
+
                 // Sort bookings by bookingId in ascending order
                 if (Array.isArray(data)) {
                     setBookings(data.sort((a, b) => a.bookingId - b.bookingId));
->>>>>>> 1cbb84ee52c3c7e89de0706aa458716d0cd487df
                 }
             } catch (error) {
                 console.error('Fetch booking history error', error);
@@ -57,11 +61,7 @@ const BookingHistoryPage = () => {
             'PENDING': { bg: 'warning', text: 'Chờ xử lý' },
             'APPROVED': { bg: 'success', text: 'Đã xác nhận' },
             'SUCCESS': { bg: 'info', text: 'Đã hoàn thành' },
-<<<<<<< HEAD
-            'CANCELED': { bg: 'danger', text: 'Đã hủy' },
-=======
             'CANCELLED': { bg: 'danger', text: 'Đã hủy' },
->>>>>>> 1cbb84ee52c3c7e89de0706aa458716d0cd487df
             'REJECTED': { bg: 'danger', text: 'Đã bị từ chối' },
             'CONFIRMED': { bg: 'success', text: 'Đã xử lý' },
         };
@@ -115,25 +115,20 @@ const BookingHistoryPage = () => {
     };
 
     const handleBookingCancelled = async (bookingId) => {
-        // Refresh booking list after cancellation
+        // Refresh booking list after cancellation and keep descending date/time order
         try {
             const res = await instance.get('/api/bookings/mine');
             const data = res?.data || res;
             if (Array.isArray(data)) {
-<<<<<<< HEAD
                 const sorted = data.slice().sort((a, b) => {
-                    const aDate = a?.schedule?.date ? new Date(a.schedule.date) : null;
-                    const bDate = b?.schedule?.date ? new Date(b.schedule.date) : null;
-
-                    if (aDate && bDate) return bDate - aDate; // desc
-                    if (aDate && !bDate) return -1;
-                    if (!aDate && bDate) return 1;
-                    return (b.bookingId || 0) - (a.bookingId || 0);
+                    const ta = computeBookingTimestamp(a);
+                    const tb = computeBookingTimestamp(b);
+                    return tb - ta || (b.bookingId - a.bookingId);
                 });
                 setBookings(sorted);
-=======
+
                 setBookings(data.sort((a, b) => a.bookingId - b.bookingId));
->>>>>>> 1cbb84ee52c3c7e89de0706aa458716d0cd487df
+
             }
         } catch (error) {
             console.error('Error refreshing bookings:', error);

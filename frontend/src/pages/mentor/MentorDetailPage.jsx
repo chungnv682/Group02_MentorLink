@@ -328,36 +328,7 @@ import '../../styles/components/MentorDetail.css'; const MentorDetailPage = () =
                             </Col>
 
                             <Col lg={3} className="text-center">
-<<<<<<< HEAD
-                                <Card className="booking-card shadow border-primary">
-                                    <Card.Body className="p-3">
-                                        <h6 className="text-primary mb-3 fw-bold">
-                                            Nhận tư vấn ngay tại đây
-                                        </h6>
-                                    
-                                        <Button
-                                            variant="outline-primary"
-                                            size="sm"
-                                            className="w-100 btn-friendly mb-3"
-                                            onClick={() => alert('Chức năng chat đang phát triển')}
-                                        >
-                                            💬 Nhắn tin
-                                        </Button>
-
-                                        <div className="mentor-badges mt-3">
-                                            <Badge bg="success" className="me-1 mb-1">
-                                                <FaCheckCircle className="me-1" />
-                                                Verified
-                                            </Badge>
-                                            <Badge bg="info" className="mb-1">
-                                                Top Mentor
-                                            </Badge>
-                                        </div>
-                                    </Card.Body>
-                                </Card>
-=======
                                 
->>>>>>> 1cbb84ee52c3c7e89de0706aa458716d0cd487df
                             </Col>
                         </Row>
                     </Card.Body>

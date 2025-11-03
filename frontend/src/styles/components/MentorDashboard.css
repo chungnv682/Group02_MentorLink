@@ -217,7 +217,8 @@
 
 .mentor-nav-link {
     border-radius: 12px !important;
-    color: #212529 !important;
+    /* stronger/darker text so inactive items are readable */
+    color: #0f2137 !important;
     border: 2px solid transparent !important;
     padding: 1rem 1.5rem !important;
     transition: all 0.3s ease;
@@ -225,9 +226,11 @@
     align-items: center;
     position: relative;
     font-weight: 600 !important;
-    font-size: 1rem;
-    background-color: rgba(113, 201, 206, 0.08) !important;
+    font-size: 1.15rem; /* tăng kích thước chữ cho navbar */
+    /* make inactive items clearly visible on white sidebar */
+    background-color: #eaf8f8 !important;
     margin-bottom: 0.5rem;
+    opacity: 1 !important; /* ensure full visibility */
 }
 
 [data-theme='dark'] .mentor-nav-link {
@@ -236,24 +239,70 @@
 }
 
 .mentor-nav-link:hover {
-    background-color: rgba(113, 201, 206, 0.25) !important;
-    color: #71c9ce !important;
+    background-color: rgba(113, 201, 206, 0.35) !important;
+    color: #0f2137 !important;
     transform: translateX(10px);
     border-color: rgba(113, 201, 206, 0.5) !important;
     box-shadow: 0 4px 16px rgba(113, 201, 206, 0.3);
 }
 
+/* Ensure icons inside nav links match text color */
+.mentor-nav-link i {
+    color: inherit !important;
+}
+
+/* Improve contrast for active nav item in light theme */
 .mentor-nav-link.active {
-    background-color: #71c9ce !important;
-    color: white !important;
+    background-color: #8bd3d7 !important; /* lighter teal for better contrast */
+    color: #0f2137 !important; /* dark text to avoid blending with background */
     box-shadow: 0 8px 24px rgba(113, 201, 206, 0.5);
     font-weight: 700 !important;
-    border-color: #71c9ce !important;
+    border-color: #5ebac0 !important;
+}
+
+/* Keep good contrast in dark mode */
+[data-theme='dark'] .mentor-nav-link.active {
+    background-color: #5ebac0 !important;
+    color: #ffffff !important;
 }
 
 .mentor-nav-link.active:hover {
     transform: none;
     background-color: #5ebac0 !important;
+}
+
+/* stronger default border and inner padding so items look like buttons */
+.mentor-nav-link {
+    border: 1px solid rgba(113,201,206,0.18) !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+}
+
+/* ensure icon and text contrast */
+.mentor-nav-link .bi {
+    color: #0f2137 !important;
+    opacity: 1 !important;
+    /* make icon appear as a colored 'light' badge */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #9fe6e3, #5ebac0);
+    color: #fff !important;
+    box-shadow: 0 6px 14px rgba(94,186,192,0.18);
+    margin-right: 0.75rem;
+    font-size: 1.05rem;
+}
+
+/* Active state: brighter icon and subtle glow on text */
+.mentor-nav-link.active .bi {
+    background: linear-gradient(135deg, #4fc3d3, #2bb3a7) !important;
+    box-shadow: 0 10px 24px rgba(46, 180, 168, 0.28) !important;
+}
+
+.mentor-nav-link.active {
+    text-shadow: 0 2px 10px rgba(94,186,192,0.18);
 }
 
 /* Quick Actions */
@@ -318,6 +367,17 @@
     color: rgba(255, 255, 255, 0.9) !important;
     font-weight: 500 !important;
     font-size: 1.1rem;
+}
+
+/* User menu in dashboard header */
+.user-menu-toggle {
+    color: #ffffff !important;
+    border-color: rgba(255, 255, 255, 0.8) !important;
+}
+.user-menu-toggle:hover,
+.user-menu-toggle:focus {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    color: #ffffff !important;
 }
 
 /* Cards */

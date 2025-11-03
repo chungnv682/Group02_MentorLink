@@ -107,7 +107,7 @@ const MentorOverview = ({ mentorData }) => {
                                 <i className="bi bi-currency-dollar"></i>
                             </div>
                             <div className="stat-value">
-                                {formatCurrency(mentorData.totalEarnings)}
+                                {formatCurrency(mentorData.totalEarnings || 0)}
                             </div>
                             <p className="stat-label">Tổng thu nhập</p>
                         </Card.Body>
@@ -119,7 +119,7 @@ const MentorOverview = ({ mentorData }) => {
                             <div className="stat-icon success">
                                 <i className="bi bi-check-circle"></i>
                             </div>
-                            <div className="stat-value">{mentorData.completedBookings}</div>
+                            <div className="stat-value">{mentorData.completedBookings || 0}</div>
                             <p className="stat-label">Buổi đã hoàn thành</p>
                         </Card.Body>
                     </Card>
@@ -130,7 +130,7 @@ const MentorOverview = ({ mentorData }) => {
                             <div className="stat-icon warning">
                                 <i className="bi bi-clock-history"></i>
                             </div>
-                            <div className="stat-value">{mentorData.pendingBookings}</div>
+                            <div className="stat-value">{mentorData.pendingBookings || 0}</div>
                             <p className="stat-label">Đang chờ xác nhận</p>
                         </Card.Body>
                     </Card>
@@ -141,7 +141,7 @@ const MentorOverview = ({ mentorData }) => {
                             <div className="stat-icon info">
                                 <i className="bi bi-star"></i>
                             </div>
-                            <div className="stat-value">{mentorData.rating}</div>
+                            <div className="stat-value">{mentorData.rating || 0}</div>
                             <p className="stat-label">Đánh giá trung bình</p>
                         </Card.Body>
                     </Card>
