@@ -111,14 +111,6 @@ const Header = () => {
                                 </NavDropdown>
                             )}
 
-                            {/* <Button
-                                variant="primary"
-                                className="support-button ms-3"
-                                onClick={handleLoginClick}
-                            >
-                                Hỗ trợ ngay
-                            </Button> */}
-
                             {userIsModerator && (
                                 <Nav.Link as={Link} to="/moderator" className="nav-link ms-2 px-3 border border-light rounded">
                                     <i className="bi bi-shield-check me-1"></i>

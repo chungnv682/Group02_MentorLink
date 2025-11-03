@@ -37,6 +37,12 @@ public class Banner extends AbstractEntity<Long> {
     @Column(name = "is_published", columnDefinition = "boolean default false")
     private Boolean isPublished;
 
+    @Column(name = "view_count", columnDefinition = "integer default 0")
+    private Integer viewCount;
+
+    @Column(name = "click_count", columnDefinition = "integer default 0")
+    private Integer clickCount;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by")
     private User createdBy;

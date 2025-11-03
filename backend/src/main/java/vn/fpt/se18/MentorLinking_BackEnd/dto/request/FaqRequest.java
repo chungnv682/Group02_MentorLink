@@ -15,6 +15,10 @@ public class FaqRequest {
     @NotBlank(message = "Question is required")
     private String question;
 
+    private String answer;
+
     @EnumValue(name = "urgency", enumClass = Urgency.class, message = "Urgency must be one of enum Urgency")
     private String urgency;
+
+    private Boolean isPublished;
 }
