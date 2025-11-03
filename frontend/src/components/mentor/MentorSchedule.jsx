@@ -72,6 +72,7 @@ const MentorSchedule = ({ mentorId, mentorName = 'Mentor' }) => {
         { value: 'OTHERS', label: 'Khác' },
     ];
 
+
     // Initialize selectedDate on first load
     React.useEffect(() => {
         if (availableDates.length > 0 && !selectedDate) {
@@ -84,6 +85,7 @@ const MentorSchedule = ({ mentorId, mentorName = 'Mentor' }) => {
         () => (selectedDate && groupedSchedules[selectedDate]) || [],
         [selectedDate, groupedSchedules]
     );
+
 
     /**
      * Check if schedule is booked (has a completed payment booking)
@@ -126,6 +128,7 @@ const MentorSchedule = ({ mentorId, mentorName = 'Mentor' }) => {
             setDescriptionError('Nội dung muốn hỏi phải có ít nhất 10 ký tự');
             return;
         }
+
 
         setBookingLoading(true);
         setBookingError(null);
@@ -494,6 +497,7 @@ const MentorSchedule = ({ mentorId, mentorName = 'Mentor' }) => {
                                             {description.length}/10 ký tự tối thiểu
                                         </small>
                                     </Form.Group>
+
                                 </>
                             )}
                         </>
