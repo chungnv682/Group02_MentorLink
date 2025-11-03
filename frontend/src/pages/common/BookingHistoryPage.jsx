@@ -32,7 +32,6 @@ const BookingHistoryPage = () => {
                 setLoading(true);
                 const res = await instance.get('/api/bookings/mine');
                 const data = res?.data || res;
-                // Sort bookings by date+time in descending order (newest first)
                 if (Array.isArray(data)) {
                     const sorted = data.slice().sort((a, b) => {
                         const ta = computeBookingTimestamp(a);
@@ -41,6 +40,10 @@ const BookingHistoryPage = () => {
                         return tb - ta || (b.bookingId - a.bookingId);
                     });
                     setBookings(sorted);
+
+                // Sort bookings by bookingId in ascending order
+                if (Array.isArray(data)) {
+                    setBookings(data.sort((a, b) => a.bookingId - b.bookingId));
                 }
             } catch (error) {
                 console.error('Fetch booking history error', error);
@@ -117,20 +120,15 @@ const BookingHistoryPage = () => {
             const res = await instance.get('/api/bookings/mine');
             const data = res?.data || res;
             if (Array.isArray(data)) {
-                const computeBookingTimestamp = (booking) => {
-                    if (!booking || !booking.schedule) return 0;
-                    const dateStr = booking.schedule.date;
-                    const dateMs = dateStr ? new Date(dateStr).setHours(0, 0, 0, 0) : 0;
-                    const slots = booking.schedule.timeSlots || [];
-                    const maxStart = slots.length > 0 ? Math.max(...slots.map(s => Number(s.timeStart || 0))) : 0;
-                    return dateMs + (Number(maxStart) * 60 * 60 * 1000);
-                };
                 const sorted = data.slice().sort((a, b) => {
                     const ta = computeBookingTimestamp(a);
                     const tb = computeBookingTimestamp(b);
                     return tb - ta || (b.bookingId - a.bookingId);
                 });
                 setBookings(sorted);
+
+                setBookings(data.sort((a, b) => a.bookingId - b.bookingId));
+
             }
         } catch (error) {
             console.error('Error refreshing bookings:', error);

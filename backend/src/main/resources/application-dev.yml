@@ -5,7 +5,7 @@ spring:
   devtools:
     add-properties: true
   datasource:
-    url: jdbc:mysql://10.8.0.1:3309/mentor_link
+    url: jdbc:mysql://103.20.96.16:3309/mentor_link
     username: root
     password: Chien@123
   jpa:
@@ -16,8 +16,8 @@ spring:
     hibernate:
       ddl-auto: update
   sendgrid:
-    code: dummy
-    from-email: dummy
+    code: dummy-key
+    from-email: chientxhe186184@fpt.edu.vn
 # application-dev.yml
 springdoc:
   api-docs:
