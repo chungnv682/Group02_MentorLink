@@ -46,7 +46,7 @@ public interface BookingService {
      * - Only the owner (customer) can cancel
      * - Only allowed when paymentProcess is COMPLETED
      * - Only allowed at least 3 hours before the earliest time slot of the schedule
-     * On success: booking.status -> CANCELED, booking.paymentProcess -> WAIT_REFUND
+     * On success: booking.status -> CANCELLED, booking.paymentProcess -> WAIT_REFUND
      *
      * @param customerId id of the customer requesting cancel
      * @param bookingId  id of the booking to cancel
