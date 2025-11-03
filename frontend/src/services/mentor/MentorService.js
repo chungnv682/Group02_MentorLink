@@ -1,5 +1,6 @@
 import { instance } from '../../api/axios';
 import AuthService from '../auth/AuthService';
+import { API_ENDPOINTS } from '../../utils';
 
 class MentorService {
     // Get all mentors with filters and pagination
@@ -16,7 +17,8 @@ class MentorService {
             if (params.minRating) queryParams.append('minRating', params.minRating);
             if (params.approvedCountry) queryParams.append('approvedCountry', params.approvedCountry);
 
-            const url = `/api/mentors${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+            // BE exposes /mentors (no /api prefix)
+            const url = `/mentors${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
             const response = await instance.get(url);
 
             return response;
@@ -29,7 +31,7 @@ class MentorService {
     // Get mentor by ID
     static async getMentorById(id) {
         try {
-            const response = await instance.get(`/api/mentors/${id}`);
+            const response = await instance.get(`/mentors/${id}`);
             return response;
         } catch (error) {
             console.error('Error fetching mentor detail:', error);
@@ -164,10 +166,21 @@ class MentorService {
             if (!mentorEmail) {
                 throw new Error('No mentor ID found for current user');
             }
-            const response = await instance.get(`/api/mentors/activity/${mentorEmail}`);
+            const response = await instance.get(`/mentors/activity/${mentorEmail}`);
             return response;
         } catch (error) {
             console.error('Error fetching mentor activity:', error);
+            throw error;
+        }
+    }
+
+    // Get current logged-in user's profile (works for mentor)
+    static async getCurrentMentorProfile() {
+        try {
+            const response = await instance.get(API_ENDPOINTS.USERS.PROFILE);
+            return response; // interceptor returns response.data already
+        } catch (error) {
+            console.error('Error fetching current mentor profile:', error);
             throw error;
         }
     }

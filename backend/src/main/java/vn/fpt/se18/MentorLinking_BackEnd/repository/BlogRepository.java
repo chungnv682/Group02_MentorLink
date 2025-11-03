@@ -28,4 +28,14 @@ public interface BlogRepository extends JpaRepository<Blog, Long> {
     Page<Blog> findAllBlogsForAdmin(@Param("keyword") String keyword,
                                    @Param("statusName") String statusName,
                                    Pageable pageable);
+
+    // Mentor methods - get blogs by author
+    @Query("SELECT b FROM Blog b WHERE b.author.id = :authorId")
+    Page<Blog> findByAuthorId(@Param("authorId") Long authorId, Pageable pageable);
+
+    @Query("SELECT b FROM Blog b WHERE b.author.id = :authorId " +
+            "AND (LOWER(b.title) LIKE :keyword)")
+    Page<Blog> findByAuthorIdAndKeyword(@Param("authorId") Long authorId,
+                                         @Param("keyword") String keyword,
+                                         Pageable pageable);
 }
