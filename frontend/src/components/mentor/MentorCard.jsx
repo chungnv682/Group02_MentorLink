@@ -43,11 +43,8 @@ const MentorCard = ({ mentor, horizontal = false }) => {
                 <div className="mentor-avatar-container position-relative">
                     <div className="mentor-avatar-wrapper">
                         <img
-<<<<<<< HEAD
-                            src={mentor.avatarUrl || '/images/default-avatar.png'}
-=======
                             src={mentor.avatarUrl || '/images/default-avatar.svg'}
->>>>>>> 1cbb84ee52c3c7e89de0706aa458716d0cd487df
+
                             alt={mentor.fullname}
                             className="mentor-avatar"
                         />
