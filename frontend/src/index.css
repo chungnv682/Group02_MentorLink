@@ -94,3 +94,9 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+
+/* Hide caret on specific dropdown toggles marked with .no-caret */
+.dropdown-toggle.no-caret::after,
+.no-caret.dropdown-toggle::after {
+  display: none !important;
+}

@@ -33,7 +33,9 @@ public enum ErrorCode {
     COUNTRY_NOT_FOUND("19", "Quốc gia không tồn tại", HttpStatus.NOT_FOUND),
     COUNTRY_ALREADY_EXISTS("20", "Quốc gia đã tồn tại", HttpStatus.BAD_REQUEST),
     STATUS_NOT_FOUND("21", "Trạng thái không tồn tại", HttpStatus.NOT_FOUND),
+    STATUS_NOT_EXISTED("21", "Trạng thái không tồn tại", HttpStatus.NOT_FOUND),
     USER_NOT_EXISTED("22", "Người dùng không tồn tại", HttpStatus.NOT_FOUND),
+    BANNER_NOT_EXISTED("23", "Banner không tồn tại", HttpStatus.NOT_FOUND),
     ;
     
     private final String code;

@@ -1,130 +1,299 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
-    Card, Row, Col, Table, Button, Badge, Form,
-    InputGroup, Modal, Nav, Tab, Alert
+    Card, Row, Col, Table, Button, Badge, Form, Dropdown,
+    InputGroup, Modal, Nav, Tab, Alert, Spinner
 } from 'react-bootstrap';
 import {
     FaSearch, FaEye, FaCalendarAlt, FaClock,
     FaUser, FaCheckCircle, FaTimesCircle, FaHistory
 } from 'react-icons/fa';
+import { BsThreeDotsVertical } from 'react-icons/bs';
+import { useToast } from '../../contexts/ToastContext';
+import {
+    getAllBookings,
+    getBookingById,
+    confirmBooking,
+    cancelBooking,
+    completeBooking,
+    bulkConfirmBookings,
+    bulkCancelBookings,
+    getBookingStatistics,
+    getAllSchedules
+} from '../../services/admin';
 
 const BookingManagement = () => {
+    // State for bookings
+    const [bookings, setBookings] = useState([]);
+    const [schedules, setSchedules] = useState([]);
+    const [statistics, setStatistics] = useState({
+        pending: 0,
+        confirmed: 0,
+        completed: 0,
+        cancelled: 0
+    });
+    
+    // UI State
     const [showModal, setShowModal] = useState(false);
     const [selectedBooking, setSelectedBooking] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
-    const [filterStatus, setFilterStatus] = useState('all');
+    const [filterStatus, setFilterStatus] = useState('');
+    const [filterPaymentStatus, setFilterPaymentStatus] = useState('');
     const [filterDate, setFilterDate] = useState('');
+    
+    // Pagination
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [pageSize] = useState(10);
+    
+    // Loading states
+    const [loading, setLoading] = useState(false);
+    const [statsLoading, setStatsLoading] = useState(false);
+    const [schedulesLoading, setSchedulesLoading] = useState(false);
+    
+    // Selection
+    const [selectedBookingIds, setSelectedBookingIds] = useState([]);
+    const [selectAll, setSelectAll] = useState(false);
+    const headerCheckboxRef = useRef(null);
+    
+    // Cancel reason
+    const [cancelReason, setCancelReason] = useState('');
+    const [showCancelModal, setShowCancelModal] = useState(false);
+    const [bookingToCancel, setBookingToCancel] = useState(null);
+    
+    const { showToast } = useToast();
 
-    // Mock data - thay thế bằng API call thực tế
-    const bookings = [
-        {
-            id: 1,
-            mentorId: 123,
-            mentorName: 'Nguyễn Văn An',
-            customerId: 456,
-            customerName: 'Trần Thị Bình',
-            customerEmail: 'thibinh@email.com',
-            date: '2024-01-20',
-            timeSlot: 'MORNING',
-            timeSlotText: '9:00 - 12:00',
-            status: 'CONFIRMED',
-            createdAt: '2024-01-15',
-            service: 'Tư vấn career path',
-            notes: 'Cần tư vấn về chuyển đổi nghề nghiệp từ Marketing sang IT',
-            paymentStatus: 'PAID',
-            amount: 500000
-        },
-        {
-            id: 2,
-            mentorId: 789,
-            mentorName: 'Lê Minh Hoàng',
-            customerId: 101,
-            customerName: 'Phạm Văn Đức',
-            customerEmail: 'vanduc@email.com',
-            date: '2024-01-18',
-            timeSlot: 'AFTERNOON',
-            timeSlotText: '14:00 - 17:00',
-            status: 'PENDING',
-            createdAt: '2024-01-16',
-            service: 'Code review',
-            notes: 'Review dự án React + Node.js',
-            paymentStatus: 'PENDING',
-            amount: 300000
-        },
-        {
-            id: 3,
-            mentorId: 123,
-            mentorName: 'Nguyễn Văn An',
-            customerId: 112,
-            customerName: 'Ngô Thị Mai',
-            customerEmail: 'thimai@email.com',
-            date: '2024-01-16',
-            timeSlot: 'MORNING',
-            timeSlotText: '9:00 - 12:00',
-            status: 'CANCELLED',
-            createdAt: '2024-01-14',
-            cancelledAt: '2024-01-15',
-            cancelReason: 'Mentor bận đột xuất',
-            service: 'Tư vấn kỹ thuật',
-            notes: 'Hỗ trợ giải quyết vấn đề performance',
-            paymentStatus: 'REFUNDED',
-            amount: 400000
-        },
-        {
-            id: 4,
-            mentorId: 456,
-            mentorName: 'Hoàng Thị Lan',
-            customerId: 789,
-            customerName: 'Vũ Minh Tâm',
-            customerEmail: 'minhtam@email.com',
-            date: '2024-01-15',
-            timeSlot: 'AFTERNOON',
-            timeSlotText: '14:00 - 17:00',
-            status: 'COMPLETED',
-            createdAt: '2024-01-10',
-            completedAt: '2024-01-15',
-            service: 'Phỏng vấn mock',
-            notes: 'Luyện tập phỏng vấn cho vị trí Senior Developer',
-            paymentStatus: 'PAID',
-            amount: 600000,
-            rating: 5,
-            review: 'Buổi tư vấn rất hữu ích, mentor nhiệt tình và chuyên nghiệp.'
+    // Fetch bookings from API
+    const fetchBookings = async () => {
+        setLoading(true);
+        try {
+            const response = await getAllBookings({
+                keySearch: searchTerm || null,
+                status: filterStatus || null,
+                paymentStatus: filterPaymentStatus || null,
+                date: filterDate || null,
+                page: currentPage,
+                size: pageSize
+            });
+            
+            if (response.respCode === '0') {
+                setBookings(response.data.content || []);
+                setTotalPages(response.data.totalPages || 1);
+            } else {
+                showToast('error', response.description || 'Không thể tải danh sách đặt lịch');
+            }
+        } catch (error) {
+            console.error('Error fetching bookings:', error);
+            showToast('error', 'Có lỗi xảy ra khi tải danh sách đặt lịch');
+        } finally {
+            setLoading(false);
         }
-    ];
+    };
 
-    const schedules = [
-        {
-            id: 1,
-            mentorId: 123,
-            mentorName: 'Nguyễn Văn An',
-            date: '2024-01-20',
-            timeSlot: 'MORNING',
-            timeSlotText: '9:00 - 12:00',
-            isBooked: true,
-            bookingId: 1
-        },
-        {
-            id: 2,
-            mentorId: 123,
-            mentorName: 'Nguyễn Văn An',
-            date: '2024-01-20',
-            timeSlot: 'AFTERNOON',
-            timeSlotText: '14:00 - 17:00',
-            isBooked: false,
-            bookingId: null
-        },
-        {
-            id: 3,
-            mentorId: 789,
-            mentorName: 'Lê Minh Hoàng',
-            date: '2024-01-18',
-            timeSlot: 'MORNING',
-            timeSlotText: '9:00 - 12:00',
-            isBooked: false,
-            bookingId: null
+    // Fetch statistics
+    const fetchStatistics = async () => {
+        setStatsLoading(true);
+        try {
+            const response = await getBookingStatistics();
+            if (response.respCode === '0') {
+                setStatistics(response.data);
+            }
+        } catch (error) {
+            console.error('Error fetching statistics:', error);
+        } finally {
+            setStatsLoading(false);
         }
-    ];
+    };
 
+    // Fetch schedules
+    const fetchSchedules = async () => {
+        setSchedulesLoading(true);
+        try {
+            const response = await getAllSchedules({
+                page: 1,
+                size: 20
+            });
+            
+            if (response.respCode === '0') {
+                setSchedules(response.data.content || []);
+            } else {
+                showToast('error', response.description || 'Không thể tải danh sách lịch');
+            }
+        } catch (error) {
+            console.error('Error fetching schedules:', error);
+            showToast('error', 'Có lỗi xảy ra khi tải danh sách lịch');
+        } finally {
+            setSchedulesLoading(false);
+        }
+    };
+
+    // Load data on mount and when filters change (with debounce for search)
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            fetchBookings();
+            fetchStatistics();
+        }, searchTerm ? 500 : 0); // Debounce search by 500ms
+
+        return () => clearTimeout(timer);
+    }, [currentPage, searchTerm, filterStatus, filterPaymentStatus, filterDate]);
+
+    useEffect(() => {
+        fetchSchedules();
+    }, []);
+
+    // Handlers
+    const handleViewBooking = async (bookingId) => {
+        try {
+            const response = await getBookingById(bookingId);
+            if (response.respCode === '0') {
+                setSelectedBooking(response.data);
+                setShowModal(true);
+            } else {
+                showToast('error', response.description || 'Không thể tải thông tin đặt lịch');
+            }
+        } catch (error) {
+            console.error('Error fetching booking details:', error);
+            showToast('error', 'Có lỗi xảy ra khi tải thông tin đặt lịch');
+        }
+    };
+
+    const handleConfirmBooking = async (bookingId) => {
+        try {
+            const response = await confirmBooking(bookingId);
+            if (response.respCode === '0') {
+                showToast('success', 'Xác nhận đặt lịch thành công');
+                fetchBookings();
+                fetchStatistics();
+            } else {
+                showToast('error', response.description || 'Không thể xác nhận đặt lịch');
+            }
+        } catch (error) {
+            console.error('Error confirming booking:', error);
+            showToast('error', 'Có lỗi xảy ra khi xác nhận đặt lịch');
+        }
+    };
+
+    const handleCancelBooking = async () => {
+        if (!bookingToCancel) return;
+        
+        try {
+            const response = await cancelBooking(bookingToCancel, cancelReason);
+            if (response.respCode === '0') {
+                showToast('success', 'Hủy đặt lịch thành công');
+                setShowCancelModal(false);
+                setBookingToCancel(null);
+                setCancelReason('');
+                fetchBookings();
+                fetchStatistics();
+            } else {
+                showToast('error', response.description || 'Không thể hủy đặt lịch');
+            }
+        } catch (error) {
+            console.error('Error cancelling booking:', error);
+            showToast('error', 'Có lỗi xảy ra khi hủy đặt lịch');
+        }
+    };
+
+    const handleCompleteBooking = async (bookingId) => {
+        try {
+            const response = await completeBooking(bookingId);
+            if (response.respCode === '0') {
+                showToast('success', 'Đánh dấu hoàn thành thành công');
+                fetchBookings();
+                fetchStatistics();
+            } else {
+                showToast('error', response.description || 'Không thể hoàn thành đặt lịch');
+            }
+        } catch (error) {
+            console.error('Error completing booking:', error);
+            showToast('error', 'Có lỗi xảy ra khi hoàn thành đặt lịch');
+        }
+    };
+
+    const handleBulkConfirm = async () => {
+        if (selectedBookingIds.length === 0) {
+            showToast('warning', 'Vui lòng chọn ít nhất một đặt lịch');
+            return;
+        }
+
+        try {
+            const response = await bulkConfirmBookings(selectedBookingIds);
+            if (response.respCode === '0') {
+                showToast('success', 'Xác nhận hàng loạt thành công');
+                setSelectedBookingIds([]);
+                setSelectAll(false);
+                fetchBookings();
+                fetchStatistics();
+            } else {
+                showToast('error', response.description || 'Không thể xác nhận hàng loạt');
+            }
+        } catch (error) {
+            console.error('Error bulk confirming:', error);
+            showToast('error', 'Có lỗi xảy ra khi xác nhận hàng loạt');
+        }
+    };
+
+    const handleBulkCancel = async () => {
+        if (selectedBookingIds.length === 0) {
+            showToast('warning', 'Vui lòng chọn ít nhất một đặt lịch');
+            return;
+        }
+
+        try {
+            const response = await bulkCancelBookings(selectedBookingIds, cancelReason);
+            if (response.respCode === '0') {
+                showToast('success', 'Hủy hàng loạt thành công');
+                setSelectedBookingIds([]);
+                setSelectAll(false);
+                setCancelReason('');
+                fetchBookings();
+                fetchStatistics();
+            } else {
+                showToast('error', response.description || 'Không thể hủy hàng loạt');
+            }
+        } catch (error) {
+            console.error('Error bulk cancelling:', error);
+            showToast('error', 'Có lỗi xảy ra khi hủy hàng loạt');
+        }
+    };
+
+    const handleSelectBooking = (bookingId) => {
+        setSelectedBookingIds(prev => {
+            if (prev.includes(bookingId)) {
+                return prev.filter(id => id !== bookingId);
+            } else {
+                return [...prev, bookingId];
+            }
+        });
+    };
+
+    const handleSelectAll = () => {
+        const allIdsOnPage = bookings.map(b => b.id);
+        const allSelected = allIdsOnPage.length > 0 && allIdsOnPage.every(id => selectedBookingIds.includes(id));
+        if (allSelected) {
+            setSelectedBookingIds(prev => prev.filter(id => !allIdsOnPage.includes(id)));
+            setSelectAll(false);
+        } else {
+            setSelectedBookingIds(prev => Array.from(new Set([...prev, ...allIdsOnPage])));
+            setSelectAll(true);
+        }
+    };
+
+    // Indeterminate state for header checkbox
+    useEffect(() => {
+        if (!headerCheckboxRef.current) return;
+        const allIdsOnPage = bookings.map(b => b.id);
+        const selectedOnPage = allIdsOnPage.filter(id => selectedBookingIds.includes(id));
+        const allSelectedOnPage = selectedOnPage.length === allIdsOnPage.length && allIdsOnPage.length > 0;
+        const someSelectedOnPage = selectedOnPage.length > 0 && !allSelectedOnPage;
+        headerCheckboxRef.current.indeterminate = someSelectedOnPage;
+    }, [bookings, selectedBookingIds]);
+
+    const openCancelModal = (bookingId) => {
+        setBookingToCancel(bookingId);
+        setShowCancelModal(true);
+    };
+
+    // Helper functions
     const getStatusBadgeVariant = (status) => {
         switch (status) {
             case 'PENDING': return 'warning';
@@ -148,7 +317,7 @@ const BookingManagement = () => {
     const getPaymentStatusBadgeVariant = (status) => {
         switch (status) {
             case 'PENDING': return 'warning';
-            case 'PAID': return 'success';
+            case 'COMPLETED': return 'success';
             case 'REFUNDED': return 'info';
             case 'FAILED': return 'danger';
             default: return 'secondary';
@@ -158,48 +327,37 @@ const BookingManagement = () => {
     const getPaymentStatusText = (status) => {
         switch (status) {
             case 'PENDING': return 'Chờ thanh toán';
-            case 'PAID': return 'Đã thanh toán';
+            case 'COMPLETED': return 'Đã thanh toán';
             case 'REFUNDED': return 'Đã hoàn tiền';
             case 'FAILED': return 'Thất bại';
             default: return status;
         }
     };
 
-    const handleViewBooking = (booking) => {
-        setSelectedBooking(booking);
-        setShowModal(true);
-    };
-
-    const filteredBookings = bookings.filter(booking => {
-        const matchesSearch = booking.mentorName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            booking.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            booking.service.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesStatus = filterStatus === 'all' || booking.status === filterStatus;
-        const matchesDate = !filterDate || booking.date === filterDate;
-
-        return matchesSearch && matchesStatus && matchesDate;
-    });
-
     const formatCurrency = (amount) => {
+        if (!amount) return '0 ₫';
         return new Intl.NumberFormat('vi-VN', {
             style: 'currency',
             currency: 'VND'
         }).format(amount);
     };
 
-    // Kiểm tra xem schedule có booking COMPLETED không
-    const getScheduleStatus = (schedule) => {
-        const completedBooking = bookings.find(booking =>
-            booking.mentorId === schedule.mentorId &&
-            booking.date === schedule.date &&
-            booking.timeSlot === schedule.timeSlot &&
-            booking.status === 'COMPLETED'
-        );
-        return {
-            isBooked: completedBooking ? true : schedule.isBooked,
-            bookingId: completedBooking ? completedBooking.id : schedule.bookingId,
-            isCompleted: !!completedBooking
-        };
+    const formatDate = (dateString) => {
+        if (!dateString) return '';
+        try {
+            return new Date(dateString).toLocaleDateString('vi-VN');
+        } catch {
+            return dateString;
+        }
+    };
+
+    const formatDateTime = (dateTimeString) => {
+        if (!dateTimeString) return '';
+        try {
+            return new Date(dateTimeString).toLocaleString('vi-VN');
+        } catch {
+            return dateTimeString;
+        }
     };
 
     return (
@@ -222,65 +380,45 @@ const BookingManagement = () => {
                 </div>
             </div>
 
-            {/* Stats Cards */}
-            <Row className="mb-4">
+            {/* Stats Cards - simple version */}
+            <Row className="mb-3 g-3">
                 <Col md={3}>
-                    <Card className="stats-card border-start border-warning border-4">
-                        <Card.Body>
-                            <div className="d-flex justify-content-between">
-                                <div>
-                                    <h6 className="text-muted mb-1">Chờ xác nhận</h6>
-                                    <h3 className="mb-0 text-warning">12</h3>
-                                </div>
-                                <div className="stats-icon bg-warning">
-                                    <FaClock />
-                                </div>
-                            </div>
+                    <Card className="shadow-sm border-0">
+                        <Card.Body className="text-center">
+                            <h6 className="text-muted mb-1">Chờ xác nhận</h6>
+                            <h4 className="fw-semibold mb-0">
+                                {statsLoading ? <Spinner animation="border" size="sm" /> : (statistics.pending || 0)}
+                            </h4>
                         </Card.Body>
                     </Card>
                 </Col>
                 <Col md={3}>
-                    <Card className="stats-card border-start border-info border-4">
-                        <Card.Body>
-                            <div className="d-flex justify-content-between">
-                                <div>
-                                    <h6 className="text-muted mb-1">Đã xác nhận</h6>
-                                    <h3 className="mb-0 text-info">28</h3>
-                                </div>
-                                <div className="stats-icon bg-info">
-                                    <FaCheckCircle />
-                                </div>
-                            </div>
+                    <Card className="shadow-sm border-0">
+                        <Card.Body className="text-center">
+                            <h6 className="text-muted mb-1">Đã xác nhận</h6>
+                            <h4 className="fw-semibold mb-0">
+                                {statsLoading ? <Spinner animation="border" size="sm" /> : (statistics.confirmed || 0)}
+                            </h4>
                         </Card.Body>
                     </Card>
                 </Col>
                 <Col md={3}>
-                    <Card className="stats-card border-start border-success border-4">
-                        <Card.Body>
-                            <div className="d-flex justify-content-between">
-                                <div>
-                                    <h6 className="text-muted mb-1">Hoàn thành</h6>
-                                    <h3 className="mb-0 text-success">145</h3>
-                                </div>
-                                <div className="stats-icon bg-success">
-                                    <FaCheckCircle />
-                                </div>
-                            </div>
+                    <Card className="shadow-sm border-0">
+                        <Card.Body className="text-center">
+                            <h6 className="text-muted mb-1">Hoàn thành</h6>
+                            <h4 className="fw-semibold mb-0">
+                                {statsLoading ? <Spinner animation="border" size="sm" /> : (statistics.completed || 0)}
+                            </h4>
                         </Card.Body>
                     </Card>
                 </Col>
                 <Col md={3}>
-                    <Card className="stats-card border-start border-danger border-4">
-                        <Card.Body>
-                            <div className="d-flex justify-content-between">
-                                <div>
-                                    <h6 className="text-muted mb-1">Đã hủy</h6>
-                                    <h3 className="mb-0 text-danger">18</h3>
-                                </div>
-                                <div className="stats-icon bg-danger">
-                                    <FaTimesCircle />
-                                </div>
-                            </div>
+                    <Card className="shadow-sm border-0">
+                        <Card.Body className="text-center">
+                            <h6 className="text-muted mb-1">Đã hủy</h6>
+                            <h4 className="fw-semibold mb-0">
+                                {statsLoading ? <Spinner animation="border" size="sm" /> : (statistics.cancelled || 0)}
+                            </h4>
                         </Card.Body>
                     </Card>
                 </Col>
@@ -317,30 +455,61 @@ const BookingManagement = () => {
                                             />
                                         </InputGroup>
                                     </Col>
-                                    <Col md={3}>
+                                    <Col md={2}>
                                         <Form.Label>Trạng thái</Form.Label>
                                         <Form.Select
                                             value={filterStatus}
-                                            onChange={(e) => setFilterStatus(e.target.value)}
+                                            onChange={(e) => {
+                                                setFilterStatus(e.target.value);
+                                                setCurrentPage(1);
+                                            }}
                                         >
-                                            <option value="all">Tất cả trạng thái</option>
+                                            <option value="">Tất cả</option>
                                             <option value="PENDING">Chờ xác nhận</option>
                                             <option value="CONFIRMED">Đã xác nhận</option>
                                             <option value="COMPLETED">Hoàn thành</option>
                                             <option value="CANCELLED">Đã hủy</option>
                                         </Form.Select>
                                     </Col>
-                                    <Col md={3}>
+                                    <Col md={2}>
+                                        <Form.Label>Thanh toán</Form.Label>
+                                        <Form.Select
+                                            value={filterPaymentStatus}
+                                            onChange={(e) => {
+                                                setFilterPaymentStatus(e.target.value);
+                                                setCurrentPage(1);
+                                            }}
+                                        >
+                                            <option value="">Tất cả</option>
+                                            <option value="PENDING">Chờ thanh toán</option>
+                                            <option value="COMPLETED">Đã thanh toán</option>
+                                            <option value="REFUNDED">Đã hoàn tiền</option>
+                                        </Form.Select>
+                                    </Col>
+                                    <Col md={2}>
                                         <Form.Label>Ngày hẹn</Form.Label>
                                         <Form.Control
                                             type="date"
                                             value={filterDate}
-                                            onChange={(e) => setFilterDate(e.target.value)}
+                                            onChange={(e) => {
+                                                setFilterDate(e.target.value);
+                                                setCurrentPage(1);
+                                            }}
                                         />
                                     </Col>
                                     <Col md={2}>
-                                        <Button variant="outline-secondary" className="w-100">
-                                            Lọc
+                                        <Button 
+                                            variant="outline-secondary" 
+                                            className="w-100"
+                                            onClick={() => {
+                                                setSearchTerm('');
+                                                setFilterStatus('');
+                                                setFilterPaymentStatus('');
+                                                setFilterDate('');
+                                                setCurrentPage(1);
+                                            }}
+                                        >
+                                            Xóa bộ lọc
                                         </Button>
                                     </Col>
                                 </Row>
@@ -351,94 +520,160 @@ const BookingManagement = () => {
                         <Card>
                             <Card.Header className="bg-light">
                                 <div className="d-flex justify-content-between align-items-center">
-                                    <h6 className="mb-0">Danh sách đặt lịch ({filteredBookings.length})</h6>
+                                    <h6 className="mb-0">
+                                        Danh sách đặt lịch ({bookings.length})
+                                        {selectedBookingIds.length > 0 && ` - Đã chọn: ${selectedBookingIds.length}`}
+                                    </h6>
                                     <div className="d-flex gap-2">
-                                        <Button variant="outline-primary" size="sm">Chọn tất cả</Button>
-                                        <Button variant="outline-success" size="sm">Xác nhận đã chọn</Button>
+                                        <Button 
+                                            variant="outline-primary" 
+                                            size="sm"
+                                            onClick={handleSelectAll}
+                                        >
+                                            {selectAll ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
+                                        </Button>
+                                        <Button 
+                                            variant="outline-success" 
+                                            size="sm"
+                                            onClick={handleBulkConfirm}
+                                            disabled={selectedBookingIds.length === 0}
+                                        >
+                                            Xác nhận đã chọn
+                                        </Button>
                                     </div>
                                 </div>
                             </Card.Header>
                             <Card.Body className="p-0">
-                                <Table responsive hover className="mb-0">
-                                    <thead className="bg-light">
-                                        <tr>
-                                            <th width="5%">
-                                                <Form.Check type="checkbox" />
-                                            </th>
-                                            <th width="15%">Mentor</th>
-                                            <th width="15%">Khách hàng</th>
-                                            <th width="15%">Thời gian</th>
-                                            <th width="15%">Dịch vụ</th>
-                                            <th width="10%">Trạng thái</th>
-                                            <th width="10%">Thanh toán</th>
-                                            <th width="15%">Thao tác</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {filteredBookings.map((booking) => (
-                                            <tr key={booking.id}>
-                                                <td>
-                                                    <Form.Check type="checkbox" />
-                                                </td>
-                                                <td>
-                                                    <div>
-                                                        <div className="fw-medium">{booking.mentorName}</div>
-                                                        <small className="text-muted">ID: {booking.mentorId}</small>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div>
-                                                        <div className="fw-medium">{booking.customerName}</div>
-                                                        <small className="text-muted">{booking.customerEmail}</small>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div>
-                                                        <div className="fw-medium">{booking.date}</div>
-                                                        <small className="text-muted">{booking.timeSlotText}</small>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div>
-                                                        <div className="fw-medium">{booking.service}</div>
-                                                        <small className="text-muted">{formatCurrency(booking.amount)}</small>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <Badge bg={getStatusBadgeVariant(booking.status)}>
-                                                        {getStatusText(booking.status)}
-                                                    </Badge>
-                                                </td>
-                                                <td>
-                                                    <Badge bg={getPaymentStatusBadgeVariant(booking.paymentStatus)}>
-                                                        {getPaymentStatusText(booking.paymentStatus)}
-                                                    </Badge>
-                                                </td>
-                                                <td>
-                                                    <div className="d-flex gap-1">
-                                                        <Button
-                                                            variant="outline-info"
-                                                            size="sm"
-                                                            onClick={() => handleViewBooking(booking)}
-                                                        >
-                                                            <FaEye />
-                                                        </Button>
-                                                        {booking.status === 'PENDING' && (
-                                                            <Button variant="outline-success" size="sm">
-                                                                <FaCheckCircle />
-                                                            </Button>
-                                                        )}
-                                                        {booking.status !== 'COMPLETED' && booking.status !== 'CANCELLED' && (
-                                                            <Button variant="outline-danger" size="sm">
-                                                                <FaTimesCircle />
-                                                            </Button>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </Table>
+                                {loading ? (
+                                    <div className="text-center py-5">
+                                        <Spinner animation="border" variant="primary" />
+                                        <p className="mt-2 text-muted">Đang tải dữ liệu...</p>
+                                    </div>
+                                ) : bookings.length === 0 ? (
+                                    <div className="text-center py-5">
+                                        <p className="text-muted">Không có đặt lịch nào</p>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <Table responsive hover className="mb-0">
+                                            <thead className="bg-light">
+                                                <tr>
+                                                    <th width="5%">
+                                                        <Form.Check 
+                                                            type="checkbox"
+                                                            ref={headerCheckboxRef}
+                                                            checked={bookings.length > 0 && bookings.every(b => selectedBookingIds.includes(b.id))}
+                                                            onChange={handleSelectAll}
+                                                        />
+                                                    </th>
+                                                    <th width="15%">Mentor</th>
+                                                    <th width="15%">Khách hàng</th>
+                                                    <th width="15%">Thời gian</th>
+                                                    <th width="15%">Dịch vụ</th>
+                                                    <th width="10%">Trạng thái</th>
+                                                    <th width="10%">Thanh toán</th>
+                                                    <th width="15%">Thao tác</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {bookings.map((booking) => (
+                                                    <tr key={booking.id}>
+                                                        <td>
+                                                            <Form.Check 
+                                                                type="checkbox"
+                                                                checked={selectedBookingIds.includes(booking.id)}
+                                                                onChange={() => handleSelectBooking(booking.id)}
+                                                            />
+                                                        </td>
+                                                        <td>
+                                                            <div>
+                                                                <div className="fw-medium">{booking.mentorName || 'N/A'}</div>
+                                                                <small className="text-muted">ID: {booking.mentorId}</small>
+                                                            </div>
+                                                        </td>
+                                                        <td>
+                                                            <div>
+                                                                <div className="fw-medium">{booking.customerName || 'N/A'}</div>
+                                                                <small className="text-muted">{booking.customerEmail}</small>
+                                                            </div>
+                                                        </td>
+                                                        <td>
+                                                            <div>
+                                                                <div className="fw-medium">{formatDate(booking.date)}</div>
+                                                                <small className="text-muted">{booking.timeSlotText || booking.timeSlot}</small>
+                                                            </div>
+                                                        </td>
+                                                        <td>
+                                                            <div>
+                                                                <div className="fw-medium">{booking.service || 'N/A'}</div>
+                                                                <small className="text-muted">{formatCurrency(booking.amount)}</small>
+                                                            </div>
+                                                        </td>
+                                                        <td>
+                                                            <Badge bg={getStatusBadgeVariant(booking.status)}>
+                                                                {getStatusText(booking.status)}
+                                                            </Badge>
+                                                        </td>
+                                                        <td>
+                                                            <Badge bg={getPaymentStatusBadgeVariant(booking.paymentProcess)}>
+                                                                {getPaymentStatusText(booking.paymentProcess)}
+                                                            </Badge>
+                                                        </td>
+                                                        <td>
+                                                            <Dropdown align="end">
+                                                                <Dropdown.Toggle variant="light" size="sm" className="no-caret p-1">
+                                                                    <BsThreeDotsVertical />
+                                                                </Dropdown.Toggle>
+                                                                <Dropdown.Menu>
+                                                                    <Dropdown.Item onClick={() => handleViewBooking(booking.id)}>
+                                                                        Xem
+                                                                    </Dropdown.Item>
+                                                                    {booking.status === 'PENDING' && (
+                                                                        <Dropdown.Item onClick={() => handleConfirmBooking(booking.id)}>
+                                                                            Xác nhận
+                                                                        </Dropdown.Item>
+                                                                    )}
+                                                                    {booking.status !== 'COMPLETED' && booking.status !== 'CANCELLED' && (
+                                                                        <Dropdown.Item onClick={() => openCancelModal(booking.id)}>
+                                                                            Hủy
+                                                                        </Dropdown.Item>
+                                                                    )}
+                                                                </Dropdown.Menu>
+                                                            </Dropdown>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </Table>
+                                        
+                                        {/* Pagination */}
+                                        {totalPages > 1 && (
+                                            <div className="d-flex justify-content-between align-items-center p-3 border-top">
+                                                <div>
+                                                    Trang {currentPage} / {totalPages}
+                                                </div>
+                                                <div className="d-flex gap-2">
+                                                    <Button
+                                                        variant="outline-primary"
+                                                        size="sm"
+                                                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                                        disabled={currentPage === 1}
+                                                    >
+                                                        Trước
+                                                    </Button>
+                                                    <Button
+                                                        variant="outline-primary"
+                                                        size="sm"
+                                                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                                        disabled={currentPage === totalPages}
+                                                    >
+                                                        Sau
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </>
+                                )}
                             </Card.Body>
                         </Card>
                     </Tab.Pane>
@@ -456,54 +691,75 @@ const BookingManagement = () => {
                                 </div>
                             </Card.Header>
                             <Card.Body className="p-0">
-                                <Table responsive hover className="mb-0">
-                                    <thead className="bg-light">
-                                        <tr>
-                                            <th width="25%">Mentor</th>
-                                            <th width="15%">Ngày</th>
-                                            <th width="20%">Khung giờ</th>
-                                            <th width="15%">Trạng thái</th>
-                                            <th width="25%">Thông tin đặt lịch</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {schedules.map((schedule) => {
-                                            const scheduleStatus = getScheduleStatus(schedule);
-                                            return (
+                                {schedulesLoading ? (
+                                    <div className="text-center py-5">
+                                        <Spinner animation="border" variant="primary" />
+                                        <p className="mt-2 text-muted">Đang tải dữ liệu...</p>
+                                    </div>
+                                ) : schedules.length === 0 ? (
+                                    <div className="text-center py-5">
+                                        <p className="text-muted">Không có lịch nào</p>
+                                    </div>
+                                ) : (
+                                    <Table responsive hover className="mb-0">
+                                        <thead className="bg-light">
+                                            <tr>
+                                                <th width="25%">Mentor</th>
+                                                <th width="15%">Ngày</th>
+                                                <th width="20%">Khung giờ</th>
+                                                <th width="15%">Trạng thái</th>
+                                                <th width="25%">Thông tin đặt lịch</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {schedules.map((schedule) => (
                                                 <tr key={schedule.id}>
                                                     <td>
                                                         <div className="d-flex align-items-center">
                                                             <FaUser className="me-2 text-muted" />
-                                                            <span className="fw-medium">{schedule.mentorName}</span>
+                                                            <span className="fw-medium">{schedule.mentorName || 'N/A'}</span>
                                                         </div>
                                                     </td>
                                                     <td>
-                                                        <span className="fw-medium">{schedule.date}</span>
+                                                        <span className="fw-medium">{formatDate(schedule.date)}</span>
                                                     </td>
                                                     <td>
                                                         <span>{schedule.timeSlotText}</span>
                                                     </td>
                                                     <td>
-                                                        <Badge bg={scheduleStatus.isBooked ? 'danger' : 'success'}>
-                                                            {scheduleStatus.isBooked ? 'Đã có người đặt' : 'Trống'}
+                                                        <Badge bg={schedule.isBooked ? 'danger' : 'success'}>
+                                                            {schedule.isBooked ? 'Đã có người đặt' : 'Trống'}
                                                         </Badge>
-                                                        {scheduleStatus.isCompleted && (
+                                                        {schedule.isCompleted && (
                                                             <Badge bg="dark" className="ms-2">
                                                                 Đã hoàn thành
                                                             </Badge>
                                                         )}
                                                     </td>
                                                     <td>
-                                                        {scheduleStatus.isBooked ? (
+                                                        {schedule.isBooked ? (
                                                             <div>
                                                                 <small className="text-muted">
-                                                                    Booking ID: #{scheduleStatus.bookingId}
+                                                                    Booking ID: #{schedule.bookingId}
                                                                 </small>
+                                                                {schedule.customerName && (
+                                                                    <>
+                                                                        <br />
+                                                                        <small className="text-muted">
+                                                                            Khách: {schedule.customerName}
+                                                                        </small>
+                                                                    </>
+                                                                )}
                                                                 <br />
-                                                                <Button variant="outline-info" size="sm">
+                                                                <Button 
+                                                                    variant="outline-info" 
+                                                                    size="sm"
+                                                                    onClick={() => handleViewBooking(schedule.bookingId)}
+                                                                    className="mt-1"
+                                                                >
                                                                     Xem chi tiết
                                                                 </Button>
-                                                                {scheduleStatus.isCompleted && (
+                                                                {schedule.isCompleted && (
                                                                     <div className="mt-2">
                                                                         <Alert variant="success" className="mb-0 p-2">
                                                                             <small>Buổi này đã hoàn thành - không thể đặt lại</small>
@@ -516,10 +772,10 @@ const BookingManagement = () => {
                                                         )}
                                                     </td>
                                                 </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </Table>
+                                            ))}
+                                        </tbody>
+                                    </Table>
+                                )}
                             </Card.Body>
                         </Card>
                     </Tab.Pane>
@@ -532,28 +788,33 @@ const BookingManagement = () => {
                     <Modal.Title>Chi tiết đặt lịch</Modal.Title>
                 </Modal.Header>
                 <Modal.Body>
-                    {selectedBooking && (
+                    {selectedBooking ? (
                         <div>
                             <Row className="mb-3">
                                 <Col md={6}>
                                     <h6>Thông tin mentor</h6>
-                                    <p><strong>Tên:</strong> {selectedBooking.mentorName}</p>
+                                    <p><strong>Tên:</strong> {selectedBooking.mentorName || 'N/A'}</p>
+                                    <p><strong>Email:</strong> {selectedBooking.mentorEmail || 'N/A'}</p>
                                     <p><strong>ID:</strong> {selectedBooking.mentorId}</p>
                                 </Col>
                                 <Col md={6}>
                                     <h6>Thông tin khách hàng</h6>
-                                    <p><strong>Tên:</strong> {selectedBooking.customerName}</p>
-                                    <p><strong>Email:</strong> {selectedBooking.customerEmail}</p>
+                                    <p><strong>Tên:</strong> {selectedBooking.customerName || 'N/A'}</p>
+                                    <p><strong>Email:</strong> {selectedBooking.customerEmail || 'N/A'}</p>
+                                    <p><strong>ID:</strong> {selectedBooking.customerId}</p>
                                 </Col>
                             </Row>
 
                             <Row className="mb-3">
                                 <Col md={6}>
                                     <h6>Thông tin buổi hẹn</h6>
-                                    <p><strong>Ngày:</strong> {selectedBooking.date}</p>
-                                    <p><strong>Giờ:</strong> {selectedBooking.timeSlotText}</p>
-                                    <p><strong>Dịch vụ:</strong> {selectedBooking.service}</p>
+                                    <p><strong>Ngày:</strong> {formatDate(selectedBooking.date)}</p>
+                                    <p><strong>Giờ:</strong> {selectedBooking.timeSlotText || selectedBooking.timeSlot}</p>
+                                    <p><strong>Dịch vụ:</strong> {selectedBooking.service || 'N/A'}</p>
                                     <p><strong>Phí:</strong> {formatCurrency(selectedBooking.amount)}</p>
+                                    {selectedBooking.linkMeeting && (
+                                        <p><strong>Link meeting:</strong> <a href={selectedBooking.linkMeeting} target="_blank" rel="noopener noreferrer">{selectedBooking.linkMeeting}</a></p>
+                                    )}
                                 </Col>
                                 <Col md={6}>
                                     <h6>Trạng thái</h6>
@@ -563,22 +824,31 @@ const BookingManagement = () => {
                                         </Badge>
                                     </p>
                                     <p><strong>Thanh toán:</strong>
-                                        <Badge bg={getPaymentStatusBadgeVariant(selectedBooking.paymentStatus)} className="ms-2">
-                                            {getPaymentStatusText(selectedBooking.paymentStatus)}
+                                        <Badge bg={getPaymentStatusBadgeVariant(selectedBooking.paymentProcess)} className="ms-2">
+                                            {getPaymentStatusText(selectedBooking.paymentProcess)}
                                         </Badge>
                                     </p>
-                                    <p><strong>Ngày tạo:</strong> {selectedBooking.createdAt}</p>
+                                    <p><strong>Ngày tạo:</strong> {formatDateTime(selectedBooking.createdAt)}</p>
                                     {selectedBooking.completedAt && (
-                                        <p><strong>Ngày hoàn thành:</strong> {selectedBooking.completedAt}</p>
+                                        <p><strong>Ngày hoàn thành:</strong> {formatDateTime(selectedBooking.completedAt)}</p>
                                     )}
                                 </Col>
                             </Row>
 
-                            {selectedBooking.notes && (
+                            {selectedBooking.description && (
                                 <div className="mb-3">
-                                    <h6>Ghi chú của khách hàng:</h6>
+                                    <h6>Mô tả:</h6>
                                     <div className="p-3 bg-light rounded">
-                                        {selectedBooking.notes}
+                                        {selectedBooking.description}
+                                    </div>
+                                </div>
+                            )}
+
+                            {selectedBooking.comment && (
+                                <div className="mb-3">
+                                    <h6>Ghi chú:</h6>
+                                    <div className="p-3 bg-light rounded">
+                                        {selectedBooking.comment}
                                     </div>
                                 </div>
                             )}
@@ -587,11 +857,11 @@ const BookingManagement = () => {
                                 <Alert variant="warning">
                                     <strong>Lý do hủy:</strong> {selectedBooking.cancelReason}
                                     <br />
-                                    <strong>Ngày hủy:</strong> {selectedBooking.cancelledAt}
+                                    <strong>Ngày hủy:</strong> {formatDateTime(selectedBooking.cancelledAt)}
                                 </Alert>
                             )}
 
-                            {selectedBooking.review && (
+                            {selectedBooking.reviewComment && (
                                 <div className="mb-3">
                                     <h6>Đánh giá của khách hàng:</h6>
                                     <div className="d-flex align-items-center mb-2">
@@ -604,8 +874,11 @@ const BookingManagement = () => {
                                         <span className="ms-2">({selectedBooking.rating}/5)</span>
                                     </div>
                                     <div className="p-3 bg-light rounded">
-                                        {selectedBooking.review}
+                                        {selectedBooking.reviewComment}
                                     </div>
+                                    {selectedBooking.reviewedAt && (
+                                        <small className="text-muted">Ngày đánh giá: {formatDateTime(selectedBooking.reviewedAt)}</small>
+                                    )}
                                 </div>
                             )}
 
@@ -613,11 +886,24 @@ const BookingManagement = () => {
                                 <Alert variant="info">
                                     <strong>Cần xác nhận</strong>
                                     <div className="mt-2">
-                                        <Button variant="success" className="me-2">
+                                        <Button 
+                                            variant="success" 
+                                            className="me-2"
+                                            onClick={() => {
+                                                handleConfirmBooking(selectedBooking.id);
+                                                setShowModal(false);
+                                            }}
+                                        >
                                             <FaCheckCircle className="me-1" />
                                             Xác nhận
                                         </Button>
-                                        <Button variant="danger">
+                                        <Button 
+                                            variant="danger"
+                                            onClick={() => {
+                                                setShowModal(false);
+                                                openCancelModal(selectedBooking.id);
+                                            }}
+                                        >
                                             <FaTimesCircle className="me-1" />
                                             Hủy
                                         </Button>
@@ -625,11 +911,42 @@ const BookingManagement = () => {
                                 </Alert>
                             )}
                         </div>
+                    ) : (
+                        <div className="text-center py-3">
+                            <Spinner animation="border" variant="primary" />
+                        </div>
                     )}
                 </Modal.Body>
                 <Modal.Footer>
                     <Button variant="secondary" onClick={() => setShowModal(false)}>
                         Đóng
+                    </Button>
+                </Modal.Footer>
+            </Modal>
+
+            {/* Cancel Booking Modal */}
+            <Modal show={showCancelModal} onHide={() => setShowCancelModal(false)}>
+                <Modal.Header closeButton>
+                    <Modal.Title>Hủy đặt lịch</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    <Form.Group>
+                        <Form.Label>Lý do hủy</Form.Label>
+                        <Form.Control
+                            as="textarea"
+                            rows={3}
+                            value={cancelReason}
+                            onChange={(e) => setCancelReason(e.target.value)}
+                            placeholder="Nhập lý do hủy đặt lịch..."
+                        />
+                    </Form.Group>
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="secondary" onClick={() => setShowCancelModal(false)}>
+                        Đóng
+                    </Button>
+                    <Button variant="danger" onClick={handleCancelBooking}>
+                        Xác nhận hủy
                     </Button>
                 </Modal.Footer>
             </Modal>
