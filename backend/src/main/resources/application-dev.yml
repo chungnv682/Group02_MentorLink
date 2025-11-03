@@ -15,9 +15,19 @@ spring:
     show-sql: false
     hibernate:
       ddl-auto: update
-  sendgrid:
-    code: dummy-key
-    from-email: chientxhe186184@fpt.edu.vn
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: nguyenbahien170604@gmail.com
+    password: fkaw jzbk beje vock
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+        transport:
+          protocol: smtp
 # application-dev.yml
 springdoc:
   api-docs:

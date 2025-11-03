@@ -60,7 +60,7 @@ public class MentorController {
     @PostMapping("/handle-booking")
     public BaseResponse<Void> handleBookingAction(@RequestBody MentorHandleBookingRequest mentorHandleBookingRequest) throws Exception {
         log.info("Handling mentor handle booking: {}", mentorHandleBookingRequest);
-        bookingService.handleBookingAction(mentorHandleBookingRequest.getBookingId(), mentorHandleBookingRequest.getAction());
+        bookingService.handleBookingAction(mentorHandleBookingRequest.getBookingId(), mentorHandleBookingRequest.getAction(), mentorHandleBookingRequest.getCancelReason());
         return BaseResponse.<Void>builder().build();
       
     }

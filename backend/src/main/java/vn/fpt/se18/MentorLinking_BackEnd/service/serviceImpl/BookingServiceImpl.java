@@ -377,7 +377,7 @@ public class BookingServiceImpl implements BookingService {
 
 
     @Override
-    public void handleBookingAction(Long bookingId, String action) throws Exception {
+    public void handleBookingAction(Long bookingId, String action, String cancelReason) throws Exception {
         Booking booking = bookingRepository.getBookingById(bookingId);
         Schedule schedule = booking.getSchedule();
         Long earliestStart = 0L;
@@ -407,22 +407,22 @@ public class BookingServiceImpl implements BookingService {
             int randomIndex = ThreadLocalRandom.current().nextInt(googlemeet_link.size());
 
             // send email to mentee
-            emailService.sendConfirmBooking(mentee.getEmail(), "Thông báo bổi học", mentee.getFullname(), booking.getSchedule().getDate(), earliestStart, latestEnd, googlemeet_link.get(randomIndex));
+            emailService.sendConfirmBooking(mentee.getEmail(), "Thông báo bổi học", mentee.getFullname(), mentor.getFullname(), booking.getService().toString(), booking.getSchedule().getDate(), earliestStart, latestEnd, googlemeet_link.get(randomIndex));
 
             // send email to mentor
-            emailService.sendConfirmBooking(mentor.getEmail(), "Thông báo bổi học", mentee.getFullname(), booking.getSchedule().getDate(), earliestStart, latestEnd, googlemeet_link.get(randomIndex));
+            emailService.sendConfirmBooking(mentor.getEmail(), "Thông báo bổi học", mentee.getFullname(),mentor.getFullname(), booking.getService().toString(), booking.getSchedule().getDate(), earliestStart, latestEnd, googlemeet_link.get(randomIndex));
 
         }else if(action.equals("CANCELLED")){
             Optional<Status> status = statusRepository.findByCode("CANCELLED");
             booking.setStatus(status.get());
+            booking.setPaymentProcess(PaymentProcess.WAIT_REFUND);
+            booking.setComment(cancelReason);
             bookingRepository.save(booking);
 
-            emailService.sendRejectBooking(mentee.getEmail(), "Hủy buổi học", "");
+            emailService.sendRejectBooking1(mentee.getEmail(), "Hủy buổi học", mentee.getFullname(), mentor.getFullname(), booking.getService().toString(), booking.getSchedule().getDate(), earliestStart, latestEnd, cancelReason);
         }
 
         // gui mail
-
-
 
 
 
