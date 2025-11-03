@@ -21,25 +21,9 @@ const BookingHistoryPage = () => {
                 setLoading(true);
                 const res = await instance.get('/api/bookings/mine');
                 const data = res?.data || res;
-<<<<<<< HEAD
-                // Sort bookings by schedule date descending (newest first).
-                if (Array.isArray(data)) {
-                    const sorted = data.slice().sort((a, b) => {
-                        const aDate = a?.schedule?.date ? new Date(a.schedule.date) : null;
-                        const bDate = b?.schedule?.date ? new Date(b.schedule.date) : null;
-
-                        if (aDate && bDate) return bDate - aDate; // desc
-                        if (aDate && !bDate) return -1;
-                        if (!aDate && bDate) return 1;
-                        // fallback to bookingId desc
-                        return (b.bookingId || 0) - (a.bookingId || 0);
-                    });
-                    setBookings(sorted);
-=======
                 // Sort bookings by bookingId in ascending order
                 if (Array.isArray(data)) {
                     setBookings(data.sort((a, b) => a.bookingId - b.bookingId));
->>>>>>> 1cbb84ee52c3c7e89de0706aa458716d0cd487df
                 }
             } catch (error) {
                 console.error('Fetch booking history error', error);
@@ -57,11 +41,7 @@ const BookingHistoryPage = () => {
             'PENDING': { bg: 'warning', text: 'Chờ xử lý' },
             'APPROVED': { bg: 'success', text: 'Đã xác nhận' },
             'SUCCESS': { bg: 'info', text: 'Đã hoàn thành' },
-<<<<<<< HEAD
-            'CANCELED': { bg: 'danger', text: 'Đã hủy' },
-=======
             'CANCELLED': { bg: 'danger', text: 'Đã hủy' },
->>>>>>> 1cbb84ee52c3c7e89de0706aa458716d0cd487df
             'REJECTED': { bg: 'danger', text: 'Đã bị từ chối' },
             'CONFIRMED': { bg: 'success', text: 'Đã xử lý' },
         };
@@ -120,20 +100,7 @@ const BookingHistoryPage = () => {
             const res = await instance.get('/api/bookings/mine');
             const data = res?.data || res;
             if (Array.isArray(data)) {
-<<<<<<< HEAD
-                const sorted = data.slice().sort((a, b) => {
-                    const aDate = a?.schedule?.date ? new Date(a.schedule.date) : null;
-                    const bDate = b?.schedule?.date ? new Date(b.schedule.date) : null;
-
-                    if (aDate && bDate) return bDate - aDate; // desc
-                    if (aDate && !bDate) return -1;
-                    if (!aDate && bDate) return 1;
-                    return (b.bookingId || 0) - (a.bookingId || 0);
-                });
-                setBookings(sorted);
-=======
                 setBookings(data.sort((a, b) => a.bookingId - b.bookingId));
->>>>>>> 1cbb84ee52c3c7e89de0706aa458716d0cd487df
             }
         } catch (error) {
             console.error('Error refreshing bookings:', error);
