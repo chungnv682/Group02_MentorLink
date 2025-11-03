@@ -7,7 +7,7 @@ import '../../../styles/components/MentorDashboard.css';
 // Import components
 import {
     MentorOverview,
-    ScheduleManagement,
+    ScheduleManagementCRUD as ScheduleManagement,
     BookingManagement,
     ReviewManagement,
     ServiceManagement,
