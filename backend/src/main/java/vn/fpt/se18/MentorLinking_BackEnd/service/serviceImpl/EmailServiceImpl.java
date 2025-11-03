@@ -2,6 +2,7 @@ package vn.fpt.se18.MentorLinking_BackEnd.service.serviceImpl;
 
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -27,16 +28,15 @@ public class EmailServiceImpl implements EmailService {
 
     @Override
     public void sendConfirmBooking(String to, String subject, String studentName, String mentorName, String service,
-        LocalDate date, Long timeStart, Long timeEnd, String linkMeeting) {
+        LocalDate date, List<Long[]> bookingTimes, String linkMeeting) {
 
         try {
             // ✅ 1. Chuẩn bị dữ liệu để inject vào template
-            String formattedTime = timeStart + "h - " + timeEnd +"h";
 
             Map<String, Object> model = new HashMap<>();
             model.put("studentName", studentName);
             model.put("date", date);
-            model.put("time", formattedTime);
+            model.put("bookingTimes", bookingTimes);
             model.put("googleMeetLink", linkMeeting);
             model.put("serviceName", service);
             model.put("mentorName", mentorName);
@@ -120,16 +120,16 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
-    public void sendRejectBooking1(String to, String subject, String studentName, String mentorName, String service, LocalDate date, Long timeStart, Long timeEnd, String reason) {
+    public void sendRejectBooking1(String to, String subject, String studentName, String mentorName, String service, LocalDate date, List<Long[]> bookingTimes, String reason) {
         try {
             // ✅ 1. Chuẩn bị dữ liệu để inject vào template
             // ✅ 1. Chuẩn bị dữ liệu để inject vào template
-            String formattedTime = timeStart + "h - " + timeEnd +"h";
+
             Map<String, Object> model = new HashMap<>();
             model.put("studentName", studentName);
             model.put("reason", reason);
             model.put("date", date);
-            model.put("time", formattedTime);
+            model.put("bookingTimes", bookingTimes);
             model.put("serviceName", service);
             model.put("mentorName", mentorName);
 
