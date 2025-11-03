@@ -34,10 +34,38 @@ const BookingManagement = () => {
         console.log("Mentor Activity Bookings:", mentorActivity?.data);
     }
 
+    // Hàm sắp xếp bookings theo ngày giảm dần (mới nhất trước)
+    const sortBookingsByDate = (bookingsArray) => {
+        if (!bookingsArray || !Array.isArray(bookingsArray)) return [];
+        
+        return [...bookingsArray].sort((a, b) => {
+            const dateA = new Date(a.date);
+            const dateB = new Date(b.date);
+            
+            // Sắp xếp theo ngày giảm dần (mới nhất trước)
+            if (dateB - dateA !== 0) {
+                return dateB - dateA;
+            }
+            
+            // Nếu cùng ngày, sắp xếp theo giờ bắt đầu giảm dần
+            const timeA = a.timeSlot?.timeStart || 0;
+            const timeB = b.timeSlot?.timeStart || 0;
+            return timeB - timeA;
+        });
+    };
+
     useEffect(() => {
         if (mentorActivity) {
             console.log('Mentor activity data loaded:', mentorActivity?.data);
-            setBookings(mentorActivity?.data);
+            const activityData = mentorActivity?.data;
+            
+            // Sắp xếp từng loại booking
+            setBookings({
+                pending: sortBookingsByDate(activityData.pending),
+                confirmed: sortBookingsByDate(activityData.confirmed),
+                completed: sortBookingsByDate(activityData.completed),
+                cancelled: sortBookingsByDate(activityData.cancelled)
+            });
         }
     }, [mentorActivity]);
 

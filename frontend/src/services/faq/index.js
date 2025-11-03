@@ -4,7 +4,7 @@ import { instance } from '../../api/axios';
 // Lấy danh sách FAQ đã xuất bản (public)
 export const getPublishedFaqs = async (params = {}) => {
     // params: { page, size, sort }
-    return instance.get('/faqs/published', { params });
+    return instance.get('/api/faqs/published', { params });
 };
 
 // Lấy chi tiết FAQ theo ID (public)

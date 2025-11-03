@@ -32,9 +32,15 @@ const BookingHistoryPage = () => {
                 setLoading(true);
                 const res = await instance.get('/api/bookings/mine');
                 const data = res?.data || res;
-                // Sort bookings by bookingId in ascending order
+                // Sort bookings by date descending (newest first)
                 if (Array.isArray(data)) {
-                    setBookings(data.sort((a, b) => a.bookingId - b.bookingId));
+                    const sortedData = data.sort((a, b) => {
+                        const timestampA = computeBookingTimestamp(a);
+                        const timestampB = computeBookingTimestamp(b);
+                        // Sắp xếp giảm dần - ngày mới nhất trước
+                        return timestampB - timestampA;
+                    });
+                    setBookings(sortedData);
                 }
             } catch (error) {
                 console.error('Fetch booking history error', error);
@@ -111,7 +117,22 @@ const BookingHistoryPage = () => {
             const res = await instance.get('/api/bookings/mine');
             const data = res?.data || res;
             if (Array.isArray(data)) {
-                setBookings(data.sort((a, b) => a.bookingId - b.bookingId));
+                // Helper: compute a timestamp for sorting
+                const computeBookingTimestamp = (booking) => {
+                    if (!booking || !booking.schedule) return 0;
+                    const dateStr = booking.schedule.date;
+                    const dateMs = dateStr ? new Date(dateStr).setHours(0, 0, 0, 0) : 0;
+                    const slots = booking.schedule.timeSlots || [];
+                    const maxStart = slots.length > 0 ? Math.max(...slots.map(s => Number(s.timeStart || 0))) : 0;
+                    return dateMs + (Number(maxStart) * 60 * 60 * 1000);
+                };
+                
+                const sortedData = data.sort((a, b) => {
+                    const timestampA = computeBookingTimestamp(a);
+                    const timestampB = computeBookingTimestamp(b);
+                    return timestampB - timestampA; // Giảm dần
+                });
+                setBookings(sortedData);
             }
         } catch (error) {
             console.error('Error refreshing bookings:', error);
