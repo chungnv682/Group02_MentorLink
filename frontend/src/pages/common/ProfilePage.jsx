@@ -331,7 +331,7 @@ const ProfilePage = () => {
                                                             className="btn-cancel"
                                                             onClick={() => window.history.back()}
                                                         >
-                                                            Hủy
+                                                            Quay lại
                                                         </Button>
                                                         <Button
                                                             type="submit"

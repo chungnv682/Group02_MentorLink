@@ -18,7 +18,8 @@ import {
   MentorDashboard,
   RegisterMentorPage,
   MentorListPage,
-  MentorDetailPage
+  MentorDetailPage,
+  MentorProfilePage
 } from '../pages/mentor';
 
 // Common pages and components
@@ -83,6 +84,14 @@ const routes = createBrowserRouter([
     element: <Layout>
       <ProtectedRoute requiredRole="MENTOR">
         <MentorDashboard />
+      </ProtectedRoute>
+    </Layout>,
+  },
+  {
+    path: "/mentor/profile",
+    element: <Layout>
+      <ProtectedRoute requiredRole="MENTOR">
+        <MentorProfilePage />
       </ProtectedRoute>
     </Layout>,
   },
