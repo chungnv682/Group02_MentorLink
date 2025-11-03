@@ -17,8 +17,8 @@ class MentorService {
             if (params.minRating) queryParams.append('minRating', params.minRating);
             if (params.approvedCountry) queryParams.append('approvedCountry', params.approvedCountry);
 
-            // BE exposes /mentors (no /api prefix)
-            const url = `/mentors${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+            // BE exposes /api/mentors
+            const url = `/api/mentors${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
             const response = await instance.get(url);
 
             return response;
@@ -31,7 +31,7 @@ class MentorService {
     // Get mentor by ID
     static async getMentorById(id) {
         try {
-            const response = await instance.get(`/mentors/${id}`);
+            const response = await instance.get(`/api/mentors/${id}`);
             return response;
         } catch (error) {
             console.error('Error fetching mentor detail:', error);
