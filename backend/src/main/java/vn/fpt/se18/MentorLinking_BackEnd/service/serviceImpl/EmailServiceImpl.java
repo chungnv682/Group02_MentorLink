@@ -1,5 +1,6 @@
 package vn.fpt.se18.MentorLinking_BackEnd.service.serviceImpl;
 
+
 import com.sendgrid.Method;
 import com.sendgrid.Request;
 import com.sendgrid.Response;
@@ -35,13 +36,7 @@ public class EmailServiceImpl implements EmailService {
 
     private final SpringTemplateEngine templateEngine;
 
-    /**
-     * send mail by SendGrid
-     *
-     * @param to      who received
-     * @param subject subject
-     * @param text    context
-     */
+
     @Override
     public void sendConfirmBooking(String to, String subject, String studentName, LocalDate date, Long timeStart, Long timeEnd, String linkMeeting) {
 
@@ -119,3 +114,4 @@ public class EmailServiceImpl implements EmailService {
 
     }
 }
+

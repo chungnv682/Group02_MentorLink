@@ -21,7 +21,7 @@ public class Blog extends AbstractEntity<Long> {
     @Column(name = "title")
     private String title;
 
-    @Column(name = "content", columnDefinition = "TEXT")
+    @Column(name = "content", columnDefinition = "LONGTEXT")
     private String content;
 
     @ManyToOne(fetch = FetchType.LAZY)
