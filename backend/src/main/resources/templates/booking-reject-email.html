@@ -49,6 +49,19 @@
     ul strong {
       color: #2c3e50;
     }
+    .times {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 10px 15px;
+      margin-top: 10px;
+    }
+    .times li {
+      padding: 6px 0;
+      border-bottom: 1px solid #e1e1e1;
+    }
+    .times li:last-child {
+      border-bottom: none;
+    }
     .reason {
       background: #fff5f5;
       border-left: 5px solid #e74c3c;
@@ -59,14 +72,6 @@
     }
     .reason strong {
       color: #a93226;
-    }
-    .footer {
-      font-size: 13px;
-      color: #888;
-      text-align: center;
-      padding: 15px;
-      border-top: 1px solid #eee;
-      background: #fafafa;
     }
     .cta {
       display: inline-block;
@@ -82,6 +87,14 @@
     }
     .cta:hover {
       background: #2d86c6;
+    }
+    .footer {
+      font-size: 13px;
+      color: #888;
+      text-align: center;
+      padding: 15px;
+      border-top: 1px solid #eee;
+      background: #fafafa;
     }
   </style>
 </head>
@@ -99,7 +112,16 @@
     <ul>
       <li><strong>Dịch vụ:</strong> <span th:text="${serviceName}">Tư vấn học tập</span></li>
       <li><strong>Ngày:</strong> <span th:text="${date}">2025-11-01</span></li>
-      <li><strong>Thời gian:</strong> <span th:text="${time}">10:00 - 11:00</span></li>
+      <li>
+        <strong>Khung giờ:</strong>
+        <ul class="times">
+          <li th:each="slot : ${bookingTimes}">
+            <span th:text="${slot[0]} + ':00'"></span>
+            -
+            <span th:text="${slot[1]} + ':00'"></span>
+          </li>
+        </ul>
+      </li>
     </ul>
 
     <div class="reason">
