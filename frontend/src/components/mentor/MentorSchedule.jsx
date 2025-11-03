@@ -61,10 +61,6 @@ const MentorSchedule = ({ mentorId, mentorName = 'Mentor' }) => {
     const [bookingError, setBookingError] = useState(null);
     const [bookingSuccess, setBookingSuccess] = useState(false);
     const [description, setDescription] = useState('');
-<<<<<<< HEAD
-    const [service, setService] = useState('');
-    const [descriptionError, setDescriptionError] = useState(null);
-=======
     const [descriptionError, setDescriptionError] = useState(null);
     const [service, setService] = useState('SCHOLARSHIP');
     const serviceOptions = [
@@ -75,7 +71,7 @@ const MentorSchedule = ({ mentorId, mentorName = 'Mentor' }) => {
         { value: 'ORIENTATION', label: 'Định hướng' },
         { value: 'OTHERS', label: 'Khác' },
     ];
->>>>>>> 1cbb84ee52c3c7e89de0706aa458716d0cd487df
+
 
     // Initialize selectedDate on first load
     React.useEffect(() => {
@@ -85,46 +81,11 @@ const MentorSchedule = ({ mentorId, mentorName = 'Mentor' }) => {
     }, [availableDates, selectedDate]);
 
     // Get schedules for selected date
-<<<<<<< HEAD
-    const schedulesForSelectedDate = React.useMemo(() => {
-        const list = (selectedDate && groupedSchedules[selectedDate]) || [];
-
-        // If selected date is today, filter out schedules whose earliest timeslot
-        // starts less than 3 hours from now.
-        const scheduleDateObj = selectedDate ? new Date(selectedDate) : null;
-        const today = new Date();
-        if (
-            scheduleDateObj &&
-            scheduleDateObj.getFullYear() === today.getFullYear() &&
-            scheduleDateObj.getMonth() === today.getMonth() &&
-            scheduleDateObj.getDate() === today.getDate()
-        ) {
-            const now = new Date();
-            const threshold = new Date(now.getTime() + 3 * 60 * 60 * 1000); // now + 3 hours
-
-            return list.filter((schedule) => {
-                if (!schedule.timeSlots || schedule.timeSlots.length === 0) return false;
-                // find minimum start hour
-                const minStart = schedule.timeSlots.reduce((min, ts) => {
-                    return typeof ts.timeStart === 'number' ? Math.min(min, ts.timeStart) : min;
-                }, Infinity);
-                if (!isFinite(minStart)) return false;
-
-                const startDate = new Date(schedule.date);
-                startDate.setHours(minStart, 0, 0, 0);
-
-                return startDate >= threshold;
-            });
-        }
-
-        return list;
-    }, [selectedDate, groupedSchedules]);
-=======
     const schedulesForSelectedDate = React.useMemo(
         () => (selectedDate && groupedSchedules[selectedDate]) || [],
         [selectedDate, groupedSchedules]
     );
->>>>>>> 1cbb84ee52c3c7e89de0706aa458716d0cd487df
+
 
     /**
      * Check if schedule is booked (has a completed payment booking)
@@ -154,10 +115,6 @@ const MentorSchedule = ({ mentorId, mentorName = 'Mentor' }) => {
         setBookingError(null);
         setDescriptionError(null);
         setDescription('');
-<<<<<<< HEAD
-        setService('');
-=======
->>>>>>> 1cbb84ee52c3c7e89de0706aa458716d0cd487df
     };
 
     /**
@@ -172,14 +129,7 @@ const MentorSchedule = ({ mentorId, mentorName = 'Mentor' }) => {
             return;
         }
 
-<<<<<<< HEAD
-        if (!service) {
-            setBookingError('Vui lòng chọn loại dịch vụ');
-            return;
-        }
 
-=======
->>>>>>> 1cbb84ee52c3c7e89de0706aa458716d0cd487df
         setBookingLoading(true);
         setBookingError(null);
         setDescriptionError(null);
@@ -508,8 +458,6 @@ const MentorSchedule = ({ mentorId, mentorName = 'Mentor' }) => {
                                     </ListGroup>
 
                                     {/* Description Input */}
-<<<<<<< HEAD
-=======
                                     {/* Service Selector */}
                                     <Form.Group className="mb-3">
                                         <Form.Label className="fw-semibold">Lựa chọn dịch vụ <span className="text-danger">*</span></Form.Label>
@@ -524,7 +472,6 @@ const MentorSchedule = ({ mentorId, mentorName = 'Mentor' }) => {
                                         </Form.Select>
                                     </Form.Group>
 
->>>>>>> 1cbb84ee52c3c7e89de0706aa458716d0cd487df
                                     <Form.Group className="mb-3">
                                         <Form.Label className="fw-semibold">
                                             Nội dung muốn hỏi <span className="text-danger">*</span>
@@ -550,29 +497,7 @@ const MentorSchedule = ({ mentorId, mentorName = 'Mentor' }) => {
                                             {description.length}/10 ký tự tối thiểu
                                         </small>
                                     </Form.Group>
-<<<<<<< HEAD
 
-                                        {/* Service select */}
-                                        <Form.Group className="mb-3">
-                                            <Form.Label className="fw-semibold">
-                                                Loại dịch vụ <span className="text-danger">*</span>
-                                            </Form.Label>
-                                            <Form.Select
-                                                value={service}
-                                                onChange={(e) => setService(e.target.value)}
-                                                disabled={bookingLoading}
-                                            >
-                                                <option value="">-- Chọn loại dịch vụ --</option>
-                                                <option value={'SCHOLARSHIP'}>Học bổng</option>
-                                                <option value={'JOBS'}>Việc làm</option>
-                                                <option value={'SOFT_SKILLS'}>Kỹ năng mềm</option>
-                                                <option value={'PROCEDURES'}>Thủ tục</option>
-                                                <option value={'ORIENTATION'}>Định hướng</option>
-                                                <option value={'OTHERS'}>Khác</option>
-                                            </Form.Select>
-                                        </Form.Group>
-=======
->>>>>>> 1cbb84ee52c3c7e89de0706aa458716d0cd487df
                                 </>
                             )}
                         </>

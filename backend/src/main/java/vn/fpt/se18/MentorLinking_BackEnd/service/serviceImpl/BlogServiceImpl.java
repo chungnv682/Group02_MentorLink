@@ -10,6 +10,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import vn.fpt.se18.MentorLinking_BackEnd.dto.request.ModerateBlogRequest;
+import vn.fpt.se18.MentorLinking_BackEnd.dto.request.CreateBlogRequest;
+import vn.fpt.se18.MentorLinking_BackEnd.dto.request.UpdateBlogRequest;
 import vn.fpt.se18.MentorLinking_BackEnd.dto.response.BlogPageResponse;
 import vn.fpt.se18.MentorLinking_BackEnd.dto.response.BlogResponse;
 import vn.fpt.se18.MentorLinking_BackEnd.entity.Blog;
@@ -37,6 +39,7 @@ public class BlogServiceImpl implements BlogService {
     private final UserRepository userRepository;
     private final StatusRepository statusRepository;
     private static final String APPROVED_STATUS = "Approved";
+    private static final String PENDING_STATUS = "Pending";
 
     @Override
     @Transactional(readOnly = true)
@@ -183,6 +186,112 @@ public class BlogServiceImpl implements BlogService {
 
         Blog savedBlog = blogRepository.save(blog);
         return toResponse(savedBlog);
+    }
+
+    @Override
+    @Transactional
+    public BlogResponse createBlog(CreateBlogRequest request, Long authorId) {
+        User author = userRepository.findById(authorId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED, "Author not found"));
+
+        // Automatically set status to PENDING when creating a blog
+        Status status = statusRepository.findByName(PENDING_STATUS)
+                .orElseThrow(() -> new AppException(ErrorCode.INVALID_ENDPOINT, "Pending status not found in system"));
+
+        Blog blog = Blog.builder()
+                .author(author)
+                .title(request.getTitle())
+                .content(request.getContent())
+                .status(status)
+                .viewCount(0)
+                .isPublished(request.getIsPublished() != null ? request.getIsPublished() : false)
+                .createdBy(author)
+                .build();
+
+        Blog savedBlog = blogRepository.save(blog);
+        log.info("Blog created successfully with ID: {} and status: PENDING", savedBlog.getId());
+
+        return toResponse(savedBlog);
+    }
+
+    @Override
+    @Transactional
+    public BlogResponse updateBlog(Long blogId, UpdateBlogRequest request, Long authorId) {
+        Blog blog = blogRepository.findById(blogId)
+                .orElseThrow(() -> new AppException(ErrorCode.INVALID_ENDPOINT, "Blog not found"));
+
+        User updater = userRepository.findById(authorId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED, "User not found"));
+
+        // Automatically set status to PENDING when updating a blog
+        Status status = statusRepository.findByName(PENDING_STATUS)
+                .orElseThrow(() -> new AppException(ErrorCode.INVALID_ENDPOINT, "Pending status not found in system"));
+
+        // Only author or admin can update the blog
+        if (!blog.getAuthor().getId().equals(authorId)) {
+            throw new AppException(ErrorCode.INVALID_ENDPOINT, "Only author can update this blog");
+        }
+
+        blog.setTitle(request.getTitle());
+        blog.setContent(request.getContent());
+        blog.setStatus(status);
+        if (request.getIsPublished() != null) {
+            blog.setIsPublished(request.getIsPublished());
+        }
+        blog.setUpdatedBy(updater);
+
+        Blog savedBlog = blogRepository.save(blog);
+        log.info("Blog updated successfully with ID: {} and status reset to: PENDING", savedBlog.getId());
+
+        return toResponse(savedBlog);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public BlogPageResponse getBlogsByAuthorId(Long authorId, String keyword, String sort, int page, int size) {
+        // Verify author exists
+        userRepository.findById(authorId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED, "Author not found"));
+
+        Sort.Order order = new Sort.Order(Sort.Direction.DESC, "createdAt");
+
+        if (StringUtils.hasLength(sort)) {
+            Pattern pattern = Pattern.compile("^(\\w+):(asc|desc)$", Pattern.CASE_INSENSITIVE);
+            Matcher matcher = pattern.matcher(sort);
+            if (matcher.find()) {
+                String columnName = matcher.group(1);
+                if (matcher.group(2).equalsIgnoreCase("asc")) {
+                    order = new Sort.Order(Sort.Direction.ASC, columnName);
+                } else {
+                    order = new Sort.Order(Sort.Direction.DESC, columnName);
+                }
+            }
+        }
+
+        int pageNo = 0;
+        if (page > 0) pageNo = page - 1;
+
+        Pageable pageable = PageRequest.of(pageNo, size, Sort.by(order));
+
+        Page<Blog> entityPage;
+
+        if (StringUtils.hasLength(keyword)) {
+            String kw = "%" + keyword.toLowerCase() + "%";
+            entityPage = blogRepository.findByAuthorIdAndKeyword(authorId, kw, pageable);
+        } else {
+            entityPage = blogRepository.findByAuthorId(authorId, pageable);
+        }
+
+        List<BlogResponse> blogResponses = entityPage.stream().map(this::toResponse).collect(Collectors.toList());
+
+        BlogPageResponse pageResponse = new BlogPageResponse();
+        pageResponse.setPageNumber(entityPage.getNumber());
+        pageResponse.setPageSize(entityPage.getSize());
+        pageResponse.setTotalElements(entityPage.getTotalElements());
+        pageResponse.setTotalPages(entityPage.getTotalPages());
+        pageResponse.setBlogs(blogResponses);
+
+        return pageResponse;
     }
 
     private BlogResponse toResponse(Blog b) {

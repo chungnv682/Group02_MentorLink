@@ -9,6 +9,7 @@ import { useQueryClient } from '@tanstack/react-query';
 
 const BookingManagement = () => {
 
+    // test push
     const queryClient = useQueryClient();
     const [showDetailModal, setShowDetailModal] = useState(false);
     const [selectedBooking, setSelectedBooking] = useState(null);
@@ -25,6 +26,7 @@ const BookingManagement = () => {
 
     if(mentorActivity){
         console.log("Mentor Activity Data:", mentorActivity);
+        console.log("Mentor Activity Bookings:", mentorActivity?.data);
     }
 
     useEffect(() => {

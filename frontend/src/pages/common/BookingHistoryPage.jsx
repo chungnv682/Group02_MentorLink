@@ -16,6 +16,17 @@ const BookingHistoryPage = () => {
     const [showDetail, setShowDetail] = useState(false);
 
     useEffect(() => {
+        // Helper: compute a timestamp for sorting a booking by its schedule date and latest timeslot
+        const computeBookingTimestamp = (booking) => {
+            if (!booking || !booking.schedule) return 0;
+            const dateStr = booking.schedule.date;
+            const dateMs = dateStr ? new Date(dateStr).setHours(0, 0, 0, 0) : 0;
+            const slots = booking.schedule.timeSlots || [];
+            // Use the latest timeStart (so bookings with later times appear first for same date)
+            const maxStart = slots.length > 0 ? Math.max(...slots.map(s => Number(s.timeStart || 0))) : 0;
+            return dateMs + (Number(maxStart) * 60 * 60 * 1000);
+        };
+
         const fetchBookingHistory = async () => {
             try {
                 setLoading(true);
@@ -95,7 +106,7 @@ const BookingHistoryPage = () => {
     };
 
     const handleBookingCancelled = async (bookingId) => {
-        // Refresh booking list after cancellation
+        // Refresh booking list after cancellation and keep descending date/time order
         try {
             const res = await instance.get('/api/bookings/mine');
             const data = res?.data || res;
