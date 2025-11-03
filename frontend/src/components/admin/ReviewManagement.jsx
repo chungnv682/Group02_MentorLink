@@ -1,87 +1,267 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
-    Card, Row, Col, Table, Button, Badge, Form,
-    InputGroup, Modal, Alert
+    Card, Row, Col, Table, Button, Badge, Form, Dropdown,
+    InputGroup, Modal, Alert, Spinner
 } from 'react-bootstrap';
 import {
     FaSearch, FaEye, FaTrash, FaCheck, FaTimes,
     FaStar, FaCommentDots, FaFlag, FaUser
 } from 'react-icons/fa';
+import { BsThreeDotsVertical } from 'react-icons/bs';
+import { useToast } from '../../contexts/ToastContext';
+import {
+    getAllReviews,
+    getReviewById,
+    publishReview,
+    unpublishReview,
+    deleteReview,
+    bulkPublishReviews,
+    bulkDeleteReviews,
+    getReviewStatistics
+} from '../../services/admin';
 
 const ReviewManagement = () => {
+    // State for reviews
+    const [reviews, setReviews] = useState([]);
+    const [statistics, setStatistics] = useState({
+        totalReviews: 0,
+        publishedReviews: 0,
+        pendingReviews: 0,
+        reportedReviews: 0,
+        averageRating: 0,
+        fiveStarCount: 0,
+        fourStarCount: 0,
+        threeStarCount: 0,
+        twoStarCount: 0,
+        oneStarCount: 0
+    });
+    
+    // UI State
     const [showModal, setShowModal] = useState(false);
     const [selectedReview, setSelectedReview] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
-    const [filterRating, setFilterRating] = useState('all');
-    const [filterStatus, setFilterStatus] = useState('all');
+    const [filterRating, setFilterRating] = useState(null);
+    const [filterStatus, setFilterStatus] = useState('');
+    
+    // Pagination
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalElements, setTotalElements] = useState(0);
+    const [pageSize] = useState(10);
+    
+    // Loading states
+    const [loading, setLoading] = useState(false);
+    const [loadingStatistics, setLoadingStatistics] = useState(false);
+    
+    // Selection for bulk operations
+    const [selectedReviewIds, setSelectedReviewIds] = useState([]);
+    const [selectAll, setSelectAll] = useState(false);
+    const headerCheckboxRef = useRef(null);
+    
+    const { showToast } = useToast();
 
-    // Mock data - thay thế bằng API call thực tế
-    const reviews = [
-        {
-            id: 1,
-            bookingId: 101,
-            customerId: 456,
-            customerName: 'Trần Thị Bình',
-            customerEmail: 'thibinh@email.com',
-            mentorId: 123,
-            mentorName: 'Nguyễn Văn An',
-            rating: 5,
-            comment: 'Mentor rất nhiệt tình và chuyên nghiệp. Buổi tư vấn giúp tôi định hướng được career path rõ ràng hơn. Tôi sẽ book thêm các buổi tư vấn khác.',
-            isPublished: true,
-            createdAt: '2024-01-15',
-            service: 'Tư vấn career path',
-            isReported: false
-        },
-        {
-            id: 2,
-            bookingId: 102,
-            customerId: 789,
-            customerName: 'Vũ Minh Tâm',
-            customerEmail: 'minhtam@email.com',
-            mentorId: 456,
-            mentorName: 'Hoàng Thị Lan',
-            rating: 4,
-            comment: 'Buổi mock interview rất hữu ích, mentor đưa ra nhiều feedback chi tiết. Tuy nhiên thời gian hơi ngắn, mong có thể kéo dài hơn.',
-            isPublished: false,
-            createdAt: '2024-01-14',
-            service: 'Phỏng vấn mock',
-            isReported: false,
-            moderationNote: 'Đang chờ duyệt'
-        },
-        {
-            id: 3,
-            bookingId: 103,
-            customerId: 321,
-            customerName: 'Lê Văn Cường',
-            customerEmail: 'vancuong@email.com',
-            mentorId: 789,
-            mentorName: 'Lê Minh Hoàng',
-            rating: 2,
-            comment: 'Mentor thường xuyên đi muộn và không chuẩn bị kỹ cho buổi tư vấn. Nội dung tư vấn không đúng như mong đợi.',
-            isPublished: false,
-            createdAt: '2024-01-13',
-            service: 'Code review',
-            isReported: true,
-            reportReason: 'Đánh giá tiêu cực có thể không chính xác',
-            moderationNote: 'Cần xem xét kỹ'
-        },
-        {
-            id: 4,
-            bookingId: 104,
-            customerId: 654,
-            customerName: 'Phạm Thị Hoa',
-            customerEmail: 'thihoa@email.com',
-            mentorId: 123,
-            mentorName: 'Nguyễn Văn An',
-            rating: 5,
-            comment: 'Excellent mentor! Very knowledgeable and patient. Highly recommend!',
-            isPublished: true,
-            createdAt: '2024-01-12',
-            service: 'Technical consultation',
-            isReported: false
+    // Fetch reviews from API
+    const fetchReviews = async () => {
+        setLoading(true);
+        try {
+            const response = await getAllReviews({
+                keySearch: searchTerm || null,
+                rating: filterRating,
+                status: filterStatus || null,
+                page: currentPage,
+                size: pageSize
+            });
+            
+            if (response.respCode === '0') {
+                setReviews(response.data.content || []);
+                setTotalPages(response.data.totalPages || 1);
+                setTotalElements(response.data.totalElements || 0);
+            } else {
+                showToast('error', response.description || 'Không thể tải danh sách đánh giá');
+            }
+        } catch (error) {
+            console.error('Error fetching reviews:', error);
+            showToast('error', 'Có lỗi xảy ra khi tải danh sách đánh giá');
+        } finally {
+            setLoading(false);
         }
-    ];
+    };
 
+    // Fetch statistics
+    const fetchStatistics = async () => {
+        setLoadingStatistics(true);
+        try {
+            const response = await getReviewStatistics();
+            if (response.respCode === '0') {
+                setStatistics(response.data);
+            }
+        } catch (error) {
+            console.error('Error fetching statistics:', error);
+        } finally {
+            setLoadingStatistics(false);
+        }
+    };
+
+    // Load data on mount and when filters change
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            fetchReviews();
+            fetchStatistics();
+        }, searchTerm ? 500 : 0);
+
+        return () => clearTimeout(timer);
+    }, [currentPage, searchTerm, filterRating, filterStatus]);
+
+    // Indeterminate state for header checkbox
+    useEffect(() => {
+        if (!headerCheckboxRef.current) return;
+        const allIdsOnPage = reviews.map(r => r.id);
+        const selectedOnPage = allIdsOnPage.filter(id => selectedReviewIds.includes(id));
+        const allSelectedOnPage = selectedOnPage.length === allIdsOnPage.length && allIdsOnPage.length > 0;
+        const someSelectedOnPage = selectedOnPage.length > 0 && !allSelectedOnPage;
+        headerCheckboxRef.current.indeterminate = someSelectedOnPage;
+    }, [reviews, selectedReviewIds]);
+
+    // Handlers
+    const handleViewReviewById = async (reviewId) => {
+        try {
+            const response = await getReviewById(reviewId);
+            if (response.respCode === '0') {
+                setSelectedReview(response.data);
+                setShowModal(true);
+            } else {
+                showToast('error', response.description || 'Không thể tải thông tin đánh giá');
+            }
+        } catch (error) {
+            console.error('Error fetching review details:', error);
+            showToast('error', 'Có lỗi xảy ra khi tải thông tin đánh giá');
+        }
+    };
+
+    const handlePublishReview = async (reviewId) => {
+        try {
+            const response = await publishReview(reviewId);
+            if (response.respCode === '0') {
+                showToast('success', 'Xuất bản đánh giá thành công');
+                fetchReviews();
+                fetchStatistics();
+            } else {
+                showToast('error', response.description || 'Không thể xuất bản đánh giá');
+            }
+        } catch (error) {
+            console.error('Error publishing review:', error);
+            showToast('error', 'Có lỗi xảy ra khi xuất bản đánh giá');
+        }
+    };
+
+    const handleUnpublishReview = async (reviewId) => {
+        try {
+            const response = await unpublishReview(reviewId);
+            if (response.respCode === '0') {
+                showToast('success', 'Ẩn đánh giá thành công');
+                fetchReviews();
+                fetchStatistics();
+            } else {
+                showToast('error', response.description || 'Không thể ẩn đánh giá');
+            }
+        } catch (error) {
+            console.error('Error unpublishing review:', error);
+            showToast('error', 'Có lỗi xảy ra khi ẩn đánh giá');
+        }
+    };
+
+    const handleDeleteReview = async (reviewId) => {
+        if (!window.confirm('Bạn có chắc chắn muốn xóa đánh giá này?')) return;
+        
+        try {
+            const response = await deleteReview(reviewId);
+            if (response.respCode === '0') {
+                showToast('success', 'Xóa đánh giá thành công');
+                fetchReviews();
+                fetchStatistics();
+                setShowModal(false);
+            } else {
+                showToast('error', response.description || 'Không thể xóa đánh giá');
+            }
+        } catch (error) {
+            console.error('Error deleting review:', error);
+            showToast('error', 'Có lỗi xảy ra khi xóa đánh giá');
+        }
+    };
+
+    const handleBulkPublish = async () => {
+        if (selectedReviewIds.length === 0) {
+            showToast('warning', 'Vui lòng chọn ít nhất một đánh giá');
+            return;
+        }
+
+        try {
+            const response = await bulkPublishReviews(selectedReviewIds);
+            if (response.respCode === '0') {
+                showToast('success', `Đã xuất bản ${selectedReviewIds.length} đánh giá`);
+                setSelectedReviewIds([]);
+                setSelectAll(false);
+                fetchReviews();
+                fetchStatistics();
+            } else {
+                showToast('error', response.description || 'Không thể xuất bản đánh giá');
+            }
+        } catch (error) {
+            console.error('Error bulk publishing:', error);
+            showToast('error', 'Có lỗi xảy ra khi xuất bản hàng loạt');
+        }
+    };
+
+    const handleBulkDelete = async () => {
+        if (selectedReviewIds.length === 0) {
+            showToast('warning', 'Vui lòng chọn ít nhất một đánh giá');
+            return;
+        }
+
+        if (!window.confirm(`Bạn có chắc chắn muốn xóa ${selectedReviewIds.length} đánh giá?`)) return;
+
+        try {
+            const response = await bulkDeleteReviews(selectedReviewIds);
+            if (response.respCode === '0') {
+                showToast('success', `Đã xóa ${selectedReviewIds.length} đánh giá`);
+                setSelectedReviewIds([]);
+                setSelectAll(false);
+                fetchReviews();
+                fetchStatistics();
+            } else {
+                showToast('error', response.description || 'Không thể xóa đánh giá');
+            }
+        } catch (error) {
+            console.error('Error bulk deleting:', error);
+            showToast('error', 'Có lỗi xảy ra khi xóa hàng loạt');
+        }
+    };
+
+    const handleSelectAll = () => {
+        const allIdsOnPage = reviews.map(r => r.id);
+        const allSelected = allIdsOnPage.length > 0 && allIdsOnPage.every(id => selectedReviewIds.includes(id));
+        if (allSelected) {
+            setSelectedReviewIds(prev => prev.filter(id => !allIdsOnPage.includes(id)));
+            setSelectAll(false);
+        } else {
+            setSelectedReviewIds(prev => Array.from(new Set([...prev, ...allIdsOnPage])));
+            setSelectAll(true);
+        }
+    };
+
+    const handleSelectReview = (reviewId) => {
+        if (selectedReviewIds.includes(reviewId)) {
+            setSelectedReviewIds(selectedReviewIds.filter(id => id !== reviewId));
+        } else {
+            setSelectedReviewIds([...selectedReviewIds, reviewId]);
+        }
+    };
+
+    const handlePageChange = (page) => {
+        setCurrentPage(page);
+    };
+
+    // Helper functions
     const getStatusBadgeVariant = (isPublished, isReported) => {
         if (isReported) return 'danger';
         if (isPublished) return 'success';
@@ -103,32 +283,10 @@ const ReviewManagement = () => {
         ));
     };
 
-    const handleViewReview = (review) => {
-        setSelectedReview(review);
-        setShowModal(true);
+    const formatDateTime = (dateTime) => {
+        if (!dateTime) return 'N/A';
+        return new Date(dateTime).toLocaleString('vi-VN');
     };
-
-    const filteredReviews = reviews.filter(review => {
-        const matchesSearch = review.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            review.mentorName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            review.comment.toLowerCase().includes(searchTerm.toLowerCase());
-
-        const matchesRating = filterRating === 'all' || review.rating.toString() === filterRating;
-
-        let matchesStatus = true;
-        if (filterStatus === 'published') matchesStatus = review.isPublished && !review.isReported;
-        else if (filterStatus === 'pending') matchesStatus = !review.isPublished && !review.isReported;
-        else if (filterStatus === 'reported') matchesStatus = review.isReported;
-
-        return matchesSearch && matchesRating && matchesStatus;
-    });
-
-    // Calculate statistics
-    const totalReviews = reviews.length;
-    const publishedReviews = reviews.filter(r => r.isPublished && !r.isReported).length;
-    const pendingReviews = reviews.filter(r => !r.isPublished && !r.isReported).length;
-    const reportedReviews = reviews.filter(r => r.isReported).length;
-    const averageRating = reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
 
     return (
         <div className="review-management">
@@ -139,76 +297,66 @@ const ReviewManagement = () => {
                     <p className="text-muted mb-0">Quản lý và kiểm duyệt đánh giá từ khách hàng</p>
                 </div>
                 <div className="d-flex gap-2">
-                    <Button variant="outline-success" size="sm">
+                    <Button 
+                        variant="outline-success" 
+                        size="sm"
+                        onClick={handleBulkPublish}
+                        disabled={selectedReviewIds.length === 0}
+                    >
                         <FaCheck className="me-1" />
-                        Duyệt hàng loạt
+                        Duyệt đã chọn ({selectedReviewIds.length})
                     </Button>
-                    <Button variant="primary" size="sm">
-                        <FaCommentDots className="me-1" />
-                        Báo cáo đánh giá
+                    <Button 
+                        variant="outline-danger" 
+                        size="sm"
+                        onClick={handleBulkDelete}
+                        disabled={selectedReviewIds.length === 0}
+                    >
+                        <FaTrash className="me-1" />
+                        Xóa đã chọn ({selectedReviewIds.length})
                     </Button>
                 </div>
             </div>
 
-            {/* Stats Cards */}
-            <Row className="mb-4">
+            {/* Stats Cards - simple version */}
+            <Row className="mb-3 g-3">
                 <Col md={3}>
-                    <Card className="stats-card border-start border-primary border-4">
-                        <Card.Body>
-                            <div className="d-flex justify-content-between">
-                                <div>
-                                    <h6 className="text-muted mb-1">Tổng đánh giá</h6>
-                                    <h3 className="mb-0 text-primary">{totalReviews}</h3>
-                                </div>
-                                <div className="stats-icon bg-primary">
-                                    <FaCommentDots />
-                                </div>
-                            </div>
+                    <Card className="shadow-sm border-0">
+                        <Card.Body className="text-center">
+                            <h6 className="text-muted mb-1">Tổng đánh giá</h6>
+                            <h4 className="fw-semibold mb-0">
+                                {loadingStatistics ? <Spinner animation="border" size="sm" /> : (statistics.totalReviews || 0)}
+                            </h4>
                         </Card.Body>
                     </Card>
                 </Col>
                 <Col md={3}>
-                    <Card className="stats-card border-start border-success border-4">
-                        <Card.Body>
-                            <div className="d-flex justify-content-between">
-                                <div>
-                                    <h6 className="text-muted mb-1">Đã xuất bản</h6>
-                                    <h3 className="mb-0 text-success">{publishedReviews}</h3>
-                                </div>
-                                <div className="stats-icon bg-success">
-                                    <FaCheck />
-                                </div>
-                            </div>
+                    <Card className="shadow-sm border-0">
+                        <Card.Body className="text-center">
+                            <h6 className="text-muted mb-1">Đã xuất bản</h6>
+                            <h4 className="fw-semibold mb-0">
+                                {loadingStatistics ? <Spinner animation="border" size="sm" /> : (statistics.publishedReviews || 0)}
+                            </h4>
                         </Card.Body>
                     </Card>
                 </Col>
                 <Col md={3}>
-                    <Card className="stats-card border-start border-warning border-4">
-                        <Card.Body>
-                            <div className="d-flex justify-content-between">
-                                <div>
-                                    <h6 className="text-muted mb-1">Chờ duyệt</h6>
-                                    <h3 className="mb-0 text-warning">{pendingReviews}</h3>
-                                </div>
-                                <div className="stats-icon bg-warning">
-                                    <FaCommentDots />
-                                </div>
-                            </div>
+                    <Card className="shadow-sm border-0">
+                        <Card.Body className="text-center">
+                            <h6 className="text-muted mb-1">Chờ duyệt</h6>
+                            <h4 className="fw-semibold mb-0">
+                                {loadingStatistics ? <Spinner animation="border" size="sm" /> : (statistics.pendingReviews || 0)}
+                            </h4>
                         </Card.Body>
                     </Card>
                 </Col>
                 <Col md={3}>
-                    <Card className="stats-card border-start border-danger border-4">
-                        <Card.Body>
-                            <div className="d-flex justify-content-between">
-                                <div>
-                                    <h6 className="text-muted mb-1">Bị báo cáo</h6>
-                                    <h3 className="mb-0 text-danger">{reportedReviews}</h3>
-                                </div>
-                                <div className="stats-icon bg-danger">
-                                    <FaFlag />
-                                </div>
-                            </div>
+                    <Card className="shadow-sm border-0">
+                        <Card.Body className="text-center">
+                            <h6 className="text-muted mb-1">Bị báo cáo</h6>
+                            <h4 className="fw-semibold mb-0">
+                                {loadingStatistics ? <Spinner animation="border" size="sm" /> : (statistics.reportedReviews || 0)}
+                            </h4>
                         </Card.Body>
                     </Card>
                 </Col>
@@ -220,17 +368,21 @@ const ReviewManagement = () => {
                     <Row className="align-items-center">
                         <Col md={3}>
                             <div className="text-center">
-                                <h2 className="mb-0">{averageRating.toFixed(1)}</h2>
+                                <h2 className="mb-0">{(statistics.averageRating || 0).toFixed(1)}</h2>
                                 <div className="mb-2">
-                                    {getRatingStars(Math.round(averageRating))}
+                                    {getRatingStars(Math.round(statistics.averageRating || 0))}
                                 </div>
                                 <p className="text-muted mb-0">Điểm trung bình</p>
                             </div>
                         </Col>
                         <Col md={9}>
                             {[5, 4, 3, 2, 1].map(rating => {
-                                const count = reviews.filter(r => r.rating === rating).length;
-                                const percentage = totalReviews > 0 ? (count / totalReviews) * 100 : 0;
+                                const countField = rating === 5 ? 'fiveStarCount' :
+                                                   rating === 4 ? 'fourStarCount' :
+                                                   rating === 3 ? 'threeStarCount' :
+                                                   rating === 2 ? 'twoStarCount' : 'oneStarCount';
+                                const count = statistics[countField] || 0;
+                                const percentage = statistics.totalReviews > 0 ? (count / statistics.totalReviews) * 100 : 0;
 
                                 return (
                                     <Row key={rating} className="align-items-center mb-2">
@@ -277,10 +429,13 @@ const ReviewManagement = () => {
                         <Col md={3}>
                             <Form.Label>Số sao</Form.Label>
                             <Form.Select
-                                value={filterRating}
-                                onChange={(e) => setFilterRating(e.target.value)}
+                                value={filterRating || ''}
+                                onChange={(e) => {
+                                    setFilterRating(e.target.value ? parseInt(e.target.value) : null);
+                                    setCurrentPage(1);
+                                }}
                             >
-                                <option value="all">Tất cả đánh giá</option>
+                                <option value="">Tất cả đánh giá</option>
                                 <option value="5">5 sao</option>
                                 <option value="4">4 sao</option>
                                 <option value="3">3 sao</option>
@@ -292,17 +447,29 @@ const ReviewManagement = () => {
                             <Form.Label>Trạng thái</Form.Label>
                             <Form.Select
                                 value={filterStatus}
-                                onChange={(e) => setFilterStatus(e.target.value)}
+                                onChange={(e) => {
+                                    setFilterStatus(e.target.value);
+                                    setCurrentPage(1);
+                                }}
                             >
-                                <option value="all">Tất cả trạng thái</option>
+                                <option value="">Tất cả trạng thái</option>
                                 <option value="published">Đã xuất bản</option>
                                 <option value="pending">Chờ duyệt</option>
                                 <option value="reported">Bị báo cáo</option>
                             </Form.Select>
                         </Col>
                         <Col md={2}>
-                            <Button variant="outline-secondary" className="w-100">
-                                Lọc
+                            <Button 
+                                variant="outline-secondary" 
+                                className="w-100"
+                                onClick={() => {
+                                    setSearchTerm('');
+                                    setFilterRating(null);
+                                    setFilterStatus('');
+                                    setCurrentPage(1);
+                                }}
+                            >
+                                Xóa
                             </Button>
                         </Col>
                     </Row>
@@ -313,42 +480,61 @@ const ReviewManagement = () => {
             <Card>
                 <Card.Header className="bg-light">
                     <div className="d-flex justify-content-between align-items-center">
-                        <h6 className="mb-0">Danh sách đánh giá ({filteredReviews.length})</h6>
+                        <h6 className="mb-0">Danh sách đánh giá ({totalElements})</h6>
                         <div className="d-flex gap-2">
-                            <Button variant="outline-primary" size="sm">Chọn tất cả</Button>
-                            <Button variant="outline-success" size="sm">Duyệt đã chọn</Button>
+                            <span className="text-muted">Trang {currentPage}/{totalPages}</span>
                         </div>
                     </div>
                 </Card.Header>
                 <Card.Body className="p-0">
-                    <Table responsive hover className="mb-0">
-                        <thead className="bg-light">
-                            <tr>
-                                <th width="5%">
-                                    <Form.Check type="checkbox" />
-                                </th>
-                                <th width="15%">Khách hàng</th>
-                                <th width="15%">Mentor</th>
-                                <th width="10%">Đánh giá</th>
-                                <th width="35%">Nội dung</th>
-                                <th width="10%">Trạng thái</th>
-                                <th width="10%">Thao tác</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filteredReviews.map((review) => (
-                                <tr key={review.id}>
-                                    <td>
-                                        <Form.Check type="checkbox" />
-                                    </td>
-                                    <td>
-                                        <div>
-                                            <div className="fw-medium">{review.customerName}</div>
-                                            <small className="text-muted">{review.customerEmail}</small>
-                                            <br />
-                                            <small className="text-muted">{review.createdAt}</small>
-                                        </div>
-                                    </td>
+                    {loading ? (
+                        <div className="text-center py-5">
+                            <Spinner animation="border" />
+                            <p className="mt-2 text-muted">Đang tải dữ liệu...</p>
+                        </div>
+                    ) : reviews.length === 0 ? (
+                        <div className="text-center py-5">
+                            <FaCommentDots size={48} className="text-muted mb-3" />
+                            <p className="text-muted">Không có đánh giá nào</p>
+                        </div>
+                    ) : (
+                        <Table responsive hover className="mb-0">
+                            <thead className="bg-light">
+                                <tr>
+                                    <th width="5%">
+                                        <Form.Check 
+                                            type="checkbox" 
+                                            ref={headerCheckboxRef}
+                                            checked={reviews.length > 0 && reviews.every(r => selectedReviewIds.includes(r.id))}
+                                            onChange={handleSelectAll}
+                                        />
+                                    </th>
+                                    <th width="15%">Khách hàng</th>
+                                    <th width="15%">Mentor</th>
+                                    <th width="10%">Đánh giá</th>
+                                    <th width="35%">Nội dung</th>
+                                    <th width="10%">Trạng thái</th>
+                                    <th width="10%">Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {reviews.map((review) => (
+                                    <tr key={review.id}>
+                                        <td>
+                                            <Form.Check 
+                                                type="checkbox"
+                                                checked={selectedReviewIds.includes(review.id)}
+                                                onChange={() => handleSelectReview(review.id)}
+                                            />
+                                        </td>
+                                        <td>
+                                            <div>
+                                                <div className="fw-medium">{review.customerName}</div>
+                                                <small className="text-muted">{review.customerEmail}</small>
+                                                <br />
+                                                <small className="text-muted">{formatDateTime(review.createdAt)}</small>
+                                            </div>
+                                        </td>
                                     <td>
                                         <div>
                                             <div className="fw-medium">{review.mentorName}</div>
@@ -384,35 +570,68 @@ const ReviewManagement = () => {
                                             </div>
                                         )}
                                     </td>
-                                    <td>
-                                        <div className="d-flex gap-1">
-                                            <Button
-                                                variant="outline-info"
-                                                size="sm"
-                                                onClick={() => handleViewReview(review)}
-                                            >
-                                                <FaEye />
-                                            </Button>
-                                            {!review.isPublished && !review.isReported && (
-                                                <Button variant="outline-success" size="sm">
-                                                    <FaCheck />
-                                                </Button>
-                                            )}
-                                            {review.isPublished && (
-                                                <Button variant="outline-warning" size="sm">
-                                                    <FaTimes />
-                                                </Button>
-                                            )}
-                                            <Button variant="outline-danger" size="sm">
-                                                <FaTrash />
-                                            </Button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </Table>
+                                        <td>
+                                            <Dropdown align="end">
+                                                <Dropdown.Toggle variant="light" size="sm" className="no-caret p-1">
+                                                    <BsThreeDotsVertical />
+                                                </Dropdown.Toggle>
+                                                <Dropdown.Menu>
+                                                    <Dropdown.Item onClick={() => handleViewReviewById(review.id)}>
+                                                        Xem
+                                                    </Dropdown.Item>
+                                                    {!review.isPublished && !review.isReported && (
+                                                        <Dropdown.Item onClick={() => handlePublishReview(review.id)}>
+                                                            Duyệt
+                                                        </Dropdown.Item>
+                                                    )}
+                                                    {review.isPublished && (
+                                                        <Dropdown.Item onClick={() => handleUnpublishReview(review.id)}>
+                                                            Ẩn đánh giá
+                                                        </Dropdown.Item>
+                                                    )}
+                                                    <Dropdown.Divider />
+                                                    <Dropdown.Item className="text-danger" onClick={() => handleDeleteReview(review.id)}>
+                                                        Xóa
+                                                    </Dropdown.Item>
+                                                </Dropdown.Menu>
+                                            </Dropdown>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </Table>
+                    )}
                 </Card.Body>
+                {!loading && reviews.length > 0 && (
+                    <Card.Footer className="bg-light">
+                        <div className="d-flex justify-content-between align-items-center">
+                            <div className="text-muted">
+                                Hiển thị {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, totalElements)} trong số {totalElements} đánh giá
+                            </div>
+                            <div className="d-flex gap-2">
+                                <Button
+                                    variant="outline-secondary"
+                                    size="sm"
+                                    disabled={currentPage === 1}
+                                    onClick={() => handlePageChange(currentPage - 1)}
+                                >
+                                    Trước
+                                </Button>
+                                <Button variant="light" size="sm" disabled>
+                                    Trang {currentPage}/{totalPages}
+                                </Button>
+                                <Button
+                                    variant="outline-secondary"
+                                    size="sm"
+                                    disabled={currentPage === totalPages}
+                                    onClick={() => handlePageChange(currentPage + 1)}
+                                >
+                                    Sau
+                                </Button>
+                            </div>
+                        </div>
+                    </Card.Footer>
+                )}
             </Card>
 
             {/* Review Detail Modal */}
@@ -433,8 +652,8 @@ const ReviewManagement = () => {
                                 <Col md={6}>
                                     <h6>Thông tin mentor & dịch vụ</h6>
                                     <p><strong>Mentor:</strong> {selectedReview.mentorName}</p>
-                                    <p><strong>Dịch vụ:</strong> {selectedReview.service}</p>
-                                    <p><strong>Ngày đánh giá:</strong> {selectedReview.createdAt}</p>
+                                    <p><strong>Dịch vụ:</strong> {selectedReview.service || 'N/A'}</p>
+                                    <p><strong>Ngày đánh giá:</strong> {formatDateTime(selectedReview.createdAt)}</p>
                                 </Col>
                             </Row>
 
@@ -472,13 +691,25 @@ const ReviewManagement = () => {
                             {selectedReview.isReported && (
                                 <Alert variant="danger">
                                     <h6><FaFlag className="me-2" />Đánh giá bị báo cáo</h6>
-                                    <p><strong>Lý do:</strong> {selectedReview.reportReason}</p>
+                                    <p><strong>Lý do:</strong> {selectedReview.reportReason || 'Không rõ'}</p>
                                     <div className="mt-2">
-                                        <Button variant="success" size="sm" className="me-2">
+                                        <Button 
+                                            variant="success" 
+                                            size="sm" 
+                                            className="me-2"
+                                            onClick={() => {
+                                                handlePublishReview(selectedReview.id);
+                                                setShowModal(false);
+                                            }}
+                                        >
                                             <FaCheck className="me-1" />
                                             Chấp nhận đánh giá
                                         </Button>
-                                        <Button variant="danger" size="sm">
+                                        <Button 
+                                            variant="danger" 
+                                            size="sm"
+                                            onClick={() => handleDeleteReview(selectedReview.id)}
+                                        >
                                             <FaTimes className="me-1" />
                                             Xóa đánh giá
                                         </Button>
@@ -490,11 +721,23 @@ const ReviewManagement = () => {
                                 <Alert variant="warning">
                                     <strong>Đánh giá chờ duyệt</strong>
                                     <div className="mt-2">
-                                        <Button variant="success" size="sm" className="me-2">
+                                        <Button 
+                                            variant="success" 
+                                            size="sm" 
+                                            className="me-2"
+                                            onClick={() => {
+                                                handlePublishReview(selectedReview.id);
+                                                setShowModal(false);
+                                            }}
+                                        >
                                             <FaCheck className="me-1" />
                                             Phê duyệt & Xuất bản
                                         </Button>
-                                        <Button variant="danger" size="sm">
+                                        <Button 
+                                            variant="danger" 
+                                            size="sm"
+                                            onClick={() => handleDeleteReview(selectedReview.id)}
+                                        >
                                             <FaTimes className="me-1" />
                                             Từ chối
                                         </Button>
@@ -506,7 +749,14 @@ const ReviewManagement = () => {
                                 <Alert variant="success">
                                     <strong>Đánh giá đã được xuất bản</strong>
                                     <div className="mt-2">
-                                        <Button variant="warning" size="sm">
+                                        <Button 
+                                            variant="warning" 
+                                            size="sm"
+                                            onClick={() => {
+                                                handleUnpublishReview(selectedReview.id);
+                                                setShowModal(false);
+                                            }}
+                                        >
                                             <FaTimes className="me-1" />
                                             Ẩn đánh giá
                                         </Button>

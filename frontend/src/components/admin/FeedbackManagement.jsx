@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
-    Card, Row, Col, Table, Button, Badge, Form,
+    Card, Row, Col, Table, Button, Badge, Form, Dropdown,
     InputGroup, Modal, Alert, Spinner
 } from 'react-bootstrap';
 import {
     FaSearch, FaEye, FaReply, FaTrash,
     FaExclamationTriangle, FaCommentDots, FaFlag
 } from 'react-icons/fa';
+import { BsThreeDotsVertical } from 'react-icons/bs';
 import {
     getAllFeedbacks,
     getFeedbackById,
@@ -44,6 +45,7 @@ const FeedbackManagement = () => {
         totalElements: 0
     });
     const { showToast } = useToast();
+    const headerCheckboxRef = useRef(null);
 
     // Fetch feedbacks when component mounts or filters change
     useEffect(() => {
@@ -248,12 +250,24 @@ const FeedbackManagement = () => {
     };
 
     const handleSelectAll = () => {
-        if (selectedFeedbackIds.length === feedbackReports.length) {
-            setSelectedFeedbackIds([]);
+        const allIdsOnPage = feedbackReports.map(f => f.id);
+        const allSelected = allIdsOnPage.length > 0 && allIdsOnPage.every(id => selectedFeedbackIds.includes(id));
+        if (allSelected) {
+            setSelectedFeedbackIds(prev => prev.filter(id => !allIdsOnPage.includes(id)));
         } else {
-            setSelectedFeedbackIds(feedbackReports.map(f => f.id));
+            setSelectedFeedbackIds(prev => Array.from(new Set([...prev, ...allIdsOnPage])));
         }
     };
+
+    // Indeterminate state for header checkbox
+    useEffect(() => {
+        if (!headerCheckboxRef.current) return;
+        const allIdsOnPage = feedbackReports.map(f => f.id);
+        const selectedOnPage = allIdsOnPage.filter(id => selectedFeedbackIds.includes(id));
+        const allSelectedOnPage = selectedOnPage.length === allIdsOnPage.length && allIdsOnPage.length > 0;
+        const someSelectedOnPage = selectedOnPage.length > 0 && !allSelectedOnPage;
+        headerCheckboxRef.current.indeterminate = someSelectedOnPage;
+    }, [feedbackReports, selectedFeedbackIds]);
 
     // Mock data - REMOVED
     const feedbackReportsMock = [
@@ -368,65 +382,37 @@ const FeedbackManagement = () => {
                 </div>
             </div>
 
-            {/* Stats Cards */}
-            <Row className="mb-4">
+            {/* Stats Cards - simple version */}
+            <Row className="mb-3 g-3">
                 <Col md={3}>
-                    <Card className="stats-card border-start border-warning border-4">
-                        <Card.Body>
-                            <div className="d-flex justify-content-between">
-                                <div>
-                                    <h6 className="text-muted mb-1">Chờ xử lý</h6>
-                                    <h3 className="mb-0 text-warning">{stats.pending || 0}</h3>
-                                </div>
-                                <div className="stats-icon bg-warning">
-                                    <FaExclamationTriangle />
-                                </div>
-                            </div>
+                    <Card className="shadow-sm border-0">
+                        <Card.Body className="text-center">
+                            <h6 className="text-muted mb-1">Chờ xử lý</h6>
+                            <h4 className="fw-semibold mb-0">{stats.pending || 0}</h4>
                         </Card.Body>
                     </Card>
                 </Col>
                 <Col md={3}>
-                    <Card className="stats-card border-start border-primary border-4">
-                        <Card.Body>
-                            <div className="d-flex justify-content-between">
-                                <div>
-                                    <h6 className="text-muted mb-1">Đang xử lý</h6>
-                                    <h3 className="mb-0 text-primary">{stats.inProgress || 0}</h3>
-                                </div>
-                                <div className="stats-icon bg-primary">
-                                    <FaCommentDots />
-                                </div>
-                            </div>
+                    <Card className="shadow-sm border-0">
+                        <Card.Body className="text-center">
+                            <h6 className="text-muted mb-1">Đang xử lý</h6>
+                            <h4 className="fw-semibold mb-0">{stats.inProgress || 0}</h4>
                         </Card.Body>
                     </Card>
                 </Col>
                 <Col md={3}>
-                    <Card className="stats-card border-start border-success border-4">
-                        <Card.Body>
-                            <div className="d-flex justify-content-between">
-                                <div>
-                                    <h6 className="text-muted mb-1">Đã giải quyết</h6>
-                                    <h3 className="mb-0 text-success">{stats.resolved || 0}</h3>
-                                </div>
-                                <div className="stats-icon bg-success">
-                                    <FaReply />
-                                </div>
-                            </div>
+                    <Card className="shadow-sm border-0">
+                        <Card.Body className="text-center">
+                            <h6 className="text-muted mb-1">Đã giải quyết</h6>
+                            <h4 className="fw-semibold mb-0">{stats.resolved || 0}</h4>
                         </Card.Body>
                     </Card>
                 </Col>
                 <Col md={3}>
-                    <Card className="stats-card border-start border-danger border-4">
-                        <Card.Body>
-                            <div className="d-flex justify-content-between">
-                                <div>
-                                    <h6 className="text-muted mb-1">Ưu tiên cao</h6>
-                                    <h3 className="mb-0 text-danger">{stats.highPriority || 0}</h3>
-                                </div>
-                                <div className="stats-icon bg-danger">
-                                    <FaFlag />
-                                </div>
-                            </div>
+                    <Card className="shadow-sm border-0">
+                        <Card.Body className="text-center">
+                            <h6 className="text-muted mb-1">Ưu tiên cao</h6>
+                            <h4 className="fw-semibold mb-0">{stats.highPriority || 0}</h4>
                         </Card.Body>
                     </Card>
                 </Col>
@@ -531,7 +517,8 @@ const FeedbackManagement = () => {
                                     <th width="5%">
                                         <Form.Check 
                                             type="checkbox"
-                                            checked={selectedFeedbackIds.length === feedbackReports.length && feedbackReports.length > 0}
+                                            ref={headerCheckboxRef}
+                                            checked={feedbackReports.length > 0 && feedbackReports.every(f => selectedFeedbackIds.includes(f.id))}
                                             onChange={handleSelectAll}
                                         />
                                     </th>
@@ -592,34 +579,25 @@ const FeedbackManagement = () => {
                                         </Badge>
                                     </td>
                                     <td>
-                                        <div className="d-flex gap-1">
-                                            <Button
-                                                variant="outline-info"
-                                                size="sm"
-                                                onClick={() => handleViewFeedback(feedback)}
-                                                title="Xem chi tiết"
-                                            >
-                                                <FaEye />
-                                            </Button>
-                                            {feedback.status !== 'RESOLVED' && (
-                                                <Button 
-                                                    variant="outline-primary" 
-                                                    size="sm"
-                                                    onClick={() => handleViewFeedback(feedback)}
-                                                    title="Phản hồi"
-                                                >
-                                                    <FaReply />
-                                                </Button>
-                                            )}
-                                            <Button 
-                                                variant="outline-danger" 
-                                                size="sm"
-                                                onClick={() => handleDelete(feedback.id)}
-                                                title="Xóa"
-                                            >
-                                                <FaTrash />
-                                            </Button>
-                                        </div>
+                                        <Dropdown align="end">
+                                            <Dropdown.Toggle variant="light" size="sm" className="no-caret p-1">
+                                                <BsThreeDotsVertical />
+                                            </Dropdown.Toggle>
+                                            <Dropdown.Menu>
+                                                <Dropdown.Item onClick={() => handleViewFeedback(feedback)}>
+                                                    Xem
+                                                </Dropdown.Item>
+                                                {feedback.status !== 'RESOLVED' && (
+                                                    <Dropdown.Item onClick={() => handleViewFeedback(feedback)}>
+                                                        Phản hồi
+                                                    </Dropdown.Item>
+                                                )}
+                                                <Dropdown.Divider />
+                                                <Dropdown.Item className="text-danger" onClick={() => handleDelete(feedback.id)}>
+                                                    Xóa
+                                                </Dropdown.Item>
+                                            </Dropdown.Menu>
+                                        </Dropdown>
                                     </td>
                                 </tr>
                             ))}

@@ -228,14 +228,14 @@ const AdminPage = () => {
     };
 
     fetchData();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   const menuItems = [
     {
       key: "users",
       icon: <FaUsers />,
       title: "Quản lý người dùng",
-      badge: stats?.totalUsers || "0",
+      badge: null,
       component: (
         <UserManagement
           users={users}
@@ -253,10 +253,7 @@ const AdminPage = () => {
       key: "content",
       icon: <FaBlog />,
       title: "Quản lý nội dung",
-      badge:
-        blogs?.filter(
-          (b) => b.statusName === "PENDING" || b.status === "PENDING"
-        )?.length || "0",
+      badge:null,
       component: (
         <ContentManagement
           blogs={blogs}
@@ -269,7 +266,7 @@ const AdminPage = () => {
       key: "mentor-approval",
       icon: <FaUserCog />,
       title: "Duyệt/xác thực mentor",
-      badge: stats?.pendingMentors || "0",
+      badge: null,
       component: <MentorApproval stats={stats} />,
     },
     {
@@ -283,7 +280,7 @@ const AdminPage = () => {
       key: "feedback",
       icon: <FaCommentDots />,
       title: "Quản lý phản hồi & báo cáo",
-      badge: "0",
+      badge: null,
       component: <FeedbackManagement />,
     },
     {
@@ -303,14 +300,14 @@ const AdminPage = () => {
     {
       key: "reviews",
       icon: <FaCommentDots />,
-      title: "Quản lý quyền & vai trò",
+      title: "Quản lý đánh giá & review",
       badge: null,
       component: <ReviewManagement />,
     },
     {
       key: "banners",
       icon: <FaBullhorn />,
-      title: "Cấu hình hệ thống",
+      title: "Quản lý Banner & Quảng cáo",
       badge: null,
       component: <BannerManagement />,
     },
@@ -349,18 +346,6 @@ const AdminPage = () => {
           </Col>
         </Row>
       )}
-
-      <Row className="mb-4">
-        <Col>
-          <Alert variant="success" className="mb-4">
-            <h5 className="alert-heading mb-2">🎉 Chào mừng Admin!</h5>
-            <p className="mb-0">
-              Bạn đã đăng nhập thành công với quyền Admin. Trang admin đang tải
-              dữ liệu từ database...
-            </p>
-          </Alert>
-        </Col>
-      </Row>
 
       <Row className="mb-4">
         <Col>
