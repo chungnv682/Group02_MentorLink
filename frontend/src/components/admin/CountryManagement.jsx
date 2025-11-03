@@ -11,7 +11,8 @@ import {
     Form,
     Alert,
     Spinner,
-    InputGroup
+    InputGroup,
+    Dropdown
 } from 'react-bootstrap';
 import {
     FaCheck,
@@ -24,6 +25,7 @@ import {
     FaCalendar,
     FaExclamationTriangle
 } from 'react-icons/fa';
+import { BsThreeDotsVertical } from 'react-icons/bs';
 import CountryService from '../../services/country/CountryService';
 
 const CountryManagement = () => {
@@ -234,32 +236,22 @@ const CountryManagement = () => {
                                             </small>
                                         </td>
                                         <td>
-                                            <div className="d-flex gap-1">
-                                                <Button
-                                                    variant="outline-info"
-                                                    size="sm"
-                                                    onClick={() => viewDetails(country)}
-                                                    title="Xem chi tiết"
-                                                >
-                                                    <FaEye />
-                                                </Button>
-                                                <Button
-                                                    variant="outline-success"
-                                                    size="sm"
-                                                    onClick={() => handleApprove(country)}
-                                                    title="Duyệt"
-                                                >
-                                                    <FaCheck />
-                                                </Button>
-                                                <Button
-                                                    variant="outline-danger"
-                                                    size="sm"
-                                                    onClick={() => handleReject(country)}
-                                                    title="Từ chối"
-                                                >
-                                                    <FaTimes />
-                                                </Button>
-                                            </div>
+                                            <Dropdown align="end">
+                                                <Dropdown.Toggle variant="light" size="sm" className="no-caret p-1">
+                                                    <BsThreeDotsVertical />
+                                                </Dropdown.Toggle>
+                                                <Dropdown.Menu>
+                                                    <Dropdown.Item onClick={() => viewDetails(country)}>
+                                                        Xem
+                                                    </Dropdown.Item>
+                                                    <Dropdown.Item onClick={() => handleApprove(country)}>
+                                                        Duyệt
+                                                    </Dropdown.Item>
+                                                    <Dropdown.Item className="text-danger" onClick={() => handleReject(country)}>
+                                                        Từ chối
+                                                    </Dropdown.Item>
+                                                </Dropdown.Menu>
+                                            </Dropdown>
                                         </td>
                                     </tr>
                                 ))}

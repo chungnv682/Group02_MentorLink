@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     Card, Row, Col, Table, Button, Badge, Form,
-    InputGroup, Modal, Nav, Tab, Alert, Spinner
+    InputGroup, Modal, Nav, Tab, Alert, Spinner, Dropdown
 } from 'react-bootstrap';
 import {
     FaSearch, FaEye, FaCheck, FaTimes, FaEdit,
     FaBlog, FaUser, FaClock, FaChartLine, FaTrash, FaEyeSlash, FaToggleOn, FaToggleOff
 } from 'react-icons/fa';
+import { BsThreeDotsVertical } from 'react-icons/bs';
 import { getAllBlogs, moderateBlog, deleteBlog, togglePublishStatus } from '../../services/blog';
 import { getAllFaqsForAdmin, togglePublishFaq, deleteFaq, updateFaq } from '../../services/faq';
 import { useToast } from '../../contexts/ToastContext';
@@ -47,6 +48,12 @@ const ContentManagement = () => {
     });
     const { showToast } = useToast();
 
+    // Selection state for bulk actions (Blogs & FAQs)
+    const [selectedBlogIds, setSelectedBlogIds] = useState(new Set());
+    const [selectedFaqIds, setSelectedFaqIds] = useState(new Set());
+    const blogHeaderCheckboxRef = useRef(null);
+    const faqHeaderCheckboxRef = useRef(null);
+
     // Fetch blogs from API
     useEffect(() => {
         console.log('Fetching blogs - page:', pagination.page, 'filter:', filterStatus);
@@ -81,6 +88,7 @@ const ContentManagement = () => {
                 const blogsList = data.blogs || [];
                 console.log('Blogs list:', blogsList); // Debug log
                 setBlogs(blogsList);
+                // Keep selection across page changes (no pruning here)
                 
                 // API trả về pageNumber, pageSize, totalPages, totalElements
                 setPagination(prev => ({
@@ -283,6 +291,58 @@ const ContentManagement = () => {
         }
     };
 
+    // ===== Bulk selection helpers for Blogs =====
+    const blogIdsOnPage = blogs.map(b => b.id);
+    const allBlogsSelectedOnPage = blogIdsOnPage.length > 0 && blogIdsOnPage.every(id => selectedBlogIds.has(id));
+    const someBlogsSelectedOnPage = blogIdsOnPage.some(id => selectedBlogIds.has(id)) && !allBlogsSelectedOnPage;
+
+    useEffect(() => {
+        if (blogHeaderCheckboxRef.current) {
+            blogHeaderCheckboxRef.current.indeterminate = someBlogsSelectedOnPage;
+        }
+    }, [someBlogsSelectedOnPage]);
+
+    const toggleSelectBlog = (id) => {
+        setSelectedBlogIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id); else next.add(id);
+            return next;
+        });
+    };
+
+    const handleSelectAllBlogsCurrentPage = () => {
+        setSelectedBlogIds(prev => {
+            const next = new Set(prev);
+            if (allBlogsSelectedOnPage) {
+                blogIdsOnPage.forEach(id => next.delete(id));
+            } else {
+                blogIdsOnPage.forEach(id => next.add(id));
+            }
+            return next;
+        });
+    };
+
+    const handleDeleteSelectedBlogs = async () => {
+        const count = selectedBlogIds.size;
+        if (count === 0) return;
+        if (!window.confirm(`Bạn có chắc chắn muốn xóa ${count} bài viết đã chọn?`)) return;
+        try {
+            const ids = Array.from(selectedBlogIds);
+            const results = await Promise.allSettled(ids.map(id => deleteBlog(id)));
+            const failed = results.filter(r => r.status === 'rejected');
+            if (failed.length > 0) {
+                showToast(`Một số bài viết không thể xóa (${failed.length}/${ids.length}).`, 'warning');
+            } else {
+                showToast('Đã xóa các bài viết đã chọn', 'success');
+            }
+            setSelectedBlogIds(new Set());
+            await fetchBlogs();
+        } catch (err) {
+            console.error('Bulk delete blogs error:', err);
+            showToast('Có lỗi khi xóa nhiều bài viết', 'error');
+        }
+    };
+
     const handleViewFaq = (faq) => {
         setSelectedFaq(faq);
         setShowFAQModal(true);
@@ -321,6 +381,58 @@ const ContentManagement = () => {
         }
     };
 
+    // ===== Bulk selection helpers for FAQs =====
+    const faqIdsOnPage = faqs.map(f => f.id);
+    const allFaqsSelectedOnPage = faqIdsOnPage.length > 0 && faqIdsOnPage.every(id => selectedFaqIds.has(id));
+    const someFaqsSelectedOnPage = faqIdsOnPage.some(id => selectedFaqIds.has(id)) && !allFaqsSelectedOnPage;
+
+    useEffect(() => {
+        if (faqHeaderCheckboxRef.current) {
+            faqHeaderCheckboxRef.current.indeterminate = someFaqsSelectedOnPage;
+        }
+    }, [someFaqsSelectedOnPage]);
+
+    const toggleSelectFaq = (id) => {
+        setSelectedFaqIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id); else next.add(id);
+            return next;
+        });
+    };
+
+    const handleSelectAllFaqsCurrentPage = () => {
+        setSelectedFaqIds(prev => {
+            const next = new Set(prev);
+            if (allFaqsSelectedOnPage) {
+                faqIdsOnPage.forEach(id => next.delete(id));
+            } else {
+                faqIdsOnPage.forEach(id => next.add(id));
+            }
+            return next;
+        });
+    };
+
+    const handleDeleteSelectedFaqs = async () => {
+        const count = selectedFaqIds.size;
+        if (count === 0) return;
+        if (!window.confirm(`Bạn có chắc chắn muốn xóa ${count} FAQ đã chọn?`)) return;
+        try {
+            const ids = Array.from(selectedFaqIds);
+            const results = await Promise.allSettled(ids.map(id => deleteFaq(id)));
+            const failed = results.filter(r => r.status === 'rejected');
+            if (failed.length > 0) {
+                showToast(`Một số FAQ không thể xóa (${failed.length}/${ids.length}).`, 'warning');
+            } else {
+                showToast('Đã xóa các FAQ đã chọn', 'success');
+            }
+            setSelectedFaqIds(new Set());
+            await fetchFaqs();
+        } catch (err) {
+            console.error('Bulk delete FAQs error:', err);
+            showToast('Có lỗi khi xóa nhiều FAQ', 'error');
+        }
+    };
+
     return (
         <div className="content-management">
             {/* Header */}
@@ -349,65 +461,37 @@ const ContentManagement = () => {
                 </div>
             </div>
 
-            {/* Stats Cards */}
-            <Row className="mb-4">
+            {/* Stats Cards - simple version */}
+            <Row className="mb-3 g-3">
                 <Col md={3}>
-                    <Card className="stats-card border-start border-primary border-4">
-                        <Card.Body>
-                            <div className="d-flex justify-content-between">
-                                <div>
-                                    <h6 className="text-muted mb-1">Tổng bài viết</h6>
-                                    <h3 className="mb-0 text-primary">{stats.total || 0}</h3>
-                                </div>
-                                <div className="stats-icon bg-primary">
-                                    <FaBlog />
-                                </div>
-                            </div>
+                    <Card className="shadow-sm border-0">
+                        <Card.Body className="text-center">
+                            <h6 className="text-muted mb-1">Tổng bài viết</h6>
+                            <h4 className="fw-semibold mb-0">{stats.total || 0}</h4>
                         </Card.Body>
                     </Card>
                 </Col>
                 <Col md={3}>
-                    <Card className="stats-card border-start border-warning border-4">
-                        <Card.Body>
-                            <div className="d-flex justify-content-between">
-                                <div>
-                                    <h6 className="text-muted mb-1">Chờ duyệt</h6>
-                                    <h3 className="mb-0 text-warning">{stats.pending || 0}</h3>
-                                </div>
-                                <div className="stats-icon bg-warning">
-                                    <FaClock />
-                                </div>
-                            </div>
+                    <Card className="shadow-sm border-0">
+                        <Card.Body className="text-center">
+                            <h6 className="text-muted mb-1">Chờ duyệt</h6>
+                            <h4 className="fw-semibold mb-0">{stats.pending || 0}</h4>
                         </Card.Body>
                     </Card>
                 </Col>
                 <Col md={3}>
-                    <Card className="stats-card border-start border-success border-4">
-                        <Card.Body>
-                            <div className="d-flex justify-content-between">
-                                <div>
-                                    <h6 className="text-muted mb-1">Đã xuất bản</h6>
-                                    <h3 className="mb-0 text-success">{stats.approved || 0}</h3>
-                                </div>
-                                <div className="stats-icon bg-success">
-                                    <FaCheck />
-                                </div>
-                            </div>
+                    <Card className="shadow-sm border-0">
+                        <Card.Body className="text-center">
+                            <h6 className="text-muted mb-1">Đã xuất bản</h6>
+                            <h4 className="fw-semibold mb-0">{stats.approved || 0}</h4>
                         </Card.Body>
                     </Card>
                 </Col>
                 <Col md={3}>
-                    <Card className="stats-card border-start border-info border-4">
-                        <Card.Body>
-                            <div className="d-flex justify-content-between">
-                                <div>
-                                    <h6 className="text-muted mb-1">Lượt xem</h6>
-                                    <h3 className="mb-0 text-info">{stats.views ? (stats.views >= 1000 ? `${(stats.views / 1000).toFixed(1)}K` : stats.views) : 0}</h3>
-                                </div>
-                                <div className="stats-icon bg-info">
-                                    <FaChartLine />
-                                </div>
-                            </div>
+                    <Card className="shadow-sm border-0">
+                        <Card.Body className="text-center">
+                            <h6 className="text-muted mb-1">Lượt xem</h6>
+                            <h4 className="fw-semibold mb-0">{stats.views ? (stats.views >= 1000 ? `${(stats.views / 1000).toFixed(1)}K` : stats.views) : 0}</h4>
                         </Card.Body>
                     </Card>
                 </Col>
@@ -475,6 +559,24 @@ const ContentManagement = () => {
                             <Card.Header className="bg-light">
                                 <div className="d-flex justify-content-between align-items-center">
                                     <h6 className="mb-0">Danh sách bài viết ({pagination.totalElements})</h6>
+                                    <div className="d-flex gap-2">
+                                        <Button 
+                                            variant="outline-primary" 
+                                            size="sm"
+                                            onClick={handleSelectAllBlogsCurrentPage}
+                                            disabled={blogs.length === 0}
+                                        >
+                                            Chọn tất cả
+                                        </Button>
+                                        <Button 
+                                            variant="outline-danger" 
+                                            size="sm"
+                                            onClick={handleDeleteSelectedBlogs}
+                                            disabled={selectedBlogIds.size === 0}
+                                        >
+                                            Xóa đã chọn {selectedBlogIds.size > 0 ? `(${selectedBlogIds.size})` : ''}
+                                        </Button>
+                                    </div>
                                 </div>
                             </Card.Header>
                             <Card.Body className="p-0">
@@ -493,22 +595,31 @@ const ContentManagement = () => {
                                         <thead className="bg-light">
                                             <tr>
                                                 <th width="4%">
-                                                    <Form.Check type="checkbox" />
+                                                    <Form.Check 
+                                                        type="checkbox"
+                                                        checked={allBlogsSelectedOnPage}
+                                                        onChange={handleSelectAllBlogsCurrentPage}
+                                                        ref={blogHeaderCheckboxRef}
+                                                    />
                                                 </th>
                                                 <th width="30%">Tiêu đề</th>
-                                                <th width="13%">Tác giả</th>
-                                                <th width="10%">Trạng thái</th>
+                                                <th width="14%">Tác giả</th>
+                                                <th width="12%">Trạng thái</th>
                                                 <th width="8%">Xuất bản</th>
                                                 <th width="8%">Lượt xem</th>
-                                                <th width="12%">Ngày tạo</th>
-                                                <th width="15%">Thao tác</th>
+                                                <th width="14%">Ngày tạo</th>
+                                                <th width="10%">Thao tác</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {blogs.map((blog) => (
                                                 <tr key={blog.id}>
                                                     <td>
-                                                        <Form.Check type="checkbox" />
+                                                        <Form.Check 
+                                                            type="checkbox"
+                                                            checked={selectedBlogIds.has(blog.id)}
+                                                            onChange={() => toggleSelectBlog(blog.id)}
+                                                        />
                                                     </td>
                                                     <td>
                                                         <div>
@@ -549,64 +660,26 @@ const ContentManagement = () => {
                                                         </span>
                                                     </td>
                                                     <td>
-                                                        <div className="d-flex gap-1 flex-wrap">
-                                                            <Button
-                                                                variant="outline-info"
-                                                                size="sm"
-                                                                onClick={() => handleViewBlog(blog)}
-                                                                title="Xem chi tiết"
-                                                            >
-                                                                <FaEye />
-                                                            </Button>
-                                                            {(blog.statusName === 'PENDING' || blog.status === 'PENDING') && (
-                                                                <>
-                                                                    <Button 
-                                                                        variant="success" 
-                                                                        size="sm"
-                                                                        onClick={(e) => {
-                                                                            e.preventDefault();
-                                                                            e.stopPropagation();
-                                                                            console.log('Approve button clicked for blog:', blog.id);
-                                                                            handleApproveBlog(blog.id);
-                                                                        }}
-                                                                        className="d-flex align-items-center gap-1"
-                                                                    >
-                                                                        <FaCheck /> Duyệt
-                                                                    </Button>
-                                                                    <Button 
-                                                                        variant="danger" 
-                                                                        size="sm"
-                                                                        onClick={(e) => {
-                                                                            e.preventDefault();
-                                                                            e.stopPropagation();
-                                                                            console.log('Reject button clicked for blog:', blog.id);
-                                                                            handleRejectBlog(blog.id);
-                                                                        }}
-                                                                        className="d-flex align-items-center gap-1"
-                                                                    >
-                                                                        <FaTimes /> Từ chối
-                                                                    </Button>
-                                                                </>
-                                                            )}
-                                                            {(blog.statusName === 'APPROVED' || blog.status === 'APPROVED') && (
-                                                                <Button 
-                                                                    variant={blog.isPublished ? "outline-warning" : "outline-primary"}
-                                                                    size="sm"
-                                                                    onClick={() => handleTogglePublish(blog.id)}
-                                                                    title={blog.isPublished ? "Ẩn bài viết" : "Hiển thị bài viết"}
-                                                                >
-                                                                    {blog.isPublished ? <FaEyeSlash /> : <FaEye />}
-                                                                </Button>
-                                                            )}
-                                                            <Button 
-                                                                variant="outline-danger" 
-                                                                size="sm"
-                                                                onClick={() => handleDeleteBlog(blog.id)}
-                                                                title="Xóa"
-                                                            >
-                                                                <FaTrash />
-                                                            </Button>
-                                                        </div>
+                                                        <Dropdown align="end">
+                                                            <Dropdown.Toggle variant="light" size="sm" aria-label="Thao tác" className="no-caret">
+                                                                <BsThreeDotsVertical />
+                                                            </Dropdown.Toggle>
+                                                            <Dropdown.Menu>
+                                                                <Dropdown.Item onClick={() => handleViewBlog(blog)}>Xem</Dropdown.Item>
+                                                                {(blog.statusName === 'PENDING' || blog.status === 'PENDING') && (
+                                                                    <>
+                                                                        <Dropdown.Item onClick={() => handleApproveBlog(blog.id)}>Duyệt</Dropdown.Item>
+                                                                        <Dropdown.Item onClick={() => handleRejectBlog(blog.id)}>Từ chối</Dropdown.Item>
+                                                                    </>
+                                                                )}
+                                                                {(blog.statusName === 'APPROVED' || blog.status === 'APPROVED') && (
+                                                                    <Dropdown.Item onClick={() => handleTogglePublish(blog.id)}>
+                                                                        {blog.isPublished ? 'Ẩn bài viết' : 'Hiển thị bài viết'}
+                                                                    </Dropdown.Item>
+                                                                )}
+                                                                <Dropdown.Item onClick={() => handleDeleteBlog(blog.id)} className="text-danger">Xóa</Dropdown.Item>
+                                                            </Dropdown.Menu>
+                                                        </Dropdown>
                                                     </td>
                                                 </tr>
                                             ))}
@@ -653,10 +726,28 @@ const ContentManagement = () => {
                             <Card.Header className="bg-light">
                                 <div className="d-flex justify-content-between align-items-center">
                                     <h6 className="mb-0">Danh sách FAQ ({faqPagination.totalElements})</h6>
-                                    <Button variant="primary" size="sm" disabled>
-                                        <FaEdit className="me-1" />
-                                        Thêm FAQ mới
-                                    </Button>
+                                    <div className="d-flex gap-2">
+                                        <Button 
+                                            variant="outline-primary" 
+                                            size="sm"
+                                            onClick={handleSelectAllFaqsCurrentPage}
+                                            disabled={faqs.length === 0}
+                                        >
+                                            Chọn tất cả
+                                        </Button>
+                                        <Button 
+                                            variant="outline-danger" 
+                                            size="sm"
+                                            onClick={handleDeleteSelectedFaqs}
+                                            disabled={selectedFaqIds.size === 0}
+                                        >
+                                            Xóa đã chọn {selectedFaqIds.size > 0 ? `(${selectedFaqIds.size})` : ''}
+                                        </Button>
+                                        <Button variant="primary" size="sm" disabled>
+                                            <FaEdit className="me-1" />
+                                            Thêm FAQ mới
+                                        </Button>
+                                    </div>
                                 </div>
                             </Card.Header>
                             <Card.Body className="p-0">
@@ -674,14 +765,19 @@ const ContentManagement = () => {
                                     <Table responsive hover className="mb-0">
                                         <thead className="bg-light">
                                             <tr>
-                                                <th width="5%">
-                                                    <Form.Check type="checkbox" />
+                                                <th width="4%">
+                                                    <Form.Check 
+                                                        type="checkbox"
+                                                        checked={allFaqsSelectedOnPage}
+                                                        onChange={handleSelectAllFaqsCurrentPage}
+                                                        ref={faqHeaderCheckboxRef}
+                                                    />
                                                 </th>
-                                                <th width="35%">Câu hỏi</th>
-                                                <th width="15%">Mức độ</th>
+                                                <th width="36%">Câu hỏi</th>
+                                                <th width="14%">Mức độ</th>
                                                 <th width="12%">Trạng thái</th>
                                                 <th width="8%">Lượt xem</th>
-                                                <th width="15%">Ngày tạo</th>
+                                                <th width="16%">Ngày tạo</th>
                                                 <th width="10%">Thao tác</th>
                                             </tr>
                                         </thead>
@@ -689,7 +785,11 @@ const ContentManagement = () => {
                                             {faqs.map((faq) => (
                                                 <tr key={faq.id}>
                                                     <td>
-                                                        <Form.Check type="checkbox" />
+                                                        <Form.Check 
+                                                            type="checkbox"
+                                                            checked={selectedFaqIds.has(faq.id)}
+                                                            onChange={() => toggleSelectFaq(faq.id)}
+                                                        />
                                                     </td>
                                                     <td>
                                                         <div>
@@ -726,32 +826,18 @@ const ContentManagement = () => {
                                                         </span>
                                                     </td>
                                                     <td>
-                                                        <div className="d-flex gap-1 flex-wrap">
-                                                            <Button 
-                                                                variant="outline-info" 
-                                                                size="sm"
-                                                                onClick={() => handleViewFaq(faq)}
-                                                                title="Xem chi tiết"
-                                                            >
-                                                                <FaEye />
-                                                            </Button>
-                                                            <Button 
-                                                                variant={faq.isPublished ? "outline-warning" : "outline-success"}
-                                                                size="sm"
-                                                                onClick={() => handleTogglePublishFaq(faq.id, faq.isPublished)}
-                                                                title={faq.isPublished ? "Ẩn FAQ" : "Hiển thị FAQ"}
-                                                            >
-                                                                {faq.isPublished ? <FaEyeSlash /> : <FaEye />}
-                                                            </Button>
-                                                            <Button 
-                                                                variant="outline-danger" 
-                                                                size="sm"
-                                                                onClick={() => handleDeleteFaq(faq.id)}
-                                                                title="Xóa"
-                                                            >
-                                                                <FaTrash />
-                                                            </Button>
-                                                        </div>
+                                                        <Dropdown align="end">
+                                                            <Dropdown.Toggle variant="light" size="sm" aria-label="Thao tác" className="no-caret">
+                                                                <BsThreeDotsVertical />
+                                                            </Dropdown.Toggle>
+                                                            <Dropdown.Menu>
+                                                                <Dropdown.Item onClick={() => handleViewFaq(faq)}>Xem</Dropdown.Item>
+                                                                <Dropdown.Item onClick={() => handleTogglePublishFaq(faq.id, faq.isPublished)}>
+                                                                    {faq.isPublished ? 'Ẩn FAQ' : 'Hiển thị FAQ'}
+                                                                </Dropdown.Item>
+                                                                <Dropdown.Item onClick={() => handleDeleteFaq(faq.id)} className="text-danger">Xóa</Dropdown.Item>
+                                                            </Dropdown.Menu>
+                                                        </Dropdown>
                                                     </td>
                                                 </tr>
                                             ))}

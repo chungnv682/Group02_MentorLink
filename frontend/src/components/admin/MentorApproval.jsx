@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
-    Card, Row, Col, Table, Button, Badge, Form,
+    Card, Row, Col, Table, Button, Badge, Form, Dropdown,
     InputGroup, Modal, Nav, Tab, Alert, ProgressBar, Spinner
 } from 'react-bootstrap';
 import {
     FaSearch, FaEye, FaCheck, FaTimes, FaDownload,
     FaGraduationCap, FaBriefcase, FaCertificate, FaUser
 } from 'react-icons/fa';
+import { BsThreeDotsVertical } from 'react-icons/bs';
 import {
     getAllMentors,
     getMentorById,
@@ -39,6 +40,7 @@ const MentorApproval = () => {
         totalElements: 0
     });
     const { showToast } = useToast();
+    const headerCheckboxRef = useRef(null);
 
     // Fetch mentors when component mounts or filters change
     useEffect(() => {
@@ -238,12 +240,24 @@ const MentorApproval = () => {
     };
 
     const handleSelectAll = () => {
-        if (selectedMentorIds.length === mentorApplications.length) {
-            setSelectedMentorIds([]);
+        const allIdsOnPage = mentorApplications.map(m => m.id);
+        const allSelected = allIdsOnPage.length > 0 && allIdsOnPage.every(id => selectedMentorIds.includes(id));
+        if (allSelected) {
+            setSelectedMentorIds(prev => prev.filter(id => !allIdsOnPage.includes(id)));
         } else {
-            setSelectedMentorIds(mentorApplications.map(m => m.id));
+            setSelectedMentorIds(prev => Array.from(new Set([...prev, ...allIdsOnPage])));
         }
     };
+
+    // Indeterminate state for header checkbox
+    useEffect(() => {
+        if (!headerCheckboxRef.current) return;
+        const allIdsOnPage = mentorApplications.map(m => m.id);
+        const selectedOnPage = allIdsOnPage.filter(id => selectedMentorIds.includes(id));
+        const allSelectedOnPage = selectedOnPage.length === allIdsOnPage.length && allIdsOnPage.length > 0;
+        const someSelectedOnPage = selectedOnPage.length > 0 && !allSelectedOnPage;
+        headerCheckboxRef.current.indeterminate = someSelectedOnPage;
+    }, [mentorApplications, selectedMentorIds]);
 
     return (
         <div className="mentor-approval">
@@ -265,65 +279,37 @@ const MentorApproval = () => {
                 </div>
             </div>
 
-            {/* Stats Cards */}
-            <Row className="mb-4">
+            {/* Stats Cards - simple version */}
+            <Row className="mb-3 g-3">
                 <Col md={3}>
-                    <Card className="stats-card border-start border-warning border-4">
-                        <Card.Body>
-                            <div className="d-flex justify-content-between">
-                                <div>
-                                    <h6 className="text-muted mb-1">Chờ duyệt</h6>
-                                    <h3 className="mb-0 text-warning">{stats.pending || 0}</h3>
-                                </div>
-                                <div className="stats-icon bg-warning">
-                                    <FaUser />
-                                </div>
-                            </div>
+                    <Card className="shadow-sm border-0">
+                        <Card.Body className="text-center">
+                            <h6 className="text-muted mb-1">Chờ duyệt</h6>
+                            <h4 className="fw-semibold mb-0">{stats.pending || 0}</h4>
                         </Card.Body>
                     </Card>
                 </Col>
                 <Col md={3}>
-                    <Card className="stats-card border-start border-success border-4">
-                        <Card.Body>
-                            <div className="d-flex justify-content-between">
-                                <div>
-                                    <h6 className="text-muted mb-1">Đã duyệt</h6>
-                                    <h3 className="mb-0 text-success">{stats.approved || 0}</h3>
-                                </div>
-                                <div className="stats-icon bg-success">
-                                    <FaCheck />
-                                </div>
-                            </div>
+                    <Card className="shadow-sm border-0">
+                        <Card.Body className="text-center">
+                            <h6 className="text-muted mb-1">Đã duyệt</h6>
+                            <h4 className="fw-semibold mb-0">{stats.approved || 0}</h4>
                         </Card.Body>
                     </Card>
                 </Col>
                 <Col md={3}>
-                    <Card className="stats-card border-start border-danger border-4">
-                        <Card.Body>
-                            <div className="d-flex justify-content-between">
-                                <div>
-                                    <h6 className="text-muted mb-1">Từ chối</h6>
-                                    <h3 className="mb-0 text-danger">{stats.rejected || 0}</h3>
-                                </div>
-                                <div className="stats-icon bg-danger">
-                                    <FaTimes />
-                                </div>
-                            </div>
+                    <Card className="shadow-sm border-0">
+                        <Card.Body className="text-center">
+                            <h6 className="text-muted mb-1">Từ chối</h6>
+                            <h4 className="fw-semibold mb-0">{stats.rejected || 0}</h4>
                         </Card.Body>
                     </Card>
                 </Col>
                 <Col md={3}>
-                    <Card className="stats-card border-start border-info border-4">
-                        <Card.Body>
-                            <div className="d-flex justify-content-between">
-                                <div>
-                                    <h6 className="text-muted mb-1">Tổng đơn</h6>
-                                    <h3 className="mb-0 text-info">{stats.total || 0}</h3>
-                                </div>
-                                <div className="stats-icon bg-info">
-                                    <FaGraduationCap />
-                                </div>
-                            </div>
+                    <Card className="shadow-sm border-0">
+                        <Card.Body className="text-center">
+                            <h6 className="text-muted mb-1">Tổng đơn</h6>
+                            <h4 className="fw-semibold mb-0">{stats.total || 0}</h4>
                         </Card.Body>
                     </Card>
                 </Col>
@@ -423,7 +409,8 @@ const MentorApproval = () => {
                                     <th width="5%">
                                         <Form.Check 
                                             type="checkbox"
-                                            checked={selectedMentorIds.length === mentorApplications.length && mentorApplications.length > 0}
+                                            ref={headerCheckboxRef}
+                                            checked={mentorApplications.length > 0 && mentorApplications.every(m => selectedMentorIds.includes(m.id))}
                                             onChange={handleSelectAll}
                                         />
                                     </th>
@@ -491,36 +478,26 @@ const MentorApproval = () => {
                                                 </span>
                                             </td>
                                             <td>
-                                                <div className="d-flex gap-1">
-                                                    <Button
-                                                        variant="outline-info"
-                                                        size="sm"
-                                                        onClick={() => handleViewMentor(mentor)}
-                                                        title="Xem chi tiết"
-                                                    >
-                                                        <FaEye />
-                                                    </Button>
-                                                    {isPending && (
-                                                        <>
-                                                            <Button 
-                                                                variant="outline-success" 
-                                                                size="sm"
-                                                                onClick={() => handleApproveMentor(mentor.id)}
-                                                                title="Duyệt"
-                                                            >
-                                                                <FaCheck />
-                                                            </Button>
-                                                            <Button 
-                                                                variant="outline-danger" 
-                                                                size="sm"
-                                                                onClick={() => handleRejectMentor(mentor.id)}
-                                                                title="Từ chối"
-                                                            >
-                                                                <FaTimes />
-                                                            </Button>
-                                                        </>
-                                                    )}
-                                                </div>
+                                                <Dropdown align="end">
+                                                    <Dropdown.Toggle variant="light" size="sm" className="no-caret p-1">
+                                                        <BsThreeDotsVertical />
+                                                    </Dropdown.Toggle>
+                                                    <Dropdown.Menu>
+                                                        <Dropdown.Item onClick={() => handleViewMentor(mentor)}>
+                                                            Xem
+                                                        </Dropdown.Item>
+                                                        {isPending && (
+                                                            <>
+                                                                <Dropdown.Item onClick={() => handleApproveMentor(mentor.id)}>
+                                                                    Duyệt
+                                                                </Dropdown.Item>
+                                                                <Dropdown.Item onClick={() => handleRejectMentor(mentor.id)}>
+                                                                    Từ chối
+                                                                </Dropdown.Item>
+                                                            </>
+                                                        )}
+                                                    </Dropdown.Menu>
+                                                </Dropdown>
                                             </td>
                                         </tr>
                                     );
