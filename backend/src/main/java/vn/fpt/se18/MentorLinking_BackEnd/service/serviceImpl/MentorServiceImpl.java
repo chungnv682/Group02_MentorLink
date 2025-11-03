@@ -118,8 +118,9 @@ public class MentorServiceImpl implements MentorService {
             throw new RuntimeException("Mentor not found with id: " + id);
         }
 
-        // Map educations - force lazy loading
+        // Map educations - only APPROVED status
         List<MentorEducationResponse> educations = mentor.getMentorEducations().stream()
+                .filter(education -> "APPROVED".equals(education.getStatus().getCode()))
                 .map(education -> MentorEducationResponse.builder()
                         .schoolName(education.getSchoolName())
                         .major(education.getMajor())
@@ -129,8 +130,9 @@ public class MentorServiceImpl implements MentorService {
                         .build())
                 .toList();
 
-        // Map experiences - force lazy loading
+        // Map experiences - only APPROVED status
         List<MentorExperienceResponse> experiences = mentor.getMentorExperiences().stream()
+                .filter(experience -> "APPROVED".equals(experience.getStatus().getCode()))
                 .map(experience -> MentorExperienceResponse.builder()
                         .companyName(experience.getCompanyName())
                         .position(experience.getPosition())
@@ -140,16 +142,18 @@ public class MentorServiceImpl implements MentorService {
                         .build())
                 .toList();
 
-        // Map services - force lazy loading
+        // Map services - only APPROVED status
         List<MentorServiceResponse> services = mentor.getMentorServices().stream()
+                .filter(service -> "APPROVED".equals(service.getStatus().getCode()))
                 .map(service -> MentorServiceResponse.builder()
                         .serviceName(service.getServiceName())
                         .description(service.getDescription())
                         .build())
                 .toList();
 
-        // Map tests - force lazy loading
+        // Map tests - only APPROVED status
         List<MentorTestResponse> tests = mentor.getMentorTests().stream()
+                .filter(test -> "APPROVED".equals(test.getStatus().getCode()))
                 .map(test -> MentorTestResponse.builder()
                         .testName(test.getTestName())
                         .score(test.getScore())
