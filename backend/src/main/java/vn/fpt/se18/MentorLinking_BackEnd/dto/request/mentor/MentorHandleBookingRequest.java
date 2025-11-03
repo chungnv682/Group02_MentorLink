@@ -14,4 +14,5 @@ import lombok.Setter;
 public class MentorHandleBookingRequest {
     private Long bookingId;
     private String action;
+    private String cancelReason = "";
 }
