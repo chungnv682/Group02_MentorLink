@@ -7,6 +7,7 @@ export const ToastProvider = ({ children }) => {
     const [toasts, setToasts] = useState([]);
 
     const showToast = useCallback((message, options = {}) => {
+<<<<<<< HEAD
         const id = Date.now() + Math.random();
         const toast = {
             id,
@@ -14,6 +15,17 @@ export const ToastProvider = ({ children }) => {
             variant: options.variant || 'success',
             delay: options.delay || 3000,
         };
+=======
+        // Normalize options: support both string shorthand ('success' | 'error' | 'warning' | 'info' | 'danger')
+        const opts = typeof options === 'string' ? { variant: options } : (options || {});
+        let variant = opts.variant || opts.type || 'success';
+        // Map common alias
+        if (variant === 'error') variant = 'danger';
+        const delay = typeof opts.delay === 'number' ? opts.delay : 3000;
+
+        const id = Date.now() + Math.random();
+        const toast = { id, message, variant, delay };
+>>>>>>> 1cbb84ee52c3c7e89de0706aa458716d0cd487df
         setToasts((t) => [...t, toast]);
         return id;
     }, []);
@@ -26,7 +38,12 @@ export const ToastProvider = ({ children }) => {
         <ToastContext.Provider value={{ showToast }}>
             {children}
 
+<<<<<<< HEAD
             <ToastContainer position="top-end" className="p-3">
+=======
+            {/* Offset the container from top so it won't be hidden behind header */}
+            <ToastContainer position="top-end" className="p-3" style={{ top: '72px' }}>
+>>>>>>> 1cbb84ee52c3c7e89de0706aa458716d0cd487df
                 {toasts.map((t) => (
                     <Toast key={t.id} onClose={() => removeToast(t.id)} bg={t.variant} delay={t.delay} autohide>
                         <Toast.Body className={t.variant !== 'light' ? 'text-white' : ''}>{t.message}</Toast.Body>
