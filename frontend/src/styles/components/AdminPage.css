@@ -233,14 +233,14 @@
     font-size: 0.85rem;
 }
 
-.tab-content {
+.admin-page .tab-content {
     background: white;
     border-radius: 12px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     min-height: 600px;
 }
 
-.tab-pane {
+.admin-page .tab-pane {
     padding: 1.5rem;
 }
 
@@ -257,7 +257,7 @@
 
 [data-theme="dark"] .quick-actions,
 [data-theme="dark"] .system-status,
-[data-theme="dark"] .tab-content {
+[data-theme="dark"] .admin-page .tab-content {
     background-color: var(--bs-gray-800);
     border-color: var(--bs-gray-700);
 }
