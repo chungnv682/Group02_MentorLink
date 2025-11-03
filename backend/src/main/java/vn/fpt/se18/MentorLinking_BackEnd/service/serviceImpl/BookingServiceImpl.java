@@ -1,6 +1,7 @@
 package vn.fpt.se18.MentorLinking_BackEnd.service.serviceImpl;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.ArrayList;
 import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
 import lombok.RequiredArgsConstructor;
@@ -397,6 +398,29 @@ public class BookingServiceImpl implements BookingService {
 
             System.out.println("Booking timeStart: " + earliestStart + ", timeEnd: " + latestEnd);
         }
+
+        List<Long[]> bookingTimes = new ArrayList<>();
+        if (schedule != null && schedule.getTimeSlots() != null && !schedule.getTimeSlots().isEmpty()) {
+            // Sắp xếp danh sách timeslot theo timeStart
+            List<TimeSlot> sortedTimeSlots = schedule.getTimeSlots().stream()
+                .sorted(Comparator.comparing(TimeSlot::getTimeStart))
+                .toList();
+
+            // In ra từng timeslot
+            for (TimeSlot slot : sortedTimeSlots) {
+                System.out.println("TimeSlot: start=" + slot.getTimeStart() + ", end=" + slot.getTimeEnd());
+            }
+
+            // Nếu bạn muốn lưu list này vào biến khác để xử lý tiếp
+            bookingTimes = sortedTimeSlots.stream()
+                .map(slot -> new Long[]{slot.getTimeStart().longValue(), slot.getTimeEnd().longValue()})
+                .toList();
+
+            System.out.println("Danh sách thời gian booking:");
+            bookingTimes.forEach(times ->
+                System.out.println("Start: " + times[0] + ", End: " + times[1]));
+        }
+
         User mentee = booking.getCustomer();
         User mentor = booking.getMentor();
 
@@ -407,10 +431,10 @@ public class BookingServiceImpl implements BookingService {
             int randomIndex = ThreadLocalRandom.current().nextInt(googlemeet_link.size());
 
             // send email to mentee
-            emailService.sendConfirmBooking(mentee.getEmail(), "Thông báo bổi học", mentee.getFullname(), mentor.getFullname(), booking.getService().toString(), booking.getSchedule().getDate(), earliestStart, latestEnd, googlemeet_link.get(randomIndex));
+            emailService.sendConfirmBooking(mentee.getEmail(), "Thông báo bổi học", mentee.getFullname(), mentor.getFullname(), booking.getService().toString(), booking.getSchedule().getDate(), bookingTimes, googlemeet_link.get(randomIndex));
 
             // send email to mentor
-            emailService.sendConfirmBooking(mentor.getEmail(), "Thông báo bổi học", mentee.getFullname(),mentor.getFullname(), booking.getService().toString(), booking.getSchedule().getDate(), earliestStart, latestEnd, googlemeet_link.get(randomIndex));
+            emailService.sendConfirmBooking(mentor.getEmail(), "Thông báo bổi học", mentee.getFullname(),mentor.getFullname(), booking.getService().toString(), booking.getSchedule().getDate(), bookingTimes, googlemeet_link.get(randomIndex));
 
         }else if(action.equals("CANCELLED")){
             Optional<Status> status = statusRepository.findByCode("CANCELLED");
@@ -419,12 +443,8 @@ public class BookingServiceImpl implements BookingService {
             booking.setComment(cancelReason);
             bookingRepository.save(booking);
 
-            emailService.sendRejectBooking1(mentee.getEmail(), "Hủy buổi học", mentee.getFullname(), mentor.getFullname(), booking.getService().toString(), booking.getSchedule().getDate(), earliestStart, latestEnd, cancelReason);
+            emailService.sendRejectBooking1(mentee.getEmail(), "Hủy buổi học", mentee.getFullname(), mentor.getFullname(), booking.getService().toString(), booking.getSchedule().getDate(), bookingTimes, cancelReason);
         }
-
-        // gui mail
-
-
 
     }
 }
