@@ -53,5 +53,5 @@ public interface BookingService {
      */
     void cancelBooking(Long customerId, Long bookingId) throws Exception;
 
-    void handleBookingAction(Long bookingId, String action) throws Exception;
+    void handleBookingAction(Long bookingId, String action, String cancelReason) throws Exception;
 }
