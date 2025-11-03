@@ -16,6 +16,7 @@ export const ToastProvider = ({ children }) => {
 
         const id = Date.now() + Math.random();
         const toast = { id, message, variant, delay };
+
         setToasts((t) => [...t, toast]);
         return id;
     }, []);
@@ -30,6 +31,7 @@ export const ToastProvider = ({ children }) => {
 
             {/* Offset the container from top so it won't be hidden behind header */}
             <ToastContainer position="top-end" className="p-3" style={{ top: '72px' }}>
+
                 {toasts.map((t) => (
                     <Toast key={t.id} onClose={() => removeToast(t.id)} bg={t.variant} delay={t.delay} autohide>
                         <Toast.Body className={t.variant !== 'light' ? 'text-white' : ''}>{t.message}</Toast.Body>

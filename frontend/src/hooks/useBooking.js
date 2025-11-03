@@ -1,12 +1,14 @@
 import { useState, useCallback } from 'react';
 import { createBookingAndGetPaymentUrl } from '../services/booking/bookingApi';
 
+
 export const useBooking = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
     // createBooking now accepts an optional `service` parameter (matching backend enum)
     const createBooking = useCallback(async (scheduleId, description, service = 'OTHERS') => {
+
         setLoading(true);
         setError('');
 
