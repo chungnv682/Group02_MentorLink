@@ -166,7 +166,7 @@ class MentorService {
             if (!mentorEmail) {
                 throw new Error('No mentor ID found for current user');
             }
-            const response = await instance.get(`/mentors/activity/${mentorEmail}`);
+            const response = await instance.get(`/api/mentors/activity/${mentorEmail}`);
             return response;
         } catch (error) {
             console.error('Error fetching mentor activity:', error);
