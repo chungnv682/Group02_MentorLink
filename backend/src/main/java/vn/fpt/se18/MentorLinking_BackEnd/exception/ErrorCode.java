@@ -37,6 +37,7 @@ public enum ErrorCode {
     STATUS_NOT_EXISTED("21", "Trạng thái không tồn tại", HttpStatus.NOT_FOUND),
     USER_NOT_EXISTED("22", "Người dùng không tồn tại", HttpStatus.NOT_FOUND),
     BANNER_NOT_EXISTED("23", "Banner không tồn tại", HttpStatus.NOT_FOUND),
+    MENTOR_SERVICE_NOT_FOUND("24", "Dịch vụ mentor không tồn tại", HttpStatus.NOT_FOUND),
     ;
     
     private final String code;

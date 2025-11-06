@@ -17,4 +17,8 @@ public class MentorEducationResponse {
     private java.time.LocalDate endDate;
 
     private String certificateImage;
+
+    private String status;
+
+    private String statusCode;
 }

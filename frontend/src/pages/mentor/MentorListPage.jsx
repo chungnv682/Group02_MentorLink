@@ -35,6 +35,10 @@ const MentorListPage = () => {
         approvedCountry: ''
     });
 
+    // Country prioritization (from query params)
+    const [selectedCountryCode, setSelectedCountryCode] = useState('');
+    const [displayMentors, setDisplayMentors] = useState([]);
+
     const [searchTerm, setSearchTerm] = useState('');
     const [showFilters, setShowFilters] = useState(false);
     const [searchTimeout, setSearchTimeout] = useState(null);
@@ -50,6 +54,16 @@ const MentorListPage = () => {
         }
     }, [location.search, showToast]);
 
+    // When route query changes (e.g., from ServicesDropdown), capture the country code
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const countryFromQuery = params.get('country') || '';
+        // Only prioritize (do NOT filter hard) — keep others but push matches on top
+        setSelectedCountryCode(countryFromQuery);
+        // Ensure hard filter isn't carried over from previous state
+        setFilters(prev => ({ ...prev, approvedCountry: '', page: 0 }));
+    }, [location.search]);
+
     // Fetch mentors khi component mount hoặc filters thay đổi
     useEffect(() => {
         fetchMentors(filters);
@@ -63,6 +77,35 @@ const MentorListPage = () => {
             }
         };
     }, [searchTimeout]);
+
+    // Recompute the list to display whenever mentors or selected country changes
+    useEffect(() => {
+        if (!selectedCountryCode) {
+            setDisplayMentors(mentors);
+            return;
+        }
+
+        const supportsCountry = (m) => {
+            const list = Array.isArray(m?.approvedCountries) ? m.approvedCountries : [];
+            const target = selectedCountryCode.toLowerCase();
+            return list.some((c) => {
+                if (!c) return false;
+                if (typeof c === 'string') return c.toLowerCase() === target || c.toLowerCase().includes(target);
+                const code = (c.code || '').toLowerCase();
+                const name = (c.name || '').toLowerCase();
+                return code === target || name.includes(target);
+            });
+        };
+
+        const reordered = [...mentors].sort((a, b) => {
+            const aHas = supportsCountry(a);
+            const bHas = supportsCountry(b);
+            if (aHas === bHas) return 0;
+            return aHas ? -1 : 1;
+        });
+
+        setDisplayMentors(reordered);
+    }, [mentors, selectedCountryCode]);
 
     // Handle search
     const handleSearch = (e) => {
@@ -298,9 +341,15 @@ const MentorListPage = () => {
                 </Alert>
             ) : (
                 <>
+                    {/* If a country was selected from the mega-menu, show a small hint */}
+                    {selectedCountryCode && (
+                        <Alert variant="success" className="mb-3 py-2">
+                            Ưu tiên hiển thị mentor hỗ trợ quốc gia: <strong>{selectedCountryCode}</strong>
+                        </Alert>
+                    )}
                     {/* Mentor Horizontal List */}
                     <div className="mentor-rows-list">
-                        {mentors.map((mentor) => (
+                        {(displayMentors.length ? displayMentors : mentors).map((mentor) => (
                             <div key={mentor.id} className="mentor-row-item">
                                 {/* Use a horizontal row layout similar to bookingcare */}
                                 <MentorCard mentor={mentor} horizontal={true} />
