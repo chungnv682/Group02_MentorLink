@@ -11,6 +11,9 @@ import {
     BookingManagement,
     ReviewManagement,
     ServiceManagement,
+    MentorTestManagement,
+    MentorEducationManagement,
+    MentorExperienceManagement,
     ContentManagement
 } from '../../../components/mentor/dashboard';
 import { useAuth } from '../../../contexts';
@@ -84,6 +87,12 @@ const MentorDashboard = () => {
                 return <ReviewManagement />;
             case 'services':
                 return <ServiceManagement />;
+            case 'tests':
+                return <MentorTestManagement />;
+            case 'educations':
+                return <MentorEducationManagement />;
+            case 'experiences':
+                return <MentorExperienceManagement />;
             case 'content':
                 return <ContentManagement />;
             default:
@@ -189,6 +198,36 @@ const MentorDashboard = () => {
                                         >
                                             <i className="bi bi-gear me-2"></i>
                                             <span style={{ color: 'black' }}>Dịch vụ</span>
+                                        </Nav.Link>
+                                    </Nav.Item>
+                                    <Nav.Item>
+                                        <Nav.Link
+                                            active={activeTab === 'tests'}
+                                            onClick={() => setActiveTab('tests')}
+                                            className="mentor-nav-link"
+                                        >
+                                            <i className="bi bi-file-earmark-text me-2"></i>
+                                            <span style={{ color: 'black' }}>Bài test</span>
+                                        </Nav.Link>
+                                    </Nav.Item>
+                                    <Nav.Item>
+                                        <Nav.Link
+                                            active={activeTab === 'educations'}
+                                            onClick={() => setActiveTab('educations')}
+                                            className="mentor-nav-link"
+                                        >
+                                            <i className="bi bi-mortarboard me-2"></i>
+                                            <span style={{ color: 'black' }}>Học vấn</span>
+                                        </Nav.Link>
+                                    </Nav.Item>
+                                    <Nav.Item>
+                                        <Nav.Link
+                                            active={activeTab === 'experiences'}
+                                            onClick={() => setActiveTab('experiences')}
+                                            className="mentor-nav-link"
+                                        >
+                                            <i className="bi bi-briefcase me-2"></i>
+                                            <span style={{ color: 'black' }}>Kinh nghiệm</span>
                                         </Nav.Link>
                                     </Nav.Item>
                                     <Nav.Item>
