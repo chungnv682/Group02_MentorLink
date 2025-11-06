@@ -23,10 +23,9 @@ const Footer = () => {
                         <Col md={6}>
                             <Row>
                                 <Col className="footer-links text-end">
-                                    <Link to="/language" className="footer-link">MentorLink</Link>
+                                    <Link to="/" className="footer-link">MentorLink</Link>
                                     <Link to="/about" className="footer-link">Về chúng tôi</Link>
-                                    <Link to="/blog" className="footer-link">Blog</Link>
-                                    <Link to="/terms" className="footer-link">Điều khoản</Link>
+                                    <Link to="/blogs" className="footer-link">Blog</Link>
                                 </Col>
                             </Row>
                         </Col>
