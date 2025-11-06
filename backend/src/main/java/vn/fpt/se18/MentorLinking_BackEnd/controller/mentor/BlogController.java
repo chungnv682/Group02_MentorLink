@@ -1,4 +1,4 @@
-package vn.fpt.se18.MentorLinking_BackEnd.controller;
+package vn.fpt.se18.MentorLinking_BackEnd.controller.mentor;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
