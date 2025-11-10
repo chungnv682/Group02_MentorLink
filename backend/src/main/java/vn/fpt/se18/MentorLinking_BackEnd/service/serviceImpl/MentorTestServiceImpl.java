@@ -8,7 +8,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
 import vn.fpt.se18.MentorLinking_BackEnd.dto.request.mentor.MentorTestRequest;
 import vn.fpt.se18.MentorLinking_BackEnd.dto.response.mentor.MentorTestResponse;
 import vn.fpt.se18.MentorLinking_BackEnd.entity.MentorTest;
@@ -20,7 +19,9 @@ import vn.fpt.se18.MentorLinking_BackEnd.repository.MentorTestRepository;
 import vn.fpt.se18.MentorLinking_BackEnd.repository.StatusRepository;
 import vn.fpt.se18.MentorLinking_BackEnd.repository.UserRepository;
 import vn.fpt.se18.MentorLinking_BackEnd.service.MentorTestService;
+import vn.fpt.se18.MentorLinking_BackEnd.service.UploadImageFile;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -32,7 +33,7 @@ public class MentorTestServiceImpl implements MentorTestService {
     private final MentorTestRepository mentorTestRepository;
     private final UserRepository userRepository;
     private final StatusRepository statusRepository;
-    private final FileUploadServiceImpl fileUploadService;
+    private final UploadImageFile uploadImageFile;
 
     @Override
     @Transactional
@@ -48,7 +49,13 @@ public class MentorTestServiceImpl implements MentorTestService {
         // Upload score image if provided
         String scoreImageUrl = null;
         if (request.getScoreImageFile() != null && !request.getScoreImageFile().isEmpty()) {
-            scoreImageUrl = fileUploadService.uploadFile(request.getScoreImageFile(), "tests");
+            try {
+                scoreImageUrl = uploadImageFile.uploadImage(request.getScoreImageFile());
+                log.info("Score image uploaded successfully: {}", scoreImageUrl);
+            } catch (IOException e) {
+                log.error("Failed to upload score image for test {}: {}", request.getTestName(), e.getMessage());
+                throw new AppException(ErrorCode.UNCATEGORIZED, "Failed to upload score image: " + e.getMessage());
+            }
         }
 
         MentorTest mt = MentorTest.builder()
@@ -120,8 +127,14 @@ public class MentorTestServiceImpl implements MentorTestService {
         
         // Upload new image if provided
         if (request.getScoreImageFile() != null && !request.getScoreImageFile().isEmpty()) {
-            String scoreImageUrl = fileUploadService.uploadFile(request.getScoreImageFile(), "tests");
-            test.setScoreImage(scoreImageUrl);
+            try {
+                String scoreImageUrl = uploadImageFile.uploadImage(request.getScoreImageFile());
+                test.setScoreImage(scoreImageUrl);
+                log.info("Score image updated successfully: {}", scoreImageUrl);
+            } catch (IOException e) {
+                log.error("Failed to upload score image for test update {}: {}", request.getTestName(), e.getMessage());
+                throw new AppException(ErrorCode.UNCATEGORIZED, "Failed to upload score image: " + e.getMessage());
+            }
         }
 
         Status pending = statusRepository.findByCode("PENDING")

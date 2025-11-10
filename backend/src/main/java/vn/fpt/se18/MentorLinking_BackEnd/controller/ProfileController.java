@@ -14,7 +14,9 @@ import vn.fpt.se18.MentorLinking_BackEnd.entity.User;
 import vn.fpt.se18.MentorLinking_BackEnd.exception.AppException;
 import vn.fpt.se18.MentorLinking_BackEnd.exception.ErrorCode;
 import vn.fpt.se18.MentorLinking_BackEnd.service.UserService;
+import vn.fpt.se18.MentorLinking_BackEnd.service.UploadImageFile;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 
 @RestController
@@ -25,6 +27,7 @@ import java.time.LocalDateTime;
 public class ProfileController {
 
     private final UserService userService;
+    private final UploadImageFile uploadImageFile;
 
     @GetMapping
     public BaseResponse<ProfileResponse> getProfile() {
@@ -47,7 +50,7 @@ public class ProfileController {
     }
 
     @PutMapping
-    public BaseResponse<ProfileResponse> updateProfile(@Valid @RequestBody UpdateProfileRequest request) {
+    public BaseResponse<ProfileResponse> updateProfile(@Valid @ModelAttribute UpdateProfileRequest request) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || authentication.getName() == null) {
             throw new AppException(ErrorCode.UNAUTHORIZED, "Unauthorized");
@@ -65,10 +68,24 @@ public class ProfileController {
         if (request.getCurrentLocation() != null) user.setCurrentLocation(request.getCurrentLocation());
         if (request.getTitle() != null) user.setTitle(request.getTitle());
         if (request.getLinkedinUrl() != null) user.setLinkedinUrl(request.getLinkedinUrl());
-        if (request.getAvatarUrl() != null) user.setAvatarUrl(request.getAvatarUrl());
         if (request.getIntro() != null) user.setIntro(request.getIntro());
         if (request.getBankAccountNumber() != null) user.setBankAccountNumber(request.getBankAccountNumber());
         if (request.getBankName() != null) user.setBankName(request.getBankName());
+
+        // Handle avatar upload
+        if (request.getAvatarFile() != null && !request.getAvatarFile().isEmpty()) {
+            try {
+                String avatarUrl = uploadImageFile.uploadImage(request.getAvatarFile());
+                user.setAvatarUrl(avatarUrl);
+                log.info("Avatar uploaded successfully for user {}: {}", email, avatarUrl);
+            } catch (IOException e) {
+                log.error("Failed to upload avatar for user {}: {}", email, e.getMessage());
+                throw new AppException(ErrorCode.UNCATEGORIZED, "Failed to upload avatar: " + e.getMessage());
+            }
+        } else if (request.getAvatarUrl() != null) {
+            // If no file upload but avatarUrl is provided, use the URL directly
+            user.setAvatarUrl(request.getAvatarUrl());
+        }
 
         userService.saveUser(user);
 
@@ -104,4 +121,3 @@ public class ProfileController {
                 .build();
     }
 }
-
