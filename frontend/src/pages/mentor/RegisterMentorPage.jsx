@@ -15,6 +15,8 @@ import "bootstrap-icons/font/bootstrap-icons.css";
 import CountrySelector from "../../components/mentor/CountrySelector";
 import { MentorPolicyModal } from "../../components/common";
 import { AuthService } from "../../services";
+import { OtpService } from "../../services/auth";
+import OtpVerification from "../../components/auth/OtpVerification";
 import "../../styles/components/MentorRegister.css";
 
 const RegisterMentorPage = () => {
@@ -51,6 +53,12 @@ const RegisterMentorPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+
+  // State for OTP verification
+  const [showOtpStep, setShowOtpStep] = useState(false);
+  const [otpError, setOtpError] = useState('');
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [pendingFormData, setPendingFormData] = useState(null);
 
   // State for form sections - ✅ SINGLE FILE (not array)
   const [educations, setEducations] = useState([
@@ -168,11 +176,69 @@ const RegisterMentorPage = () => {
     setTestScores(updatedTestScores);
   };
 
+    // ========= Custom validation trước khi gửi OTP =========
+    const validateMentorForm = () => {
+      const errors = [];
+
+      // Personal info
+      if (!formData.personalInfo.name.trim()) errors.push('Vui lòng nhập họ tên');
+      if (!formData.personalInfo.email.trim()) errors.push('Vui lòng nhập email');
+      if (!formData.personalInfo.password) errors.push('Vui lòng nhập mật khẩu');
+      if (formData.personalInfo.password && formData.personalInfo.password.length < 8) errors.push('Mật khẩu phải tối thiểu 8 ký tự');
+      if (formData.personalInfo.password !== formData.personalInfo.confirmPassword) errors.push('Mật khẩu xác nhận không khớp');
+      if (!formData.personalInfo.birthDate) errors.push('Vui lòng chọn ngày sinh');
+      if (!formData.personalInfo.location.trim()) errors.push('Vui lòng nhập nơi sinh sống');
+      if (!formData.personalInfo.phone.trim()) errors.push('Vui lòng nhập số điện thoại');
+      if (!formData.personalInfo.title.trim()) errors.push('Vui lòng nhập chức danh');
+      if (!formData.personalInfo.education) errors.push('Vui lòng chọn trình độ học vấn');
+      if (!formData.personalInfo.bio.trim()) errors.push('Vui lòng nhập giới thiệu bản thân');
+      if (!avatar) errors.push('Vui lòng chọn ảnh đại diện');
+
+      // Countries
+      if (selectedCountries.length === 0) errors.push('Vui lòng chọn ít nhất một quốc gia bạn có thể hỗ trợ');
+
+      // Educations
+      educations.forEach((edu, idx) => {
+        if (!edu.school?.trim()) errors.push(`Bằng cấp #${idx + 1}: thiếu tên trường`);
+        if (!edu.major?.trim()) errors.push(`Bằng cấp #${idx + 1}: thiếu chuyên ngành`);
+        if (!edu.startDate) errors.push(`Bằng cấp #${idx + 1}: thiếu ngày bắt đầu`);
+        if (!edu.certificate) errors.push(`Bằng cấp #${idx + 1}: thiếu file ảnh / PDF`);
+      });
+
+      // Experiences
+      experiences.forEach((exp, idx) => {
+        if (!exp.company?.trim()) errors.push(`Kinh nghiệm #${idx + 1}: thiếu tên công ty`);
+        if (!exp.position?.trim()) errors.push(`Kinh nghiệm #${idx + 1}: thiếu vị trí`);
+        if (!exp.startDate) errors.push(`Kinh nghiệm #${idx + 1}: thiếu ngày bắt đầu`);
+        if (!exp.proof) errors.push(`Kinh nghiệm #${idx + 1}: thiếu file minh chứng`);
+      });
+
+      // Certificates / Test scores
+      testScores.forEach((test, idx) => {
+        if (!test.testName?.trim()) errors.push(`Chứng chỉ #${idx + 1}: thiếu tên bài thi`);
+        if (!test.score?.trim()) errors.push(`Chứng chỉ #${idx + 1}: thiếu điểm số`);
+        if (!test.certificate) errors.push(`Chứng chỉ #${idx + 1}: thiếu file chứng chỉ`);
+      });
+
+      // Policy
+      if (!hasPolicyAccepted) errors.push('Bạn cần chấp nhận chính sách mentor');
+
+      return errors;
+    };
+
 const handleSubmit = async (e) => {
   e.preventDefault();
 
   setError(null);
   setSuccess(null);
+
+    // Chạy full validation trước khi tạo FormData & gửi OTP
+    const validationErrors = validateMentorForm();
+    if (validationErrors.length > 0) {
+      // Hiển thị gọn: lấy 1 lỗi đầu hoặc ghép bằng xuống dòng
+      setError(validationErrors.slice(0,5).join('\n')); // tránh quá dài
+      return;
+    }
 
   // Validation
   if (formData.personalInfo.password !== formData.personalInfo.confirmPassword) {
@@ -269,7 +335,7 @@ const handleSubmit = async (e) => {
     }
   });
 
-  console.log("=== FINAL FormData Check BEFORE SENDING ===");
+  console.log("=== FINAL FormData Check BEFORE SENDING OTP ===");
   console.log("FormData type:", formDataToSend instanceof FormData ? "✅ FormData" : "❌ NOT FormData");
   let emailFound = false;
   let fullNameFound = false;
@@ -298,31 +364,27 @@ const handleSubmit = async (e) => {
     return;
   }
 
+  // 🔐 BƯỚC 1: GỬI OTP TRƯỚC
   try {
     setIsSubmitting(true);
-    console.log("🚀 Sending FormData to AuthService...");
-    const result = await AuthService.registerMentor(formDataToSend);
-    console.log("Registration result:", result);
-
-    if (result.success) {
-      setSuccess("Đăng ký thành công! Đang chuyển hướng...");
-      setTimeout(() => {
-        const user = AuthService.getCurrentUser();
-        if (user) {
-          navigate(AuthService.getRouteByRole(user.role));
-        } else {
-          navigate("/login");
-        }
-      }, 2000);
+    console.log("� Gửi OTP đến email:", formData.personalInfo.email);
+    
+    const otpResult = await OtpService.sendOtp(formData.personalInfo.email);
+    
+    if (otpResult.success) {
+      // Lưu FormData để sử dụng sau khi verify OTP
+      setPendingFormData(formDataToSend);
+      
+      // Chuyển sang bước nhập OTP
+      setShowOtpStep(true);
+      setError('');
     } else {
-      console.error("Registration failed:", result);
-      setError(
-        result.error || result.description || "Đăng ký thất bại. Vui lòng thử lại!"
-      );
+      // Hiển thị lỗi cụ thể từ backend
+      setError(otpResult.error || 'Không thể gửi mã OTP. Vui lòng thử lại.');
     }
   } catch (err) {
-    console.error("Submit error:", err);
-    setError("Có lỗi xảy ra khi đăng ký. Vui lòng thử lại!");
+    console.error('Send OTP error:', err);
+    setError('Có lỗi xảy ra khi gửi mã OTP. Vui lòng thử lại.');
   } finally {
     setIsSubmitting(false);
   }
@@ -337,6 +399,75 @@ const handleSubmit = async (e) => {
     setShowPolicyModal(true);
   };
 
+  // 🔐 OTP Handlers
+  const handleOtpVerify = async (otpCode) => {
+    setOtpError('');
+    setOtpLoading(true);
+
+    try {
+      // ✅ Tạo FormData mới để tránh append duplicate
+      const formDataWithOtp = new FormData();
+      
+      // Copy tất cả entries từ pendingFormData
+      for (let [key, value] of pendingFormData.entries()) {
+        // Skip otpCode cũ nếu có
+        if (key !== 'otpCode') {
+          formDataWithOtp.append(key, value);
+        }
+      }
+      
+      // Append OTP code mới
+      formDataWithOtp.append('otpCode', otpCode);
+
+      console.log("🔐 Đăng ký mentor với OTP:", otpCode);
+      const result = await OtpService.signUpMentorWithOtp(formDataWithOtp);
+
+      if (result.success) {
+        setSuccess("Đăng ký mentor thành công! Đang chuyển hướng...");
+        setTimeout(() => {
+          const user = AuthService.getCurrentUser();
+          if (user) {
+            navigate(AuthService.getRouteByRole(user.role));
+          } else {
+            navigate("/login");
+          }
+        }, 2000);
+      } else {
+        // Hiển thị lỗi cụ thể từ backend
+        setOtpError(result.error || 'Đăng ký thất bại. Vui lòng thử lại.');
+      }
+    } catch (error) {
+      console.error('Verify OTP error:', error);
+      setOtpError('Có lỗi xảy ra khi xác thực OTP. Vui lòng thử lại.');
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleOtpResend = async () => {
+    setOtpError('');
+    setOtpLoading(true);
+
+    try {
+      const result = await OtpService.resendOtp(formData.personalInfo.email);
+      
+      if (!result.success) {
+        setOtpError(result.error || 'Không thể gửi lại mã OTP. Vui lòng thử lại.');
+      }
+    } catch (error) {
+      console.error('Resend OTP error:', error);
+      setOtpError('Có lỗi xảy ra khi gửi lại mã OTP. Vui lòng thử lại.');
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleBackToForm = () => {
+    setShowOtpStep(false);
+    setOtpError('');
+    setPendingFormData(null);
+  };
+
   return (
     <div className="mentor-register-container">
       <Container>
@@ -349,6 +480,38 @@ const handleSubmit = async (e) => {
               </p>
             </div>
 
+            {/* 🔐 HIỂN THỊ OTP VERIFICATION NẾU showOtpStep = true */}
+            {showOtpStep ? (
+              <Card className="card-mentor">
+                <Card.Body className="p-4 p-md-5">
+                  <div className="mb-3">
+                    <Button
+                      variant="link"
+                      className="p-0 text-decoration-none"
+                      onClick={handleBackToForm}
+                    >
+                      <i className="bi bi-arrow-left me-2"></i>
+                      Quay lại
+                    </Button>
+                  </div>
+                  <OtpVerification
+                    email={formData.personalInfo.email}
+                    onVerifySuccess={handleOtpVerify}
+                    onResend={handleOtpResend}
+                    loading={otpLoading}
+                    error={otpError}
+                  />
+                  {success && (
+                    <Alert variant="success" className="mt-3">
+                      <i className="bi bi-check-circle-fill me-2"></i>
+                      {success}
+                    </Alert>
+                  )}
+                </Card.Body>
+              </Card>
+            ) : (
+              <>
+            {/* 📝 FORM ĐĂNG KÝ THÔNG TIN MENTOR */}
             <Card className="card-mentor">
               <div className="card-header-gradient-primary">
                 <h2 className="fs-4 fw-bold mb-0">Thông tin cá nhân</h2>
@@ -973,7 +1136,9 @@ const handleSubmit = async (e) => {
             {error && (
               <Alert variant="danger" dismissible onClose={() => setError(null)} className="mt-3">
                 <i className="bi bi-exclamation-triangle-fill me-2"></i>
-                {error}
+                {error.split('\n').map((line, i) => (
+                  <div key={i}>{line}</div>
+                ))}
               </Alert>
             )}
 
@@ -1013,22 +1178,24 @@ const handleSubmit = async (e) => {
                           aria-hidden="true"
                           className="me-2"
                         />
-                        Đang xử lý...
+                        Đang gửi OTP...
                       </>
                     ) : hasPolicyAccepted ? (
                       <>
                         <i className="bi bi-check-circle me-2"></i>
-                        Đăng ký <i className="bi bi-arrow-right ms-2"></i>
+                        Tiếp tục <i className="bi bi-arrow-right ms-2"></i>
                       </>
                     ) : (
                       <>
-                        Đọc chính sách và đăng ký <i className="bi bi-arrow-right ms-2"></i>
+                        Đọc chính sách và tiếp tục <i className="bi bi-arrow-right ms-2"></i>
                       </>
                     )}
                   </Button>
                 </div>
               </div>
             </div>
+            </>
+            )}
           </Col>
         </Row>
       </Container>
