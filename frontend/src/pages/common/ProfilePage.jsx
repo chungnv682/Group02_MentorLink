@@ -12,6 +12,7 @@ const allowedFieldsForCustomer = [
 ];
 
 const ProfilePage = () => {
+    const fileInputRef = React.useRef();
     const { user } = useAuth();
     const { showToast } = useToast();
 
@@ -19,6 +20,7 @@ const ProfilePage = () => {
     const [saving, setSaving] = useState(false);
     const [profile, setProfile] = useState(null);
     const [form, setForm] = useState({});
+    const [avatarFile, setAvatarFile] = useState(null);
 
     useEffect(() => {
         const fetchProfile = async () => {
@@ -49,23 +51,45 @@ const ProfilePage = () => {
     }, [user, showToast]);
 
     const handleChange = (e) => {
-        const { name, value } = e.target;
-        setForm(prev => ({ ...prev, [name]: value }));
+        const { name, value, type, files } = e.target;
+        if (type === 'file') {
+            setAvatarFile(files[0] || null);
+        } else {
+            setForm(prev => ({ ...prev, [name]: value }));
+        }
+    };
+
+    const handleAvatarEditClick = () => {
+        if (fileInputRef.current) {
+            fileInputRef.current.click();
+        }
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
             setSaving(true);
-            // Prepare payload: include only editable fields (email excluded)
-            const payload = { ...form };
-            delete payload.email; // email must not be updated
-
-            const res = await instance.put(API_ENDPOINTS.USERS.UPDATE, payload);
-            const data = res?.data || res;
+            let res, data;
+            if (avatarFile) {
+                // Gửi multipart/form-data nếu có file
+                const formData = new FormData();
+                Object.entries(form).forEach(([key, value]) => {
+                    if (key !== 'email') formData.append(key, value);
+                });
+                formData.append('avatarFile', avatarFile);
+                res = await instance.put(API_ENDPOINTS.USERS.UPDATE, formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+            } else {
+                // Gửi JSON như cũ nếu không có file
+                const payload = { ...form };
+                delete payload.email;
+                res = await instance.put(API_ENDPOINTS.USERS.UPDATE, payload);
+            }
+            data = res?.data || res;
             showToast('Cập nhật hồ sơ thành công', { variant: 'success' });
-            // Refresh local profile state
-            setProfile(prev => ({ ...prev, ...payload }));
+            setProfile(prev => ({ ...prev, ...form }));
+            setAvatarFile(null);
         } catch (error) {
             console.error('Update profile error', error);
             const message = error?.description || error?.message || 'Cập nhật thất bại';
@@ -108,7 +132,7 @@ const ProfilePage = () => {
     }
 
     const isCustomer = (user?.role || '').toUpperCase() === USER_ROLES.CUSTOMER;
-    const avatarUrl = form.avatarUrl || '/images/default-avatar.svg';
+    const avatarUrl = (avatarFile ? URL.createObjectURL(avatarFile) : (form.avatarUrl || '/images/default-avatar.svg'));
 
 
     return (
@@ -130,14 +154,21 @@ const ProfilePage = () => {
                                                 <Image
                                                     src={avatarUrl}
                                                     onError={(e) => { e.target.src = '/images/default-avatar.svg'; }}
-
                                                     roundedCircle
                                                     className="profile-avatar"
                                                     alt={form.fullname || 'User Avatar'}
                                                 />
-                                                <div className="avatar-overlay">
+                                                <div className="avatar-overlay" style={{ cursor: 'pointer' }} onClick={handleAvatarEditClick}>
                                                     <FaEdit className="avatar-edit-icon" />
                                                 </div>
+                                                <input
+                                                    type="file"
+                                                    name="avatarFile"
+                                                    accept="image/*"
+                                                    ref={fileInputRef}
+                                                    style={{ display: 'none' }}
+                                                    onChange={handleChange}
+                                                />
                                             </div>
                                             <h4 className="mt-4 fw-bold text-secondary">{form.fullname || 'Người dùng'}</h4>
                                             <p className="text-muted">
@@ -278,20 +309,7 @@ const ProfilePage = () => {
                                                             />
                                                         </Form.Group>
                                                     </Col>
-                                                    <Col md={6}>
-                                                        <Form.Group controlId="avatarUrl">
-                                                            <Form.Label className="form-label-custom">
-                                                                <FaImage className="me-2 text-primary" /> Avatar URL
-                                                            </Form.Label>
-                                                            <Form.Control
-                                                                className="form-control-custom"
-                                                                name="avatarUrl"
-                                                                value={form.avatarUrl || ''}
-                                                                onChange={handleChange}
-                                                                placeholder="URL ảnh đại diện"
-                                                            />
-                                                        </Form.Group>
-                                                    </Col>
+                                                    {/* Avatar URL input đã bị ẩn theo yêu cầu */}
                                                 </Row>
 
                                                 {/* Row 5: Bank & Degree */}

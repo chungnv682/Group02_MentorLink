@@ -19,7 +19,9 @@ import vn.fpt.se18.MentorLinking_BackEnd.repository.MentorExperienceRepository;
 import vn.fpt.se18.MentorLinking_BackEnd.repository.StatusRepository;
 import vn.fpt.se18.MentorLinking_BackEnd.repository.UserRepository;
 import vn.fpt.se18.MentorLinking_BackEnd.service.MentorExperienceService;
+import vn.fpt.se18.MentorLinking_BackEnd.service.UploadImageFile;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -31,7 +33,7 @@ public class MentorExperienceServiceImpl implements MentorExperienceService {
     private final MentorExperienceRepository mentorExperienceRepository;
     private final UserRepository userRepository;
     private final StatusRepository statusRepository;
-    private final FileUploadServiceImpl fileUploadService;
+    private final UploadImageFile uploadImageFile;
 
     @Override
     @Transactional
@@ -47,7 +49,13 @@ public class MentorExperienceServiceImpl implements MentorExperienceService {
         // Upload experience image if provided
         String experienceImageUrl = null;
         if (request.getScoreImageFile() != null && !request.getScoreImageFile().isEmpty()) {
-            experienceImageUrl = fileUploadService.uploadFile(request.getScoreImageFile(), "experiences");
+            try {
+                experienceImageUrl = uploadImageFile.uploadImage(request.getScoreImageFile());
+                log.info("Experience image uploaded successfully: {}", experienceImageUrl);
+            } catch (IOException e) {
+                log.error("Failed to upload experience image for {}: {}", request.getCompanyName(), e.getMessage());
+                throw new AppException(ErrorCode.UNCATEGORIZED, "Failed to upload experience image: " + e.getMessage());
+            }
         } else if (request.getExperienceImage() != null) {
             experienceImageUrl = request.getExperienceImage();
         }
@@ -125,8 +133,14 @@ public class MentorExperienceServiceImpl implements MentorExperienceService {
 
         // Upload new image if provided
         if (request.getScoreImageFile() != null && !request.getScoreImageFile().isEmpty()) {
-            String experienceImageUrl = fileUploadService.uploadFile(request.getScoreImageFile(), "experiences");
-            experience.setExperienceImage(experienceImageUrl);
+            try {
+                String experienceImageUrl = uploadImageFile.uploadImage(request.getScoreImageFile());
+                experience.setExperienceImage(experienceImageUrl);
+                log.info("Experience image updated successfully: {}", experienceImageUrl);
+            } catch (IOException e) {
+                log.error("Failed to upload experience image for update {}: {}", request.getCompanyName(), e.getMessage());
+                throw new AppException(ErrorCode.UNCATEGORIZED, "Failed to upload experience image: " + e.getMessage());
+            }
         } else if (request.getExperienceImage() != null) {
             experience.setExperienceImage(request.getExperienceImage());
         }
