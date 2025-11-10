@@ -2,8 +2,10 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Row, Col, Card, Button, Modal, Form, Alert, Spinner, Table, Nav, Badge } from 'react-bootstrap';
 import MentorService from '../../../services/mentor/MentorService';
 import MentorEducationService from '../../../services/mentor/MentorEducationService';
+import { useToast } from '../../../contexts/ToastContext';
 
 const MentorEducationManagement = () => {
+    const { showToast } = useToast();
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [selectedEducation, setSelectedEducation] = useState(null);
@@ -69,7 +71,11 @@ const MentorEducationManagement = () => {
     const refreshEducations = async (id = mentorId) => {
         if (!id) return;
         const res = await MentorEducationService.listByMentor(id);
+        console.log('refreshEducations - Raw API response:', res);
         const list = res?.data || res || [];
+        console.log('refreshEducations - Extracted list:', list);
+        console.log('refreshEducations - First item:', list[0]);
+        console.log('refreshEducations - First item keys:', list[0] ? Object.keys(list[0]) : 'no items');
         setEducations(Array.isArray(list) ? list : []);
     };
 
@@ -102,15 +108,19 @@ const MentorEducationManagement = () => {
             await refreshEducations();
             setShowCreateModal(false);
             resetForm();
+            showToast('Tạo học vấn thành công!', 'success');
         } catch (e) {
             console.error('Create education failed', e);
-            alert('Tạo học vấn thất bại: ' + (e.response?.data?.message || e.message));
+            showToast('Tạo học vấn thất bại: ' + (e.response?.data?.message || e.message), 'danger');
         } finally {
             setLoading(false);
         }
     };
 
     const handleEditEducation = (education) => {
+        console.log('handleEditEducation - Full education object:', education);
+        console.log('education.id:', education.id);
+        console.log('All education keys:', Object.keys(education));
         setSelectedEducation(education);
         setFormData({
             schoolName: education.schoolName || education.school_name || '',
@@ -124,7 +134,29 @@ const MentorEducationManagement = () => {
     };
 
     const handleUpdateEducation = async () => {
-        if (!mentorId || !selectedEducation?.id) return;
+        console.log('handleUpdateEducation called');
+        console.log('mentorId:', mentorId);
+        console.log('selectedEducation:', selectedEducation);
+        console.log('selectedEducation?.id:', selectedEducation?.id);
+        console.log('formData:', formData);
+        
+        // Try to get ID from different possible properties
+        const educationId = selectedEducation?.id || selectedEducation?.educationId || selectedEducation?.education_id;
+        console.log('Resolved educationId:', educationId);
+        
+        if (!mentorId || !educationId) {
+            console.error('Missing mentorId or educationId');
+            console.error('Available selectedEducation keys:', selectedEducation ? Object.keys(selectedEducation) : 'selectedEducation is null');
+            showToast('Lỗi: Không tìm thấy thông tin mentor hoặc học vấn', 'danger');
+            return;
+        }
+        
+        // Validate required fields
+        if (!formData.schoolName || !formData.major) {
+            showToast('Vui lòng điền đầy đủ tên trường và chuyên ngành', 'warning');
+            return;
+        }
+        
         try {
             setLoading(true);
             
@@ -138,13 +170,17 @@ const MentorEducationManagement = () => {
                 formDataToSend.append('scoreImageFile', formData.certificateImageFile);
             }
             
-            await MentorEducationService.update(selectedEducation.id, mentorId, formDataToSend);
+            console.log('Sending update request with educationId:', educationId);
+            const result = await MentorEducationService.update(educationId, mentorId, formDataToSend);
+            console.log('Update successful:', result);
+            
             await refreshEducations();
             setShowEditModal(false);
             resetForm();
+            showToast('Cập nhật học vấn thành công!', 'success');
         } catch (e) {
             console.error('Update education failed', e);
-            alert('Cập nhật học vấn thất bại: ' + (e.response?.data?.message || e.message));
+            showToast('Cập nhật học vấn thất bại: ' + (e.response?.data?.message || e.message), 'danger');
         } finally {
             setLoading(false);
         }
@@ -157,8 +193,10 @@ const MentorEducationManagement = () => {
                 setLoading(true);
                 await MentorEducationService.remove(educationId, mentorId);
                 await refreshEducations();
+                showToast('Xóa học vấn thành công!', 'success');
             } catch (e) {
                 console.error('Delete education failed', e);
+                showToast('Xóa học vấn thất bại: ' + (e.response?.data?.message || e.message), 'danger');
             } finally {
                 setLoading(false);
             }
@@ -330,8 +368,16 @@ const MentorEducationManagement = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {filtered.map(education => (
-                            <tr key={education.id}>
+                        {filtered.map((education, index) => {
+                            // Find the original education object from educations array to ensure we have all properties including ID
+                            const fullEducation = educations.find(e => 
+                                (e.schoolName === education.schoolName || e.school_name === education.schoolName) &&
+                                (e.major === education.major)
+                            ) || education;
+                            
+                            
+                            return (
+                            <tr key={education.id || index}>
                                 <td>
                                     <div className="fw-semibold">{education.schoolName || education.school_name}</div>
                                 </td>
@@ -363,16 +409,16 @@ const MentorEducationManagement = () => {
                                 </td>
                                 <td>
                                     <div className="d-flex gap-2">
-                                        <Button variant="outline-secondary" size="sm" onClick={() => { setViewEducation(education); setShowViewModal(true); }}>
+                                        <Button variant="outline-secondary" size="sm" onClick={() => { setViewEducation(fullEducation); setShowViewModal(true); }}>
                                             <i className="bi bi-eye me-1"></i> Xem
                                         </Button>
-                                        <Button variant="outline-primary" size="sm" onClick={() => handleEditEducation(education)}>
+                                        <Button variant="outline-primary" size="sm" onClick={() => handleEditEducation(fullEducation)}>
                                             <i className="bi bi-pencil me-1"></i> Cập nhật
                                         </Button>
                                     </div>
                                 </td>
                             </tr>
-                        ))}
+                        )})}
                         {filtered.length === 0 && (
                             <tr>
                                 <td colSpan={6} className="text-center text-muted py-4">Không có học vấn phù hợp</td>
@@ -575,16 +621,25 @@ const MentorEducationManagement = () => {
                     </Form>
                 </Modal.Body>
                 <Modal.Footer>
-                    <Button variant="secondary" onClick={() => setShowEditModal(false)}>
+                    <Button variant="secondary" onClick={() => setShowEditModal(false)} disabled={loading}>
                         Hủy
                     </Button>
                     <Button
                         variant="primary"
                         onClick={handleUpdateEducation}
-                        disabled={!formData.schoolName || !formData.major}
+                        disabled={loading || !formData.schoolName || !formData.major}
                     >
-                        <i className="bi bi-save me-2"></i>
-                        Cập nhật
+                        {loading ? (
+                            <>
+                                <Spinner animation="border" size="sm" className="me-2" />
+                                Đang cập nhật...
+                            </>
+                        ) : (
+                            <>
+                                <i className="bi bi-save me-2"></i>
+                                Cập nhật
+                            </>
+                        )}
                     </Button>
                 </Modal.Footer>
             </Modal>
