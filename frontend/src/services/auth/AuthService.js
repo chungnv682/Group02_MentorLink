@@ -258,7 +258,7 @@ class AuthService {
             console.error('Register mentor error:', error);
             return {
                 success: false,
-                error: error.response?.data?.description || error.message || 'Đăng ký thất bại'
+                error: error.response?.data?.description || error.message ||'OTP không hợp lệ'
             };
         }
     }
