@@ -19,7 +19,9 @@ import vn.fpt.se18.MentorLinking_BackEnd.repository.MentorEducationRepository;
 import vn.fpt.se18.MentorLinking_BackEnd.repository.StatusRepository;
 import vn.fpt.se18.MentorLinking_BackEnd.repository.UserRepository;
 import vn.fpt.se18.MentorLinking_BackEnd.service.MentorEducationService;
+import vn.fpt.se18.MentorLinking_BackEnd.service.UploadImageFile;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -31,7 +33,7 @@ public class MentorEducationServiceImpl implements MentorEducationService {
     private final MentorEducationRepository mentorEducationRepository;
     private final UserRepository userRepository;
     private final StatusRepository statusRepository;
-    private final FileUploadServiceImpl fileUploadService;
+    private final UploadImageFile uploadImageFile;
 
     @Override
     @Transactional
@@ -47,7 +49,13 @@ public class MentorEducationServiceImpl implements MentorEducationService {
         // Upload certificate image if provided
         String certificateImageUrl = null;
         if (request.getScoreImageFile() != null && !request.getScoreImageFile().isEmpty()) {
-            certificateImageUrl = fileUploadService.uploadFile(request.getScoreImageFile(), "certificates");
+            try {
+                certificateImageUrl = uploadImageFile.uploadImage(request.getScoreImageFile());
+                log.info("Certificate image uploaded successfully: {}", certificateImageUrl);
+            } catch (IOException e) {
+                log.error("Failed to upload certificate image for education {}: {}", request.getSchoolName(), e.getMessage());
+                throw new AppException(ErrorCode.UNCATEGORIZED, "Failed to upload certificate image: " + e.getMessage());
+            }
         } else if (request.getCertificateImage() != null) {
             certificateImageUrl = request.getCertificateImage();
         }
@@ -125,8 +133,14 @@ public class MentorEducationServiceImpl implements MentorEducationService {
 
         // Upload new certificate image if provided
         if (request.getScoreImageFile() != null && !request.getScoreImageFile().isEmpty()) {
-            String certificateImageUrl = fileUploadService.uploadFile(request.getScoreImageFile(), "certificates");
-            education.setCertificateImage(certificateImageUrl);
+            try {
+                String certificateImageUrl = uploadImageFile.uploadImage(request.getScoreImageFile());
+                education.setCertificateImage(certificateImageUrl);
+                log.info("Certificate image updated successfully: {}", certificateImageUrl);
+            } catch (IOException e) {
+                log.error("Failed to upload certificate image for education update {}: {}", request.getSchoolName(), e.getMessage());
+                throw new AppException(ErrorCode.UNCATEGORIZED, "Failed to upload certificate image: " + e.getMessage());
+            }
         } else if (request.getCertificateImage() != null) {
             education.setCertificateImage(request.getCertificateImage());
         }
@@ -213,6 +227,8 @@ public class MentorEducationServiceImpl implements MentorEducationService {
     private MentorEducationResponse toResponse(MentorEducation me) {
         if (me == null) return null;
         return MentorEducationResponse.builder()
+                .id(me.getId())
+                .mentorId(me.getUser() != null ? me.getUser().getId() : null)
                 .schoolName(me.getSchoolName())
                 .major(me.getMajor())
                 .startDate(me.getStartDate())
@@ -220,6 +236,8 @@ public class MentorEducationServiceImpl implements MentorEducationService {
                 .certificateImage(me.getCertificateImage())
                 .status(me.getStatus() != null ? me.getStatus().getName() : null)
                 .statusCode(me.getStatus() != null ? me.getStatus().getCode() : null)
+                .createdAt(me.getCreatedAt() != null ? me.getCreatedAt().toString() : null)
+                .updatedAt(me.getUpdatedAt() != null ? me.getUpdatedAt().toString() : null)
                 .build();
     }
 }

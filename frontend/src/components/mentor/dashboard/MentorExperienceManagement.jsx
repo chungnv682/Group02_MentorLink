@@ -2,8 +2,10 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Row, Col, Card, Table, Button, Badge, Modal, Form, Nav, Spinner } from 'react-bootstrap';
 import MentorExperienceService from '../../../services/mentor/MentorExperienceService';
 import MentorService from '../../../services/mentor/MentorService';
+import { useToast } from '../../../contexts/ToastContext';
 
 const MentorExperienceManagement = () => {
+    const { showToast } = useToast();
     const [experiences, setExperiences] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -55,7 +57,11 @@ const MentorExperienceManagement = () => {
     const refreshExperiences = async (id = mentorId) => {
         if (!id) return;
         const res = await MentorExperienceService.listByMentor(id);
+        console.log('refreshExperiences - Raw API response:', res);
         const list = res?.data || res || [];
+        console.log('refreshExperiences - Extracted list:', list);
+        console.log('refreshExperiences - First item:', list[0]);
+        console.log('refreshExperiences - First item keys:', list[0] ? Object.keys(list[0]) : 'no items');
         setExperiences(Array.isArray(list) ? list : []);
     };
 
@@ -111,15 +117,19 @@ const MentorExperienceManagement = () => {
             await refreshExperiences();
             setShowCreateModal(false);
             resetForm();
+            showToast('Tạo kinh nghiệm thành công!', 'success');
         } catch (e) {
             console.error('Create experience failed', e);
-            alert('Tạo kinh nghiệm thất bại: ' + (e.response?.data?.message || e.message));
+            showToast('Tạo kinh nghiệm thất bại: ' + (e.response?.data?.message || e.message), 'danger');
         } finally {
             setLoading(false);
         }
     };
 
     const handleEditExperience = (experience) => {
+        console.log('handleEditExperience - Full experience object:', experience);
+        console.log('experience.id:', experience.id);
+        console.log('All experience keys:', Object.keys(experience));
         setSelectedExperience(experience);
         setFormData({
             companyName: experience.companyName || '',
@@ -133,7 +143,29 @@ const MentorExperienceManagement = () => {
     };
 
     const handleUpdateExperience = async () => {
-        if (!mentorId || !selectedExperience?.id) return;
+        console.log('handleUpdateExperience called');
+        console.log('mentorId:', mentorId);
+        console.log('selectedExperience:', selectedExperience);
+        console.log('selectedExperience?.id:', selectedExperience?.id);
+        console.log('formData:', formData);
+        
+        // Try to get ID from different possible properties
+        const experienceId = selectedExperience?.id || selectedExperience?.experienceId || selectedExperience?.experience_id;
+        console.log('Resolved experienceId:', experienceId);
+        
+        if (!mentorId || !experienceId) {
+            console.error('Missing mentorId or experienceId');
+            console.error('Available selectedExperience keys:', selectedExperience ? Object.keys(selectedExperience) : 'selectedExperience is null');
+            showToast('Lỗi: Không tìm thấy thông tin mentor hoặc kinh nghiệm', 'danger');
+            return;
+        }
+        
+        // Validate required fields
+        if (!formData.companyName || !formData.position) {
+            showToast('Vui lòng điền đầy đủ tên công ty và vị trí', 'warning');
+            return;
+        }
+        
         try {
             setLoading(true);
             
@@ -147,13 +179,17 @@ const MentorExperienceManagement = () => {
                 formDataToSend.append('scoreImageFile', formData.experienceImageFile);
             }
             
-            await MentorExperienceService.update(selectedExperience.id, mentorId, formDataToSend);
+            console.log('Sending update request with experienceId:', experienceId);
+            const result = await MentorExperienceService.update(experienceId, mentorId, formDataToSend);
+            console.log('Update successful:', result);
+            
             await refreshExperiences();
             setShowEditModal(false);
             resetForm();
+            showToast('Cập nhật kinh nghiệm thành công!', 'success');
         } catch (e) {
             console.error('Update experience failed', e);
-            alert('Cập nhật kinh nghiệm thất bại: ' + (e.response?.data?.message || e.message));
+            showToast('Cập nhật kinh nghiệm thất bại: ' + (e.response?.data?.message || e.message), 'danger');
         } finally {
             setLoading(false);
         }
@@ -164,9 +200,10 @@ const MentorExperienceManagement = () => {
         try {
             await MentorExperienceService.remove(experience.id, mentorId);
             await refreshExperiences();
+            showToast('Xóa kinh nghiệm thành công!', 'success');
         } catch (e) {
             console.error('Delete experience failed', e);
-            alert('Xóa kinh nghiệm thất bại: ' + (e.response?.data?.message || e.message));
+            showToast('Xóa kinh nghiệm thất bại: ' + (e.response?.data?.message || e.message), 'danger');
         }
     };
 
@@ -341,8 +378,16 @@ const MentorExperienceManagement = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {filtered.map(experience => (
-                            <tr key={experience.id}>
+                        {filtered.map((experience, index) => {
+                            // Find the original experience object from experiences array to ensure we have all properties including ID
+                            const fullExperience = experiences.find(e => 
+                                (e.companyName === experience.companyName) &&
+                                (e.position === experience.position)
+                            ) || experience;
+                            
+                            
+                            return (
+                            <tr key={experience.id || index}>
                                 <td>
                                     <div className="fw-semibold">{experience.companyName}</div>
                                 </td>
@@ -373,7 +418,7 @@ const MentorExperienceManagement = () => {
                                         variant="outline-info"
                                         size="sm"
                                         className="me-2"
-                                        onClick={() => handleViewExperience(experience)}
+                                        onClick={() => handleViewExperience(fullExperience)}
                                     >
                                         <i className="bi bi-eye"></i>
                                     </Button>
@@ -381,20 +426,20 @@ const MentorExperienceManagement = () => {
                                         variant="outline-warning"
                                         size="sm"
                                         className="me-2"
-                                        onClick={() => handleEditExperience(experience)}
+                                        onClick={() => handleEditExperience(fullExperience)}
                                     >
                                         <i className="bi bi-pencil"></i>
                                     </Button>
                                     <Button
                                         variant="outline-danger"
                                         size="sm"
-                                        onClick={() => handleDeleteExperience(experience)}
+                                        onClick={() => handleDeleteExperience(fullExperience)}
                                     >
                                         <i className="bi bi-trash"></i>
                                     </Button>
                                 </td>
                             </tr>
-                        ))}
+                        )})}
                     </tbody>
                 </Table>
             </div>
@@ -576,11 +621,22 @@ const MentorExperienceManagement = () => {
                     )}
                 </Modal.Body>
                 <Modal.Footer>
-                    <Button variant="secondary" onClick={() => setShowEditModal(false)}>
+                    <Button variant="secondary" onClick={() => setShowEditModal(false)} disabled={loading}>
                         Hủy
                     </Button>
-                    <Button variant="primary" onClick={handleUpdateExperience}>
-                        Cập nhật
+                    <Button 
+                        variant="primary" 
+                        onClick={handleUpdateExperience}
+                        disabled={loading || !formData.companyName || !formData.position}
+                    >
+                        {loading ? (
+                            <>
+                                <Spinner animation="border" size="sm" className="me-2" />
+                                Đang cập nhật...
+                            </>
+                        ) : (
+                            'Cập nhật'
+                        )}
                     </Button>
                 </Modal.Footer>
             </Modal>
