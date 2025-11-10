@@ -2,8 +2,10 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Row, Col, Card, Button, Modal, Form, Alert, Spinner, Table, Nav, Badge, ButtonGroup } from 'react-bootstrap';
 import MentorService from '../../../services/mentor/MentorService';
 import MentorTestService from '../../../services/mentor/MentorTestService';
+import { useToast } from '../../../contexts/ToastContext';
 
 const MentorTestManagement = () => {
+    const { showToast } = useToast();
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [selectedTest, setSelectedTest] = useState(null);
@@ -67,7 +69,11 @@ const MentorTestManagement = () => {
     const refreshTests = async (id = mentorId) => {
         if (!id) return;
         const res = await MentorTestService.listByMentor(id);
+        console.log('refreshTests - Raw API response:', res);
         const list = res?.data || res || [];
+        console.log('refreshTests - Extracted list:', list);
+        console.log('refreshTests - First item:', list[0]);
+        console.log('refreshTests - First item keys:', list[0] ? Object.keys(list[0]) : 'no items');
         setTests(Array.isArray(list) ? list : []);
     };
 
@@ -93,15 +99,19 @@ const MentorTestManagement = () => {
             await refreshTests();
             setShowCreateModal(false);
             resetForm();
+            showToast('Tạo bài test thành công!', 'success');
         } catch (e) {
             console.error('Create test failed', e);
-            alert('Tạo bài test thất bại: ' + (e.response?.data?.message || e.message));
+            showToast('Tạo bài test thất bại: ' + (e.response?.data?.message || e.message), 'danger');
         } finally {
             setLoading(false);
         }
     };
 
     const handleEditTest = (test) => {
+        console.log('handleEditTest - Full test object:', test);
+        console.log('test.id:', test.id);
+        console.log('All test keys:', Object.keys(test));
         setSelectedTest(test);
         setFormData({
             testName: test.testName || test.test_name || '',
@@ -113,7 +123,29 @@ const MentorTestManagement = () => {
     };
 
     const handleUpdateTest = async () => {
-        if (!mentorId || !selectedTest?.id) return;
+        console.log('handleUpdateTest called');
+        console.log('mentorId:', mentorId);
+        console.log('selectedTest:', selectedTest);
+        console.log('selectedTest?.id:', selectedTest?.id);
+        console.log('formData:', formData);
+        
+        // Try to get ID from different possible properties
+        const testId = selectedTest?.id || selectedTest?.testId || selectedTest?.test_id;
+        console.log('Resolved testId:', testId);
+        
+        if (!mentorId || !testId) {
+            console.error('Missing mentorId or testId');
+            console.error('Available selectedTest keys:', selectedTest ? Object.keys(selectedTest) : 'selectedTest is null');
+            showToast('Lỗi: Không tìm thấy thông tin mentor hoặc bài test', 'danger');
+            return;
+        }
+        
+        // Validate required fields
+        if (!formData.testName || !formData.score) {
+            showToast('Vui lòng điền đầy đủ tên bài test và điểm', 'warning');
+            return;
+        }
+        
         try {
             setLoading(true);
             
@@ -125,13 +157,17 @@ const MentorTestManagement = () => {
                 formDataToSend.append('scoreImageFile', formData.scoreImageFile);
             }
             
-            await MentorTestService.update(selectedTest.id, mentorId, formDataToSend);
+            console.log('Sending update request with testId:', testId);
+            const result = await MentorTestService.update(testId, mentorId, formDataToSend);
+            console.log('Update successful:', result);
+            
             await refreshTests();
             setShowEditModal(false);
             resetForm();
+            showToast('Cập nhật bài test thành công!', 'success');
         } catch (e) {
             console.error('Update test failed', e);
-            alert('Cập nhật bài test thất bại: ' + (e.response?.data?.message || e.message));
+            showToast('Cập nhật bài test thất bại: ' + (e.response?.data?.message || e.message), 'danger');
         } finally {
             setLoading(false);
         }
@@ -144,8 +180,10 @@ const MentorTestManagement = () => {
                 setLoading(true);
                 await MentorTestService.remove(testId, mentorId);
                 await refreshTests();
+                showToast('Xóa bài test thành công!', 'success');
             } catch (e) {
                 console.error('Delete test failed', e);
+                showToast('Xóa bài test thất bại: ' + (e.response?.data?.message || e.message), 'danger');
             } finally {
                 setLoading(false);
             }
@@ -312,8 +350,16 @@ const MentorTestManagement = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {filtered.map(test => (
-                            <tr key={test.id}>
+                        {filtered.map((test, index) => {
+                            // Find the original test object from tests array to ensure we have all properties including ID
+                            const fullTest = tests.find(t => 
+                                (t.testName === test.testName || t.test_name === test.testName) &&
+                                (t.score === test.score)
+                            ) || test;
+                            
+                            
+                            return (
+                            <tr key={test.id || index}>
                                 <td>
                                     <div className="fw-semibold">{test.testName || test.test_name}</div>
                                 </td>
@@ -340,16 +386,16 @@ const MentorTestManagement = () => {
                                 </td>
                                 <td>
                                     <div className="d-flex gap-2">
-                                        <Button variant="outline-secondary" size="sm" onClick={() => { setViewTest(test); setShowViewModal(true); }}>
+                                        <Button variant="outline-secondary" size="sm" onClick={() => { setViewTest(fullTest); setShowViewModal(true); }}>
                                             <i className="bi bi-eye me-1"></i> Xem
                                         </Button>
-                                        <Button variant="outline-primary" size="sm" onClick={() => handleEditTest(test)}>
+                                        <Button variant="outline-primary" size="sm" onClick={() => handleEditTest(fullTest)}>
                                             <i className="bi bi-pencil me-1"></i> Cập nhật
                                         </Button>
                                     </div>
                                 </td>
                             </tr>
-                        ))}
+                        )})}
                         {filtered.length === 0 && (
                             <tr>
                                 <td colSpan={5} className="text-center text-muted py-4">Không có bài test phù hợp</td>
@@ -502,16 +548,25 @@ const MentorTestManagement = () => {
                     </Form>
                 </Modal.Body>
                 <Modal.Footer>
-                    <Button variant="secondary" onClick={() => setShowEditModal(false)}>
+                    <Button variant="secondary" onClick={() => setShowEditModal(false)} disabled={loading}>
                         Hủy
                     </Button>
                     <Button
                         variant="primary"
                         onClick={handleUpdateTest}
-                        disabled={!formData.testName || !formData.score}
+                        disabled={loading || !formData.testName || !formData.score}
                     >
-                        <i className="bi bi-save me-2"></i>
-                        Cập nhật
+                        {loading ? (
+                            <>
+                                <Spinner animation="border" size="sm" className="me-2" />
+                                Đang cập nhật...
+                            </>
+                        ) : (
+                            <>
+                                <i className="bi bi-save me-2"></i>
+                                Cập nhật
+                            </>
+                        )}
                     </Button>
                 </Modal.Footer>
             </Modal>

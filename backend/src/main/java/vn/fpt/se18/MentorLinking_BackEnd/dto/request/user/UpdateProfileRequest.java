@@ -1,8 +1,8 @@
 package vn.fpt.se18.MentorLinking_BackEnd.dto.request.user;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import jakarta.validation.constraints.Size;
 import lombok.Getter;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 
@@ -28,6 +28,8 @@ public class UpdateProfileRequest {
 
     private String avatarUrl;
 
+    private MultipartFile avatarFile; // New field for avatar file upload
+
     private String intro;
 
     private String bankAccountNumber;
@@ -35,4 +37,3 @@ public class UpdateProfileRequest {
     private String bankName;
 
 }
-
