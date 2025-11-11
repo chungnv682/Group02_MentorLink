@@ -32,7 +32,7 @@ public class EmailServiceImpl implements EmailService {
 
     @Override
     public void sendConfirmBooking(String to, String subject, String studentName, String mentorName, String service,
-        LocalDate date, List<Long[]> bookingTimes, String linkMeeting) {
+                                   LocalDate date, List<Long[]> bookingTimes, String linkMeeting) {
 
         try {
             // ✅ 1. Chuẩn bị dữ liệu để inject vào template
@@ -195,7 +195,34 @@ public class EmailServiceImpl implements EmailService {
 
     @Override
     public void sendMentorRejection(String to, String mentorName, String reason) {
+        try {
+            // ✅ 1. Chuẩn bị dữ liệu để inject vào template
+            Map<String, Object> model = new HashMap<>();
+            model.put("mentorName", mentorName != null ? mentorName : "bạn");
+            model.put("reason", reason);
 
+            Context context = new Context();
+            context.setVariables(model);
+
+            // ✅ 2. Render HTML từ template `mentor-rejection-email.html`
+            String htmlContent = templateEngine.process("mentor-rejection-email.html", context);
+
+            // ✅ 3. Gửi email HTML
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            helper.setFrom("nguyenbahien170604@gmail.com");
+            helper.setTo(to);
+            helper.setSubject("Thông báo từ chối đăng ký Mentor - MentorLink");
+            helper.setText(htmlContent, true); // true = HTML content
+
+            mailSender.send(message);
+            log.info("✅ Email từ chối Mentor gửi thành công đến {}", to);
+
+        } catch (MessagingException e) {
+            log.error("❌ Lỗi gửi email từ chối Mentor: {}", e.getMessage());
+            throw new AppException(ErrorCode.SEND_MAIL_FAILED);
+        }
     }
 
     @Override
