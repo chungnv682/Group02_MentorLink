@@ -110,6 +110,32 @@ public class AuthenticationController {
                 .build();
     }
 
+    @PostMapping("/forgot-password")
+    public BaseResponse<String> forgotPassword(@Valid @RequestBody BaseRequest<ForgotPasswordRequest> request) {
+        log.info("🔑 Yêu cầu quên mật khẩu cho email: {}", request.getData().getEmail());
+
+        String result = authenticationService.forgotPassword(request.getData().getEmail());
+        return BaseResponse.<String>builder()
+                .requestDateTime(request.getRequestDateTime())
+                .respCode("0")
+                .description(result)
+                .data(null)
+                .build();
+    }
+
+    @PostMapping("/change-password")
+    public BaseResponse<String> changePassword(@Valid @RequestBody BaseRequest<ResetPasswordDTO> request) {
+        log.info("🔒 Yêu cầu đổi mật khẩu bằng token");
+
+        String result = authenticationService.changePassword(request.getData());
+        return BaseResponse.<String>builder()
+                .requestDateTime(request.getRequestDateTime())
+                .respCode("0")
+                .description(result)
+                .data(null)
+                .build();
+    }
+
 
 
 //    @PostMapping("/forgot-password")

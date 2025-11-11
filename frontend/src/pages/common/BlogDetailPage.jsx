@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Container, Row, Col, Card, Button } from 'react-bootstrap';
 import { useParams, useNavigate } from 'react-router-dom';
 import blogService from '../../services/blog';
+import { HtmlContent } from '../../components/common';
 
 const BlogDetailPage = () => {
     const { id } = useParams();
@@ -49,7 +50,7 @@ const BlogDetailPage = () => {
                                 <h2>{blog.title}</h2>
                                 <div className="text-muted mb-2">Tác giả: {blog.author} • Lượt xem: {blog.viewCount}</div>
                                 <div className="mb-3 small text-muted">{blog.createdAt ? new Date(blog.createdAt).toLocaleString() : ''}</div>
-                                <div style={{ whiteSpace: 'pre-wrap' }}>{blog.content}</div>
+                                <HtmlContent html={blog.content} className="blog-content" />
                             </Card.Body>
                         </Card>
                     )}

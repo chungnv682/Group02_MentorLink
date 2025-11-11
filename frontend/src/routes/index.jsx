@@ -1,7 +1,9 @@
 // Feature-based imports
 import {
   LoginPage,
-  RegisterPage
+  RegisterPage,
+  ForgotPasswordPage,
+  ResetPasswordPage
 } from '../pages/auth';
 
 import {
@@ -58,6 +60,14 @@ const routes = createBrowserRouter([
   {
     path: "/register",
     element: <Layout><RegisterPage /></Layout>,
+  },
+  {
+    path: "/forgot-password",
+    element: <Layout><ForgotPasswordPage /></Layout>,
+  },
+  {
+    path: "/reset-password",
+    element: <Layout><ResetPasswordPage /></Layout>,
   },
   {
     path: "/register-mentor",

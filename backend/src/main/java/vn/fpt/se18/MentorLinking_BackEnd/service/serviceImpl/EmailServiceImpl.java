@@ -191,4 +191,66 @@ public class EmailServiceImpl implements EmailService {
         }
     }
 
+    @Override
+    public void sendNewPassword(String to, String subject, String newPassword) {
+        try {
+            // ✅ 1. Chuẩn bị dữ liệu
+            Map<String, Object> model = new HashMap<>();
+            model.put("newPassword", newPassword);
+
+            Context context = new Context();
+            context.setVariables(model);
+
+            // ✅ 2. Render HTML từ template `forgot-password-email.html`
+            String htmlContent = templateEngine.process("forgot-password-email.html", context);
+
+            // ✅ 3. Gửi email HTML
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            helper.setFrom("nguyenbahien170604@gmail.com");
+            helper.setTo(to);
+            helper.setSubject(subject);
+            helper.setText(htmlContent, true); // true = HTML content
+
+            mailSender.send(message);
+            log.info("✅ Email mật khẩu mới gửi thành công đến {}", to);
+
+        } catch (MessagingException e) {
+            log.error("❌ Lỗi gửi email mật khẩu mới: {}", e.getMessage());
+            throw new AppException(ErrorCode.SEND_MAIL_FAILED);
+        }
+    }
+
+    @Override
+    public void sendResetPasswordLink(String to, String subject, String resetLink) {
+        try {
+            // 1) Prepare model for template
+            Map<String, Object> model = new HashMap<>();
+            model.put("resetLink", resetLink);
+
+            Context context = new Context();
+            context.setVariables(model);
+
+            // 2) Render HTML from template `reset-password-email.html`
+            String htmlContent = templateEngine.process("reset-password-email.html", context);
+
+            // 3) Send HTML email
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            helper.setFrom("nguyenbahien170604@gmail.com");
+            helper.setTo(to);
+            helper.setSubject(subject);
+            helper.setText(htmlContent, true);
+
+            mailSender.send(message);
+            log.info("✅ Email reset password link sent to {}", to);
+
+        } catch (MessagingException e) {
+            log.error("❌ Failed to send reset password email: {}", e.getMessage());
+            throw new AppException(ErrorCode.SEND_MAIL_FAILED);
+        }
+    }
+
 }

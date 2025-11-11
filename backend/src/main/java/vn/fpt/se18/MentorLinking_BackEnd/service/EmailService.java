@@ -16,4 +16,14 @@ public interface EmailService {
     public void send(String to, String subject, String text);
 
     public void sendOtp(String to, String subject, String otpCode);
+
+    public void sendNewPassword(String to, String subject, String newPassword);
+
+    /**
+     * Send a password reset link containing a one-time token so user can set a new password.
+     * @param to recipient email
+     * @param subject email subject
+     * @param resetLink fully qualified frontend URL with token param
+     */
+    public void sendResetPasswordLink(String to, String subject, String resetLink);
 }
