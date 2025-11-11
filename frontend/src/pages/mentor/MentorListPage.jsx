@@ -17,6 +17,7 @@ import { FaSearch, FaFilter, FaTimes } from 'react-icons/fa';
 import useMentors from '../../hooks/useMentors';
 import MentorCard from '../../components/mentor/MentorCard';
 import { useToast } from '../../contexts/ToastContext';
+import CountryService from '../../services/country/CountryService';
 import '../../styles/components/MentorList.css';
 
 const MentorListPage = () => {
@@ -38,6 +39,8 @@ const MentorListPage = () => {
     // Country prioritization (from query params)
     const [selectedCountryCode, setSelectedCountryCode] = useState('');
     const [displayMentors, setDisplayMentors] = useState([]);
+    const [countries, setCountries] = useState([]);
+    const [loadingCountries, setLoadingCountries] = useState(false);
 
     const [searchTerm, setSearchTerm] = useState('');
     const [showFilters, setShowFilters] = useState(false);
@@ -53,6 +56,24 @@ const MentorListPage = () => {
             window.history.replaceState({}, document.title, window.location.pathname);
         }
     }, [location.search, showToast]);
+
+    // Fetch countries on mount
+    useEffect(() => {
+        const loadCountries = async () => {
+            try {
+                setLoadingCountries(true);
+                const response = await CountryService.getApprovedCountries();
+                if (response.respCode === '0' && response.data) {
+                    setCountries(response.data);
+                }
+            } catch (error) {
+                console.error('Error loading countries:', error);
+            } finally {
+                setLoadingCountries(false);
+            }
+        };
+        loadCountries();
+    }, []);
 
     // When route query changes (e.g., from ServicesDropdown), capture the country code
     useEffect(() => {
@@ -256,7 +277,7 @@ const MentorListPage = () => {
                 <Card.Body className="bg-light rounded">
                     <div>
                         <Row className="align-items-end">
-                            <Col md={6} lg={4}>
+                            <Col md={6} lg={3}>
                                 <Form.Group className="mb-3 mb-md-0">
                                     <Form.Label>Tìm kiếm</Form.Label>
                                     <InputGroup>
@@ -279,6 +300,24 @@ const MentorListPage = () => {
                                             {isSearching ? 'Đang tìm kiếm...' : `Tìm thấy ${pagination.totalElements} mentor`}
                                         </Form.Text>
                                     )}
+                                </Form.Group>
+                            </Col>
+
+                            <Col md={3} lg={2}>
+                                <Form.Group className="mb-3 mb-md-0">
+                                    <Form.Label>Quốc gia hỗ trợ</Form.Label>
+                                    <Form.Select
+                                        value={filters.approvedCountry}
+                                        onChange={(e) => handleFilterChange('approvedCountry', e.target.value)}
+                                        disabled={loadingCountries}
+                                    >
+                                        <option value="">Tất cả</option>
+                                        {countries.map(country => (
+                                            <option key={country.id} value={country.name}>
+                                                {country.name}
+                                            </option>
+                                        ))}
+                                    </Form.Select>
                                 </Form.Group>
                             </Col>
 

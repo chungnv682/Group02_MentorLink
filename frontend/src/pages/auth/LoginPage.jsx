@@ -140,7 +140,7 @@ const LoginPage = () => {
                                 
 
                                     <div className="text-center mb-3">
-                                        <Link to="/forgot-password" className="forget-password text-decoration-none small">
+                                        <Link to="/forgot-password" className="forget-password text-decoration-none small" style={{color: '#6c757d'}}>
                                             Quên mật khẩu?
                                         </Link>
                                     </div>

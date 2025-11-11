@@ -34,10 +34,12 @@ public class MentorController {
     public BaseResponse<MentorPageResponse> getAllMentors(@RequestParam(required = false) String keyword,
                                                           @RequestParam(defaultValue = "numberOfBooking:desc") String sort,
                                                           @RequestParam(defaultValue = "0") int page,
-                                                          @RequestParam(defaultValue = "20") int size) {
-        log.info("Getting all mentors with keyword: {}, sort: {}, page: {}, size: {}", keyword, sort, page, size);
+                                                          @RequestParam(defaultValue = "20") int size,
+                                                          @RequestParam(required = false) String approvedCountry) {
+        log.info("Getting all mentors with keyword: {}, sort: {}, page: {}, size: {}, approvedCountry: {}", 
+                keyword, sort, page, size, approvedCountry);
         return BaseResponse.<MentorPageResponse>builder()
-                .data(mentorService.getAllMentors(keyword, sort, page, size))
+                .data(mentorService.getAllMentors(keyword, sort, page, size, approvedCountry))
                 .build();
     }
 

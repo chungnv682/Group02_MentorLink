@@ -83,8 +83,8 @@ const FAQsPage = () => {
                         <div className="d-flex justify-content-between align-items-center mt-3">
                             <div>Trang {(faqsData.number ?? page) + 1} / {faqsData.totalPages}</div>
                             <div className="d-flex gap-2">
-                                <Button variant="outline-primary" disabled={(faqsData.number ?? page) <= 0} onClick={() => setPage(p => Math.max(1, p - 1))}>Previous</Button>
-                                <Button variant="outline-primary" disabled={(faqsData.number ?? page) + 1 >= faqsData.totalPages} onClick={() => setPage(p => p + 1)}>Next</Button>
+                                <Button variant="outline-primary" disabled={(faqsData.number ?? page) <= 0} onClick={() => setPage(p => Math.max(1, p - 1))}>Trước</Button>
+                                <Button variant="outline-primary" disabled={(faqsData.number ?? page) + 1 >= faqsData.totalPages} onClick={() => setPage(p => p + 1)}>Tiếp theo</Button>
                             </div>
                         </div>
                     )}

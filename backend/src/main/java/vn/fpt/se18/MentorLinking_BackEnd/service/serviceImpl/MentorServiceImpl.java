@@ -47,7 +47,7 @@ public class MentorServiceImpl implements vn.fpt.se18.MentorLinking_BackEnd.serv
     private final MentorServiceRepository mentorServiceRepository;
     private final UserRepository userRepository;
 
-    public MentorPageResponse getAllMentors(String keyword, String sort, int page, int size) {
+    public MentorPageResponse getAllMentors(String keyword, String sort, int page, int size, String approvedCountry) {
         Sort.Order order = new Sort.Order(Sort.Direction.ASC, "id");
         if (StringUtils.hasLength(sort)) {
             Pattern pattern = Pattern.compile("^(\\w+):(asc|desc)$", Pattern.CASE_INSENSITIVE);
@@ -107,11 +107,22 @@ public class MentorServiceImpl implements vn.fpt.se18.MentorLinking_BackEnd.serv
                 }
         ).toList();
 
+        // Filter by approved country if provided
+        if (StringUtils.hasLength(approvedCountry)) {
+            mentorResponses = mentorResponses.stream()
+                    .filter(mentor -> mentor.getApprovedCountries() != null && 
+                            mentor.getApprovedCountries().stream()
+                                    .anyMatch(country -> country.equalsIgnoreCase(approvedCountry)))
+                    .collect(Collectors.toList());
+        }
+
         MentorPageResponse mentorPageResponse = new MentorPageResponse();
         mentorPageResponse.setPageNumber(entityPage.getNumber());
         mentorPageResponse.setPageSize(entityPage.getSize());
-        mentorPageResponse.setTotalElements(entityPage.getTotalElements());
-        mentorPageResponse.setTotalPages(entityPage.getTotalPages());
+        mentorPageResponse.setTotalElements(StringUtils.hasLength(approvedCountry) ? 
+                (long) mentorResponses.size() : entityPage.getTotalElements());
+        mentorPageResponse.setTotalPages(StringUtils.hasLength(approvedCountry) ? 
+                (int) Math.ceil((double) mentorResponses.size() / size) : entityPage.getTotalPages());
         mentorPageResponse.setMentors(mentorResponses);
 
         return mentorPageResponse;

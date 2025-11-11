@@ -9,3 +9,4 @@ export { default as MentorPolicyModal } from './MentorPolicyModal';
 export { default as CustomerPolicyModal } from './CustomerPolicyModal';
 export { default as BookingModal } from './BookingModal';
 export { default as BookingDetailModal } from './BookingDetailModal';
+export { default as HtmlContent } from './HtmlContent';
