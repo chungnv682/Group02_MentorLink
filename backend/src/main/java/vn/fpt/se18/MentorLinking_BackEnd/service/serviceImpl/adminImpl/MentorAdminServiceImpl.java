@@ -11,6 +11,10 @@ import vn.fpt.se18.MentorLinking_BackEnd.dto.request.user.GetMentorRequest;
 import vn.fpt.se18.MentorLinking_BackEnd.dto.response.BaseResponse;
 import vn.fpt.se18.MentorLinking_BackEnd.dto.response.PageResponse;
 import vn.fpt.se18.MentorLinking_BackEnd.dto.response.admin.MentorStatisticsResponse;
+import vn.fpt.se18.MentorLinking_BackEnd.dto.response.admin.MentorEducationAdminResponse;
+import vn.fpt.se18.MentorLinking_BackEnd.dto.response.admin.MentorExperienceAdminResponse;
+import vn.fpt.se18.MentorLinking_BackEnd.dto.response.admin.MentorServiceAdminResponse;
+import vn.fpt.se18.MentorLinking_BackEnd.dto.response.admin.MentorTestAdminResponse;
 import vn.fpt.se18.MentorLinking_BackEnd.dto.response.user.MentorManagementResponse;
 import vn.fpt.se18.MentorLinking_BackEnd.entity.Role;
 import vn.fpt.se18.MentorLinking_BackEnd.entity.Status;
@@ -254,6 +258,133 @@ public class MentorAdminServiceImpl implements MentorService {
                 .respCode("0")
                 .description("Success")
                 .data(statistics)
+                .build();
+    }
+
+    @Override
+    public BaseResponse<?> getMentorEducation(Long id) {
+        Optional<User> userOpt = userRepository.findById(id);
+        if (userOpt.isEmpty()) {
+            return BaseResponse.builder()
+                    .respCode("1")
+                    .description("Mentor not found")
+                    .build();
+        }
+
+        User mentor = userOpt.get();
+        
+        // Map all educations (NO status filter - admin needs to see ALL)
+        List<MentorEducationAdminResponse> educations = mentor.getMentorEducations().stream()
+                .map(education -> MentorEducationAdminResponse.builder()
+                        .id(education.getId())
+                        .schoolName(education.getSchoolName())
+                        .major(education.getMajor())
+                        .startDate(education.getStartDate())
+                        .endDate(education.getEndDate())
+                        .certificateImage(education.getCertificateImage())
+                        .statusCode(education.getStatus() != null ? education.getStatus().getCode() : null)
+                        .statusName(education.getStatus() != null ? education.getStatus().getName() : null)
+                        .build())
+                .collect(Collectors.toList());
+
+        return BaseResponse.builder()
+                .respCode("0")
+                .description("Success")
+                .data(educations)
+                .build();
+    }
+
+    @Override
+    public BaseResponse<?> getMentorExperience(Long id) {
+        Optional<User> userOpt = userRepository.findById(id);
+        if (userOpt.isEmpty()) {
+            return BaseResponse.builder()
+                    .respCode("1")
+                    .description("Mentor not found")
+                    .build();
+        }
+
+        User mentor = userOpt.get();
+        
+        // Map all experiences (NO status filter - admin needs to see ALL)
+        List<MentorExperienceAdminResponse> experiences = mentor.getMentorExperiences().stream()
+                .map(experience -> MentorExperienceAdminResponse.builder()
+                        .id(experience.getId())
+                        .companyName(experience.getCompanyName())
+                        .position(experience.getPosition())
+                        .startDate(experience.getStartDate())
+                        .endDate(experience.getEndDate())
+                        .experienceImage(experience.getExperienceImage())
+                        .statusCode(experience.getStatus() != null ? experience.getStatus().getCode() : null)
+                        .statusName(experience.getStatus() != null ? experience.getStatus().getName() : null)
+                        .build())
+                .collect(Collectors.toList());
+
+        return BaseResponse.builder()
+                .respCode("0")
+                .description("Success")
+                .data(experiences)
+                .build();
+    }
+
+    @Override
+    public BaseResponse<?> getMentorCertificates(Long id) {
+        Optional<User> userOpt = userRepository.findById(id);
+        if (userOpt.isEmpty()) {
+            return BaseResponse.builder()
+                    .respCode("1")
+                    .description("Mentor not found")
+                    .build();
+        }
+
+        User mentor = userOpt.get();
+        
+        // Map all tests (NO status filter - admin needs to see ALL)
+        List<MentorTestAdminResponse> tests = mentor.getMentorTests().stream()
+                .map(test -> MentorTestAdminResponse.builder()
+                        .id(test.getId())
+                        .testName(test.getTestName())
+                        .score(test.getScore())
+                        .scoreImage(test.getScoreImage())
+                        .statusCode(test.getStatus() != null ? test.getStatus().getCode() : null)
+                        .statusName(test.getStatus() != null ? test.getStatus().getName() : null)
+                        .build())
+                .collect(Collectors.toList());
+
+        return BaseResponse.builder()
+                .respCode("0")
+                .description("Success")
+                .data(tests)
+                .build();
+    }
+
+    @Override
+    public BaseResponse<?> getMentorServices(Long id) {
+        Optional<User> userOpt = userRepository.findById(id);
+        if (userOpt.isEmpty()) {
+            return BaseResponse.builder()
+                    .respCode("1")
+                    .description("Mentor not found")
+                    .build();
+        }
+
+        User mentor = userOpt.get();
+        
+        // Map all services (NO status filter - admin needs to see ALL)
+        List<MentorServiceAdminResponse> services = mentor.getMentorServices().stream()
+                .map(service -> MentorServiceAdminResponse.builder()
+                        .id(service.getId())
+                        .serviceName(service.getServiceName())
+                        .description(service.getDescription())
+                        .statusCode(service.getStatus() != null ? service.getStatus().getCode() : null)
+                        .statusName(service.getStatus() != null ? service.getStatus().getName() : null)
+                        .build())
+                .collect(Collectors.toList());
+
+        return BaseResponse.builder()
+                .respCode("0")
+                .description("Success")
+                .data(services)
                 .build();
     }
 }

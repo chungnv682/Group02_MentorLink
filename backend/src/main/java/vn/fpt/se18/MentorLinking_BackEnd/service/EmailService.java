@@ -16,4 +16,6 @@ public interface EmailService {
     public void send(String to, String subject, String text);
 
     public void sendOtp(String to, String subject, String otpCode);
+
+    public void sendMentorRejection(String to, String mentorName, String reason);
 }
