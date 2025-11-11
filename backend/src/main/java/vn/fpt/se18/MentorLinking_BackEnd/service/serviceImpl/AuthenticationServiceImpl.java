@@ -27,8 +27,11 @@ import vn.fpt.se18.MentorLinking_BackEnd.service.TokenService;
 import vn.fpt.se18.MentorLinking_BackEnd.service.UserService;
 import vn.fpt.se18.MentorLinking_BackEnd.service.UploadImageFile;
 import vn.fpt.se18.MentorLinking_BackEnd.service.OtpService;
+import vn.fpt.se18.MentorLinking_BackEnd.service.EmailService;
 
 import java.io.IOException;
+import java.security.SecureRandom;
+import java.util.Base64;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -61,6 +64,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     private final CountryRepository countryRepository;
     private final MentorCountryRepository mentorCountryRepository;
     private final OtpService otpService;
+    private final EmailService emailService;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
 
 
     @Override
@@ -163,29 +168,58 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     }
 
     @Override
+    @Transactional
     public String forgotPassword(String email) {
         log.info("---------- forgotPassword ----------");
+        log.info("🔑 Yêu cầu đặt lại mật khẩu cho email: {}", email);
 
-        // check email exists or not
+        // 1. Validate email exists
         User user = userService.getUserByEmail(email);
 
-        // generate reset token
-        String resetToken = jwtService.generateResetToken(user);
+        // 2. Xóa tất cả token reset cũ của email này
+        passwordResetTokenRepository.deleteByEmail(email);
 
-        // save to db
-        tokenService.save(Token.builder()
-                .username(user.getUsername())
-                .resetToken(resetToken)
-                .build());
+        // 3. Tạo token bảo mật (SecureRandom 32 bytes)
+        String resetToken = generateSecureToken();
 
-        // TODO send email to user
-        String confirmLink = String.format("curl --location 'http://localhost:80/auth/reset-password' \\\n" +
-                "--header 'accept: */*' \\\n" +
-                "--header 'Content-Type: application/json' \\\n" +
-                "--data '%s'", resetToken);
-        log.info("--> confirmLink: {}", confirmLink);
+        // 4. Tính thời gian hết hạn (15 phút)
+        LocalDateTime expiryDate = LocalDateTime.now().plusMinutes(15);
 
-        return resetToken;
+        // 5. Lưu token vào database
+        PasswordResetToken tokenEntity = PasswordResetToken.builder()
+                .email(user.getEmail())
+                .token(resetToken)
+                .expiryDate(expiryDate)
+                .used(false)
+                .build();
+        passwordResetTokenRepository.save(tokenEntity);
+
+        // 6. Build link frontend với token
+        String frontendBaseUrl = System.getenv().getOrDefault("FRONTEND_BASE_URL", "http://localhost:5173");
+        String resetLink = String.format("%s/reset-password?token=%s", frontendBaseUrl, resetToken);
+
+        // 7. Gửi email với link reset
+        try {
+            String subject = "Đặt lại mật khẩu - MentorLink";
+            emailService.sendResetPasswordLink(user.getEmail(), subject, resetLink);
+            log.info("✅ Đã gửi link reset đến {}", user.getEmail());
+        } catch (Exception e) {
+            log.error("❌ Lỗi khi gửi email reset: {}", e.getMessage());
+            throw new AppException(ErrorCode.SEND_MAIL_FAILED);
+        }
+
+        return "Liên kết đặt lại mật khẩu đã được gửi đến email của bạn";
+    }
+
+    /**
+     * Tạo token bảo mật cho reset password
+     * Sử dụng SecureRandom 32 bytes, encode Base64 URL-safe
+     */
+    private String generateSecureToken() {
+        SecureRandom random = new SecureRandom();
+        byte[] bytes = new byte[32];
+        random.nextBytes(bytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
 
     @Override
@@ -202,21 +236,39 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     }
 
     @Override
+    @Transactional
     public String changePassword(ResetPasswordDTO request) {
         log.info("---------- changePassword ----------");
 
+        // 1. Validate password match
         if (!request.getPassword().equals(request.getConfirmPassword())) {
-            throw new AppException(UNCATEGORIZED);
+            throw new AppException(ErrorCode.UNCATEGORIZED, "Mật khẩu xác nhận không khớp");
         }
 
-        // get user by reset token
-        var user = validateToken(request.getSecretKey());
+        // 2. Kiểm tra độ mạnh password (tối thiểu 8 ký tự)
+        if (request.getPassword().length() < 8) {
+            throw new AppException(ErrorCode.UNCATEGORIZED, "Mật khẩu phải có ít nhất 8 ký tự");
+        }
 
-        // update password
+        // 3. Tìm và validate token reset từ database
+        PasswordResetToken resetToken = passwordResetTokenRepository
+                .findByTokenAndUsedFalseAndExpiryDateAfter(request.getSecretKey(), LocalDateTime.now())
+                .orElseThrow(() -> new AppException(ErrorCode.UNCATEGORIZED, 
+                    "Token không hợp lệ, đã được sử dụng, hoặc đã hết hạn"));
+
+        // 4. Lấy user theo email từ token
+        User user = userService.getUserByEmail(resetToken.getEmail());
+
+        // 5. Cập nhật password mới
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         userService.saveUser(user);
 
-        return "Password changed successfully";
+        // 6. Đánh dấu token đã sử dụng (single-use)
+        resetToken.setUsed(true);
+        passwordResetTokenRepository.save(resetToken);
+
+        log.info("✅ Đổi mật khẩu thành công cho user: {}", user.getEmail());
+        return "Đổi mật khẩu thành công";
     }
 
     @Override

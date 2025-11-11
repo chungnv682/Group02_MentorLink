@@ -110,20 +110,13 @@ public class AuthenticationController {
                 .build();
     }
 
+    @PostMapping("/forgot-password")
+    public ResponseEntity<String> forgotPassword(@RequestBody @Valid ForgotPasswordDTO request) {
+        return new ResponseEntity<>(authenticationService.forgotPassword(request.getEmail()), OK);
+    }
 
-
-//    @PostMapping("/forgot-password")
-//    public ResponseEntity<String> forgotPassword(@RequestBody String email) {
-//        return new ResponseEntity<>(authenticationService.forgotPassword(email), OK);
-//    }
-//
-//    @PostMapping("/reset-password")
-//    public ResponseEntity<String> resetPassword(@RequestBody String secretKey) {
-//        return new ResponseEntity<>(authenticationService.resetPassword(secretKey), OK);
-//    }
-//
-//    @PostMapping("/change-password")
-//    public ResponseEntity<String> changePassword(@RequestBody @Valid ResetPasswordDTO request) {
-//        return new ResponseEntity<>(authenticationService.changePassword(request), OK);
-//    }
+    @PostMapping("/change-password")
+    public ResponseEntity<String> changePassword(@RequestBody @Valid BaseRequest<ResetPasswordDTO> request) {
+        return new ResponseEntity<>(authenticationService.changePassword(request.getData()), OK);
+    }
 }

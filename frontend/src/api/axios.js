@@ -7,6 +7,8 @@ const PUBLIC_ENDPOINTS = [
   '/api/auth/login',
   '/api/auth/register',
   '/api/auth/refresh-token',
+  '/api/auth/forgot-password',
+  '/api/auth/change-password',
   '/api/customer-policies/active',
   '/api/mentor-policies/active'
 ];

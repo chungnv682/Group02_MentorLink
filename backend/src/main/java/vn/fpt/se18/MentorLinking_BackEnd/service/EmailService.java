@@ -18,4 +18,13 @@ public interface EmailService {
     public void sendOtp(String to, String subject, String otpCode);
 
     public void sendMentorRejection(String to, String mentorName, String reason);
+
+    /**
+     * Gửi email chứa link đặt lại mật khẩu với token one-time
+     * @param to Email người nhận
+     * @param subject Tiêu đề email
+     * @param resetLink Link frontend có chứa token parameter
+     */
+    public void sendResetPasswordLink(String to, String subject, String resetLink);
 }
+
