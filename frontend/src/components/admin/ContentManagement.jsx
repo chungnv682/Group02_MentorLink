@@ -8,6 +8,7 @@ import {
     FaBlog, FaUser, FaClock, FaChartLine, FaTrash, FaEyeSlash, FaToggleOn, FaToggleOff
 } from 'react-icons/fa';
 import { BsThreeDotsVertical } from 'react-icons/bs';
+import { Editor } from '@tinymce/tinymce-react';
 import { getAllBlogs, moderateBlog, deleteBlog, togglePublishStatus } from '../../services/blog';
 import { getAllFaqsForAdmin, togglePublishFaq, deleteFaq, updateFaq } from '../../services/faq';
 import { useToast } from '../../contexts/ToastContext';
@@ -602,12 +603,12 @@ const ContentManagement = () => {
                                                     />
                                                 </th>
                                                 <th width="30%">Tiêu đề</th>
-                                                <th width="14%">Tác giả</th>
+                                                <th width="20%">Tác giả</th>
                                                 <th width="12%">Trạng thái</th>
                                                 <th width="8%">Xuất bản</th>
                                                 <th width="8%">Lượt xem</th>
-                                                <th width="14%">Ngày tạo</th>
-                                                <th width="10%">Thao tác</th>
+                                                <th width="13%">Ngày tạo</th>
+                                                <th width="5%">Thao tác</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -623,9 +624,9 @@ const ContentManagement = () => {
                                                     <td>
                                                         <div>
                                                             <div className="fw-medium">{blog.title}</div>
-                                                            <small className="text-muted">
+                                                            {/* <small className="text-muted">
                                                                 {blog.content ? blog.content.substring(0, 60) + '...' : ''}
-                                                            </small>
+                                                            </small> */}
                                                         </div>
                                                     </td>
                                                     <td>
@@ -724,7 +725,7 @@ const ContentManagement = () => {
                         <Card>
                             <Card.Header className="bg-light">
                                 <div className="d-flex justify-content-between align-items-center">
-                                    <h6 className="mb-0">Danh sách FAQ ({faqPagination.totalElements})</h6>
+                                    <h6 className="mb-0">Danh sách FAQ</h6>
                                     <div className="d-flex gap-2">
                                         <Button 
                                             variant="outline-primary" 
@@ -772,12 +773,12 @@ const ContentManagement = () => {
                                                         ref={faqHeaderCheckboxRef}
                                                     />
                                                 </th>
-                                                <th width="36%">Câu hỏi</th>
+                                                <th width="42%">Câu hỏi</th>
                                                 <th width="14%">Mức độ</th>
-                                                <th width="12%">Trạng thái</th>
-                                                <th width="8%">Lượt xem</th>
-                                                <th width="16%">Ngày tạo</th>
-                                                <th width="10%">Thao tác</th>
+                                                <th width="10%">Trạng thái</th>
+                                                <th width="10%">Lượt xem</th>
+                                                <th width="10%">Ngày tạo</th>
+                                                <th width="8%">Thao tác</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -793,11 +794,11 @@ const ContentManagement = () => {
                                                     <td>
                                                         <div>
                                                             <div className="fw-medium">{faq.question}</div>
-                                                            {faq.answer && (
+                                                            {/* {faq.answer && (
                                                                 <small className="text-muted">
                                                                     {faq.answer.substring(0, 50)}...
                                                                 </small>
-                                                            )}
+                                                            )} */}
                                                         </div>
                                                     </td>
                                                     <td>
@@ -816,7 +817,7 @@ const ContentManagement = () => {
                                                             </Badge>
                                                         )}
                                                     </td>
-                                                    <td>
+                                                    <td className="text-center">
                                                         <span className="text-muted">{(faq.viewCount || 0).toLocaleString()}</span>
                                                     </td>
                                                     <td>
@@ -903,8 +904,20 @@ const ContentManagement = () => {
 
                             <div className="blog-content">
                                 <h6>Nội dung:</h6>
-                                <div className="p-3 bg-light rounded">
-                                    {selectedBlog.content}
+                                <div className="border rounded">
+                                    <Editor
+                                        value={selectedBlog.content}
+                                        init={{
+                                            height: 400,
+                                            menubar: false,
+                                            toolbar: false,
+                                            statusbar: false,
+                                            readonly: true,
+                                            inline: false,
+                                            content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; font-size: 14px; padding: 10px; }',
+                                        }}
+                                        disabled={true}
+                                    />
                                 </div>
                             </div>
 
@@ -955,26 +968,6 @@ const ContentManagement = () => {
                 </Modal.Footer>
             </Modal>
 
-            {/* <Modal show={showCreateModal} onHide={() => setShowCreateModal(false)} size="lg">
-                <Modal.Header closeButton>
-                    <Modal.Title>Tạo bài viết mới</Modal.Title>
-                </Modal.Header>
-                <Modal.Body>
-                    <Alert variant="info">
-                        <strong>Lưu ý:</strong> Chức năng tạo bài viết sẽ được phát triển trong phiên bản tiếp theo. 
-                        Hiện tại, bài viết được tạo bởi Mentor và Admin chỉ có thể duyệt/từ chối.
-                    </Alert>
-                    <p className="text-muted">
-                        Để tạo bài viết mới, vui lòng sử dụng trang Mentor hoặc liên hệ với bộ phận phát triển để thêm tính năng này.
-                    </p>
-                </Modal.Body>
-                <Modal.Footer>
-                    <Button variant="secondary" onClick={() => setShowCreateModal(false)}>
-                        Đóng
-                    </Button>
-                </Modal.Footer>
-            </Modal>
-
             <Modal show={showFAQModal} onHide={() => { setShowFAQModal(false); setSelectedFaq(null); }} size="lg">
                 <Modal.Header closeButton>
                     <Modal.Title>Chi tiết FAQ</Modal.Title>
@@ -999,9 +992,9 @@ const ContentManagement = () => {
                                         <Badge bg={selectedFaq.urgency === 'HIGH' ? 'danger' : selectedFaq.urgency === 'MEDIUM' ? 'warning' : 'info'}>
                                             Mức độ: {selectedFaq.urgency === 'HIGH' ? 'Cao' : selectedFaq.urgency === 'MEDIUM' ? 'Trung bình' : 'Thấp'}
                                         </Badge>
-                                        <Badge bg={selectedFaq.isPublished ? 'success' : 'secondary'}>
+                                        {/* <Badge bg={selectedFaq.isPublished ? 'success' : 'secondary'}>
                                             {selectedFaq.isPublished ? 'Đã xuất bản' : 'Chưa xuất bản'}
-                                        </Badge>
+                                        </Badge> */}
                                     </div>
                                 </Col>
                             </Row>
@@ -1009,7 +1002,7 @@ const ContentManagement = () => {
                             {selectedFaq.answer ? (
                                 <div className="faq-answer">
                                     <h6>Câu trả lời:</h6>
-                                    <div className="p-3 bg-light rounded">
+                                    <div className="p-3 bg-light rounded" style={{ whiteSpace: 'pre-wrap' }}>
                                         {selectedFaq.answer}
                                     </div>
                                 </div>
@@ -1030,36 +1023,8 @@ const ContentManagement = () => {
                     <Button variant="secondary" onClick={() => { setShowFAQModal(false); setSelectedFaq(null); }}>
                         Đóng
                     </Button>
-                    {selectedFaq && (
-                        <>
-                            <Button 
-                                variant={selectedFaq.isPublished ? "warning" : "success"}
-                                onClick={() => {
-                                    handleTogglePublishFaq(selectedFaq.id, selectedFaq.isPublished);
-                                    setShowFAQModal(false);
-                                    setSelectedFaq(null);
-                                }}
-                            >
-                                {selectedFaq.isPublished ? (
-                                    <>
-                                        <FaEyeSlash className="me-1" />
-                                        Ẩn FAQ
-                                    </>
-                                ) : (
-                                    <>
-                                        <FaEye className="me-1" />
-                                        Xuất bản
-                                    </>
-                                )}
-                            </Button>
-                            <Button variant="primary" disabled>
-                                <FaEdit className="me-1" />
-                                Chỉnh sửa
-                            </Button>
-                        </>
-                    )}
                 </Modal.Footer>
-            </Modal> */}
+            </Modal>
         </div>
     );
 };

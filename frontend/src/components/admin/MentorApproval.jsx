@@ -529,16 +529,14 @@ const MentorApproval = () => {
                                         />
                                     </th>
                                     <th width="25%">Thông tin cá nhân</th>
-                                    <th width="20%">Chuyên môn</th>
-                                    <th width="15%">Độ hoàn thiện</th>
-                                    <th width="12%">Trạng thái</th>
-                                    <th width="13%">Ngày nộp</th>
+                                    <th width="25%">Chuyên môn</th>
+                                    <th width="15%">Trạng thái</th>
+                                    <th width="20%">Ngày nộp</th>
                                     <th width="10%">Thao tác</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {mentorApplications.map((mentor) => {
-                                    const completeness = mentor.completionPercent || 0;
                                     const isPending = mentor.statusName && mentor.statusName.toUpperCase().includes('PENDING');
                                     return (
                                         <tr key={mentor.id}>
@@ -568,17 +566,6 @@ const MentorApproval = () => {
                                                     <small className="text-muted d-block">
                                                         {mentor.serviceCount || 0} dịch vụ
                                                     </small>
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <div>
-                                                    <ProgressBar
-                                                        now={completeness}
-                                                        variant={completeness > 80 ? 'success' : completeness > 60 ? 'warning' : 'danger'}
-                                                        className="mb-1"
-                                                        style={{ height: '6px' }}
-                                                    />
-                                                    <small className="text-muted">{completeness}%</small>
                                                 </div>
                                             </td>
                                             <td>
@@ -728,7 +715,6 @@ const MentorApproval = () => {
                                                     {getStatusText(selectedMentor.statusName)}
                                                 </Badge>
                                             </p>
-                                            <p><strong>Độ hoàn thiện:</strong> {selectedMentor.completionPercent || 0}%</p>
                                         </Col>
                                     </Row>
                                     {selectedMentor.intro && (

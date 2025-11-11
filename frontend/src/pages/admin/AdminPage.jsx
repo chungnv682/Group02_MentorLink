@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { Container, Row, Col, Card, Nav, Tab, Alert } from "react-bootstrap";
+import React, { useState, useEffect, lazy, Suspense } from "react";
+import { Container, Row, Col, Card, Nav, Tab, Alert, Spinner } from "react-bootstrap";
 import {
   FaUsers,
   FaBlog,
@@ -13,21 +13,7 @@ import {
   FaShieldAlt,
   FaGlobeAmericas,
 } from "react-icons/fa";
-import {
-  UserManagement,
-  ContentManagement,
-  Analytics,
-  MentorApproval,
-  FeedbackManagement,
-  BookingManagement,
-  PaymentHistory,
-  ReviewManagement,
-  BannerManagement,
-  SystemSettings,
-  RolePermissions,
-  CountryManagement,
-  AdminSidebar,
-} from "../../components/admin";
+import { AdminSidebar } from "../../components/admin";
 import {
   getAllUsers,
   getUserStatistics,
@@ -35,10 +21,25 @@ import {
 import { getAllBlogs } from "../../services/blog";
 import MentorService from "../../services/mentor/MentorService";
 
+// Lazy load components
+const UserManagement = lazy(() => import("../../components/admin/UserManagement"));
+const ContentManagement = lazy(() => import("../../components/admin/ContentManagement"));
+const Analytics = lazy(() => import("../../components/admin/Analytics"));
+const MentorApproval = lazy(() => import("../../components/admin/MentorApproval"));
+const FeedbackManagement = lazy(() => import("../../components/admin/FeedbackManagement"));
+const BookingManagement = lazy(() => import("../../components/admin/BookingManagement"));
+const PaymentHistory = lazy(() => import("../../components/admin/PaymentHistory"));
+const ReviewManagement = lazy(() => import("../../components/admin/ReviewManagement"));
+const BannerManagement = lazy(() => import("../../components/admin/BannerManagement"));
+const SystemSettings = lazy(() => import("../../components/admin/SystemSettings"));
+const RolePermissions = lazy(() => import("../../components/admin/RolePermissions"));
+const CountryManagement = lazy(() => import("../../components/admin/CountryManagement"));
+
 import "../../styles/components/AdminPage.css";
 
 const AdminPage = () => {
   const [activeTab, setActiveTab] = useState("users");
+  const [loadedTabs, setLoadedTabs] = useState(new Set(['users'])); // Track loaded tabs
 
   // State cho data từ API
   const [users, setUsers] = useState([]);
@@ -133,102 +134,105 @@ const AdminPage = () => {
     }
   };
 
-  // Fetch data khi component mount
+  // Fetch stats
+  const fetchStats = async () => {
+    try {
+      const response = await getUserStatistics();
+      setStats(response.data);
+      console.log("Stats loaded:", response.data);
+    } catch (err) {
+      console.error("Error fetching stats:", err);
+    }
+  };
+
+  // Fetch blogs
+  const fetchBlogs = async () => {
+    try {
+      setLoading(true);
+      const response = await getAllBlogs({ page: 0, size: 10 });
+      if (response?.respCode === "0" || response?.success) {
+        const blogsData = response.data?.blogs || [];
+        setBlogs(blogsData);
+        console.log("Blogs loaded successfully:", blogsData.length, "items");
+      }
+    } catch (err) {
+      console.error("Error fetching blogs:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch mentors
+  const fetchMentors = async () => {
+    try {
+      const response = await MentorService.getMentors({ page: 0, size: 50 });
+      setMentors(response.data?.content || []);
+      console.log("Mentors loaded:", response.data?.content);
+    } catch (err) {
+      console.error("Error fetching mentors:", err);
+    }
+  };
+
+  // Load initial data cho tab users
   useEffect(() => {
-    const fetchData = async () => {
+    fetchUsers(userPage, userSearch);
+  }, []);
+
+  // Load data khi switch tab
+  const handleTabChange = async (tabKey) => {
+    setActiveTab(tabKey);
+    
+    // Chỉ load nếu tab chưa được load
+    if (!loadedTabs.has(tabKey)) {
       try {
         setLoading(true);
-        setError(null);
-
-        // Fetch tất cả data song song
-        const [usersResponse, statsResponse, blogsResponse, mentorsResponse] =
-          await Promise.allSettled([
-            getAllUsers({
-              page: userPage,
-              size: userSize,
-              keySearch: userSearch,
-            }),
-            getUserStatistics(),
-            getAllBlogs({ page: 0, size: 10 }),
-            MentorService.getMentors({ page: 0, size: 50 }),
-          ]);
-
-        // Process users
-        if (
-          usersResponse.status === "fulfilled" &&
-          (usersResponse.value?.respCode === "000" ||
-            usersResponse.value?.respCode === "0")
-        ) {
-          const rawUsers =
-            usersResponse.value.data?.content ||
-            usersResponse.value.data?.data ||
-            [];
-          const normalized = (rawUsers || []).map((u) => {
-            const fullName = (u.fullName || u.name || "").toString().trim();
-            let status = u.status;
-
-            if (typeof status === "string") {
-              const s = status.toLowerCase();
-              if (s === "1" || s === "true" || /active/.test(s)) status = 1;
-              else if (s === "0" || s === "false" || /inactive/.test(s))
-                status = 0;
-            }
-
-            const role =
-              u.role || (u.roleName ? { roleName: u.roleName } : undefined);
-            return { ...u, fullName: fullName || null, status, role };
-          });
-
-          setUsers(normalized);
-          setUserTotalPages(usersResponse.value.data?.totalPages || 0);
-          setUserTotalElements(usersResponse.value.data?.totalElements || 0);
-          console.log("Users loaded:", normalized);
-          console.log("Total pages:", usersResponse.value.data?.totalPages);
+        
+        switch(tabKey) {
+          case 'users':
+            await fetchUsers(userPage, userSearch);
+            break;
+          case 'content':
+            await fetchBlogs();
+            break;
+          case 'mentor-approval':
+            if (!stats) await fetchStats();
+            break;
+          case 'analytics':
+            if (!stats) await fetchStats();
+            if (mentors.length === 0) await fetchMentors();
+            break;
+          case 'countries':
+          case 'feedback':
+          case 'booking':
+          case 'payment':
+          case 'reviews':
+          case 'banners':
+          case 'roles':
+          case 'settings':
+            // Các component này tự fetch data trong component
+            break;
+          default:
+            break;
         }
-
-        if (statsResponse.status === "fulfilled") {
-          setStats(statsResponse.value.data);
-          console.log("Stats loaded:", statsResponse.value.data);
-        }
-
-        // Process blogs - Cấu trúc: blogsResponse.value = {respCode, data: {blogs, pageNumber, ...}}
-        if (blogsResponse.status === "fulfilled") {
-          // respCode nằm ở blogsResponse.value.respCode
-          if (
-            blogsResponse.value?.respCode === "0" ||
-            blogsResponse.value?.success
-          ) {
-            // blogs nằm ở blogsResponse.value.data.blogs
-            const blogsData = blogsResponse.value.data?.blogs || [];
-            setBlogs(blogsData);
-            console.log(
-              "Blogs loaded successfully:",
-              blogsData.length,
-              "items"
-            );
-          } else {
-            console.warn("Blogs response not successful:", blogsResponse.value);
-            setBlogs([]);
-          }
-        } else {
-          console.error("Failed to load blogs:", blogsResponse.reason);
-          setBlogs([]);
-        }
-
-        if (mentorsResponse.status === "fulfilled") {
-          setMentors(mentorsResponse.value.data?.content || []);
-          console.log("Mentors loaded:", mentorsResponse.value.data?.content);
-        }
+        
+        // Mark tab as loaded
+        setLoadedTabs(prev => new Set([...prev, tabKey]));
       } catch (err) {
-        console.error("Error fetching admin data:", err);
-        setError("Có lỗi xảy ra khi tải dữ liệu");
+        console.error(`Error loading ${tabKey} data:`, err);
+        setError(`Có lỗi xảy ra khi tải dữ liệu ${tabKey}`);
       } finally {
         setLoading(false);
       }
-    };
+    }
+  };
 
-    fetchData();
-  }, []);
+  // Loading fallback component
+  const LoadingFallback = () => (
+    <div className="text-center p-5">
+      <Spinner animation="border" variant="primary" />
+      <p className="mt-3 text-muted">Đang tải...</p>
+    </div>
+  );
 
   const menuItems = [
     {
@@ -237,16 +241,18 @@ const AdminPage = () => {
       title: "Quản lý người dùng",
       badge: null,
       component: (
-        <UserManagement
-          users={users}
-          stats={stats}
-          loading={usersLoading}
-          onSearch={handleUserSearch}
-          onPageChange={handleUserPageChange}
-          currentPage={userPage}
-          totalPages={userTotalPages}
-          totalElements={userTotalElements}
-        />
+        <Suspense fallback={<LoadingFallback />}>
+          <UserManagement
+            users={users}
+            stats={stats}
+            loading={usersLoading}
+            onSearch={handleUserSearch}
+            onPageChange={handleUserPageChange}
+            currentPage={userPage}
+            totalPages={userTotalPages}
+            totalElements={userTotalElements}
+          />
+        </Suspense>
       ),
     },
     {
@@ -255,11 +261,13 @@ const AdminPage = () => {
       title: "Quản lý nội dung",
       badge:null,
       component: (
-        <ContentManagement
-          blogs={blogs}
-          loading={loading}
-          onRefresh={handleRefreshBlogs}
-        />
+        <Suspense fallback={<LoadingFallback />}>
+          <ContentManagement
+            blogs={blogs}
+            loading={loading}
+            onRefresh={handleRefreshBlogs}
+          />
+        </Suspense>
       ),
     },
     {
@@ -267,70 +275,110 @@ const AdminPage = () => {
       icon: <FaUserCog />,
       title: "Duyệt/xác thực mentor",
       badge: null,
-      component: <MentorApproval stats={stats} />,
+      component: (
+        <Suspense fallback={<LoadingFallback />}>
+          <MentorApproval stats={stats} />
+        </Suspense>
+      ),
     },
     {
       key: "countries",
       icon: <FaGlobeAmericas />,
       title: "Quản lý các nước du học",
       badge: null,
-      component: <CountryManagement />,
+      component: (
+        <Suspense fallback={<LoadingFallback />}>
+          <CountryManagement />
+        </Suspense>
+      ),
     },
     {
       key: "feedback",
       icon: <FaCommentDots />,
       title: "Quản lý phản hồi & báo cáo",
       badge: null,
-      component: <FeedbackManagement />,
+      component: (
+        <Suspense fallback={<LoadingFallback />}>
+          <FeedbackManagement />
+        </Suspense>
+      ),
     },
     {
       key: "booking",
       icon: <FaCalendarAlt />,
       title: "Quản lý đặt lịch & lịch hẹn",
       badge: null,
-      component: <BookingManagement />,
+      component: (
+        <Suspense fallback={<LoadingFallback />}>
+          <BookingManagement />
+        </Suspense>
+      ),
     },
     {
       key: "payment",
       icon: <FaHistory />,
       title: "Quản lý lịch sử thanh toán/giao dịch",
       badge: null,
-      component: <PaymentHistory />,
+      component: (
+        <Suspense fallback={<LoadingFallback />}>
+          <PaymentHistory />
+        </Suspense>
+      ),
     },
     {
       key: "reviews",
       icon: <FaCommentDots />,
       title: "Quản lý đánh giá & review",
       badge: null,
-      component: <ReviewManagement />,
+      component: (
+        <Suspense fallback={<LoadingFallback />}>
+          <ReviewManagement />
+        </Suspense>
+      ),
     },
     {
       key: "banners",
       icon: <FaBullhorn />,
       title: "Quản lý Banner & Quảng cáo",
       badge: null,
-      component: <BannerManagement />,
+      component: (
+        <Suspense fallback={<LoadingFallback />}>
+          <BannerManagement />
+        </Suspense>
+      ),
     },
     {
       key: "analytics",
       icon: <FaChartBar />,
       title: "Báo cáo & thống kê",
       badge: null,
-      component: <Analytics stats={stats} mentors={mentors} />,
+      component: (
+        <Suspense fallback={<LoadingFallback />}>
+          <Analytics stats={stats} mentors={mentors} />
+        </Suspense>
+      ),
     },
     {
       key: "roles",
       icon: <FaShieldAlt />,
       title: "Quản lý quyền & vai trò",
       badge: null,
-      component: <RolePermissions />,
+      component: (
+        <Suspense fallback={<LoadingFallback />}>
+          <RolePermissions />
+        </Suspense>
+      ),
     },
     {
       key: "settings",
       icon: <FaCog />,
       title: "Cấu hình hệ thống",
       badge: null,
-      component: <SystemSettings />,
+      component: (
+        <Suspense fallback={<LoadingFallback />}>
+          <SystemSettings />
+        </Suspense>
+      ),
     },
   ];
 
@@ -347,7 +395,7 @@ const AdminPage = () => {
         </Row>
       )}
 
-      <Tab.Container activeKey={activeTab} onSelect={setActiveTab}>
+      <Tab.Container activeKey={activeTab} onSelect={handleTabChange}>
         <Row>
           <Col lg={3} md={4} className="mb-4">
             <AdminSidebar menuItems={menuItems} activeTab={activeTab} />

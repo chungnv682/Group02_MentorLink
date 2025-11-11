@@ -346,7 +346,7 @@ const CountryManagement = () => {
                         </Nav.Item>
                     </Nav>
                 </Card.Header>
-                <Card.Body className="p-0">
+                <Card.Body className="p-0" style={{ overflow: 'visible' }}>
                     {paginatedData.length === 0 ? (
                         <div className="text-center py-5">
                             <FaSearch size={48} className="text-muted mb-3" />
@@ -359,7 +359,7 @@ const CountryManagement = () => {
                         </div>
                     ) : (
                         <>
-                            <Table responsive hover className="mb-0">
+                            <Table responsive hover className="mb-0" style={{ overflow: 'visible' }}>
                                 <thead className="table-light">
                                     <tr>
                                         <th>Tên nước</th>
@@ -410,7 +410,7 @@ const CountryManagement = () => {
                                                     </Badge>
                                                 </td>
                                                 <td className="text-center">
-                                                    <Dropdown align="end">
+                                                    <Dropdown align="end" drop="up">
                                                         <Dropdown.Toggle 
                                                             variant="light" 
                                                             size="sm" 
@@ -418,7 +418,7 @@ const CountryManagement = () => {
                                                         >
                                                             <BsThreeDotsVertical />
                                                         </Dropdown.Toggle>
-                                                        <Dropdown.Menu>
+                                                        <Dropdown.Menu style={{ zIndex: 1050 }}>
                                                             <Dropdown.Item onClick={() => viewDetails(country)}>
                                                                 <FaEye className="me-2" />
                                                                 Xem chi tiết
@@ -490,7 +490,7 @@ const CountryManagement = () => {
                                                     <Badge bg="success">Đã duyệt</Badge>
                                                 </td>
                                                 <td className="text-center">
-                                                    <Dropdown align="end">
+                                                    <Dropdown align="end" drop="up">
                                                         <Dropdown.Toggle 
                                                             variant="light" 
                                                             size="sm" 
@@ -498,7 +498,7 @@ const CountryManagement = () => {
                                                         >
                                                             <BsThreeDotsVertical />
                                                         </Dropdown.Toggle>
-                                                        <Dropdown.Menu>
+                                                        <Dropdown.Menu style={{ zIndex: 1050 }}>
                                                             <Dropdown.Item onClick={() => viewDetails(country)}>
                                                                 <FaEye className="me-2" />
                                                                 Xem chi tiết
