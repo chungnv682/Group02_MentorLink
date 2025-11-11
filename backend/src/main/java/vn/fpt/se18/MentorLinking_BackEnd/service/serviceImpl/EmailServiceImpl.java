@@ -2,6 +2,8 @@ package vn.fpt.se18.MentorLinking_BackEnd.service.serviceImpl;
 
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
+
+import java.io.IOException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -187,6 +189,38 @@ public class EmailServiceImpl implements EmailService {
 
         } catch (MessagingException e) {
             log.error("❌ Lỗi gửi email OTP: {}", e.getMessage());
+            throw new AppException(ErrorCode.SEND_MAIL_FAILED);
+        }
+    }
+
+    @Override
+    public void sendMentorRejection(String to, String mentorName, String reason) {
+        try {
+            // ✅ 1. Chuẩn bị dữ liệu để inject vào template
+            Map<String, Object> model = new HashMap<>();
+            model.put("mentorName", mentorName != null ? mentorName : "bạn");
+            model.put("reason", reason);
+
+            Context context = new Context();
+            context.setVariables(model);
+
+            // ✅ 2. Render HTML từ template `mentor-rejection-email.html`
+            String htmlContent = templateEngine.process("mentor-rejection-email.html", context);
+
+            // ✅ 3. Gửi email HTML
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            helper.setFrom("nguyenbahien170604@gmail.com");
+            helper.setTo(to);
+            helper.setSubject("Thông báo từ chối đăng ký Mentor - MentorLink");
+            helper.setText(htmlContent, true); // true = HTML content
+
+            mailSender.send(message);
+            log.info("✅ Email từ chối Mentor gửi thành công đến {}", to);
+
+        } catch (MessagingException e) {
+            log.error("❌ Lỗi gửi email từ chối Mentor: {}", e.getMessage());
             throw new AppException(ErrorCode.SEND_MAIL_FAILED);
         }
     }
