@@ -47,7 +47,7 @@ public class MentorServiceImpl implements vn.fpt.se18.MentorLinking_BackEnd.serv
     private final MentorServiceRepository mentorServiceRepository;
     private final UserRepository userRepository;
 
-    public MentorPageResponse getAllMentors(String keyword, String sort, int page, int size) {
+    public MentorPageResponse getAllMentors(String keyword, String country, String sort, int page, int size) {
         Sort.Order order = new Sort.Order(Sort.Direction.ASC, "id");
         if (StringUtils.hasLength(sort)) {
             Pattern pattern = Pattern.compile("^(\\w+):(asc|desc)$", Pattern.CASE_INSENSITIVE);
@@ -71,10 +71,23 @@ public class MentorServiceImpl implements vn.fpt.se18.MentorLinking_BackEnd.serv
 
         Page<User> entityPage;
 
-        if (StringUtils.hasLength(keyword)) {
+        // Handle different filtering scenarios
+        boolean hasKeyword = StringUtils.hasLength(keyword);
+        boolean hasCountry = StringUtils.hasLength(country);
+
+        if (hasKeyword && hasCountry) {
+            // Both keyword and country filter
+            keyword = "%" + keyword.toLowerCase() + "%";
+            entityPage = mentorRepository.searchByKeywordAndCountry(keyword, country, pageable);
+        } else if (hasKeyword) {
+            // Only keyword filter
             keyword = "%" + keyword.toLowerCase() + "%";
             entityPage = mentorRepository.searchByKeyword(keyword, pageable);
+        } else if (hasCountry) {
+            // Only country filter
+            entityPage = mentorRepository.searchByCountry(country, pageable);
         } else {
+            // No filters
             entityPage = mentorRepository.getAllMentorWithRelatedData(pageable);
         }
 

@@ -69,11 +69,11 @@ const routes = createBrowserRouter([
   },
   {
     path: "/forgot-password",
-    element: <ForgotPassword />,
+    element: <Layout><ForgotPassword /></Layout>,
   },
   {
     path: "/reset-password",
-    element: <ResetPassword />,
+    element: <Layout><ResetPassword /></Layout>,
   },
   {
     path: "/moderator",
