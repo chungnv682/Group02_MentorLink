@@ -18,7 +18,7 @@ class MentorService {
             if (params.approvedCountry) queryParams.append('approvedCountry', params.approvedCountry);
 
             // BE exposes /mentors (no /api prefix)
-            const url = `/mentors${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+            const url = `/api/mentors${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
             const response = await instance.get(url);
 
             return response;
