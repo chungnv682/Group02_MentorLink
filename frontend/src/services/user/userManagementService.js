@@ -53,12 +53,21 @@ export const getAllUsers = async (params = {}) => {
 };
 
 /**
- * Get user by ID
+ * Get user by ID (basic info)
  * @param {number} id - User ID
  * @returns {Promise} User detail
  */
 export const getUserById = async (id) => {
     return await instance.get(`${BASE_URL}/${id}`);
+};
+
+/**
+ * Get user by ID with full details (for admin)
+ * @param {number} id - User ID
+ * @returns {Promise} Full user detail including phone, address, etc.
+ */
+export const getAdminUserDetailById = async (id) => {
+    return await instance.get(`${BASE_URL}/detail/${id}`);
 };
 
 /**
@@ -78,9 +87,66 @@ export const getUserStatistics = async () => {
     return await instance.get(`${BASE_URL}/statistics`);
 };
 
+/**
+ * Toggle user status between ACTIVE and INACTIVE
+ * @param {number} id - User ID
+ * @returns {Promise} Toggle result
+ */
+export const toggleUserStatus = async (id) => {
+    return await instance.put(`${BASE_URL}/toggle-status/${id}`);
+};
+
+/**
+ * Reject mentor application with reason
+ * @param {number} userId - User ID
+ * @param {string} reason - Rejection reason
+ * @returns {Promise} Rejection result
+ */
+export const rejectMentor = async (userId, reason) => {
+    return await instance.post(`${BASE_URL}/reject-mentor`, {
+        userId,
+        reason
+    });
+};
+
+/**
+ * Create new user (Admin can create admin accounts)
+ * @param {Object} userData - User data
+ * @param {string} userData.email - User email
+ * @param {string} userData.password - User password
+ * @param {string} userData.fullName - User full name
+ * @param {number} userData.roleId - Role ID (1: ADMIN, 2: MODERATOR, 3: MENTOR, 4: CUSTOMER)
+ * @param {string} userData.phone - User phone (optional)
+ * @param {string} userData.gender - User gender (optional)
+ * @returns {Promise} Creation result
+ */
+export const createUser = async (userData) => {
+    const requestBody = {
+        requestDateTime: new Date().toISOString(),
+        data: userData
+    };
+    
+    console.log('🔍 Request to:', `${BASE_URL}/create`);
+    console.log('📦 Request Body:', JSON.stringify(requestBody, null, 2));
+    
+    try {
+        const response = await instance.post(`${BASE_URL}/create`, requestBody);
+        console.log('✅ Response:', response);
+        return response;
+    } catch (error) {
+        console.error('❌ Error calling createUser:', error);
+        console.error('Error details:', error.response?.data || error.message);
+        throw error;
+    }
+};
+
 export default {
     getAllUsers,
     getUserById,
+    getAdminUserDetailById,
     deleteUser,
-    getUserStatistics
+    getUserStatistics,
+    toggleUserStatus,
+    rejectMentor,
+    createUser
 };
