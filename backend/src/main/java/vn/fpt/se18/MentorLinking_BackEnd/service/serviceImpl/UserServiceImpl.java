@@ -1,7 +1,8 @@
 package vn.fpt.se18.MentorLinking_BackEnd.service.serviceImpl;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -14,6 +15,7 @@ import vn.fpt.se18.MentorLinking_BackEnd.dto.request.user.GetUserRequest;
 import vn.fpt.se18.MentorLinking_BackEnd.dto.request.user.UserRequestDTO;
 import vn.fpt.se18.MentorLinking_BackEnd.dto.response.BaseResponse;
 import vn.fpt.se18.MentorLinking_BackEnd.dto.response.PageResponse;
+import vn.fpt.se18.MentorLinking_BackEnd.dto.response.admin.AdminUserDetailResponse;
 import vn.fpt.se18.MentorLinking_BackEnd.dto.response.user.UserDetailResponse;
 import vn.fpt.se18.MentorLinking_BackEnd.dto.response.user.UserStatisticsResponse;
 import vn.fpt.se18.MentorLinking_BackEnd.entity.Role;
@@ -24,8 +26,8 @@ import vn.fpt.se18.MentorLinking_BackEnd.exception.ErrorCode;
 import vn.fpt.se18.MentorLinking_BackEnd.repository.RoleRepository;
 import vn.fpt.se18.MentorLinking_BackEnd.repository.UserRepository;
 import vn.fpt.se18.MentorLinking_BackEnd.repository.UserStatusRepository;
+import vn.fpt.se18.MentorLinking_BackEnd.service.EmailService;
 import vn.fpt.se18.MentorLinking_BackEnd.service.UserService;
-import vn.fpt.se18.MentorLinking_BackEnd.util.UserStatus;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -35,12 +37,24 @@ import java.util.stream.Collectors;
 
 @Service
 @Slf4j
-@RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final UserStatusRepository userStatusRepository;
     private final RoleRepository roleRepository;
+    private final EmailService emailService;
+
+    @Autowired
+    public UserServiceImpl(
+            UserRepository userRepository,
+            UserStatusRepository userStatusRepository,
+            RoleRepository roleRepository,
+            @Lazy EmailService emailService) {
+        this.userRepository = userRepository;
+        this.userStatusRepository = userStatusRepository;
+        this.roleRepository = roleRepository;
+        this.emailService = emailService;
+    }
 
     @Override
     public UserDetailsService userDetailsService() {
@@ -135,6 +149,19 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    public BaseResponse<AdminUserDetailResponse> getAdminUserDetailById(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.UNCATEGORIZED, "User not found"));
+
+        return BaseResponse.<AdminUserDetailResponse>builder()
+                .requestDateTime("")
+                .respCode("0")
+                .description("Get user detail successfully")
+                .data(convertToAdminUserDetailResponse(user))
+                .build();
+    }
+
+    @Override
     @Transactional
     public BaseResponse<Void> deleteUser(Long id) {
         User user = userRepository.findById(id)
@@ -183,6 +210,86 @@ public class UserServiceImpl implements UserService {
                 .build();
     }
 
+    @Override
+    @Transactional
+    public BaseResponse<Void> toggleBlockUser(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.UNCATEGORIZED, "User not found"));
+
+        String currentStatus = user.getStatus().getName();
+        
+        // Toggle between ACTIVE and INACTIVE
+        // PENDING users cannot be toggled, they must be approved or rejected first
+        if ("PENDING".equals(currentStatus)) {
+            throw new AppException(ErrorCode.UNCATEGORIZED, "Cannot toggle status for PENDING users. Please approve or reject first.");
+        }
+
+        Status newStatus;
+        String description;
+        
+        if ("ACTIVE".equals(currentStatus)) {
+            // Change ACTIVE to INACTIVE
+            newStatus = userStatusRepository.findByName("INACTIVE")
+                    .orElseThrow(() -> new AppException(ErrorCode.UNCATEGORIZED, "INACTIVE status not found"));
+            description = "User deactivated successfully";
+            log.info("User deactivated, userId={}", id);
+        } else {
+            // Change INACTIVE to ACTIVE (or any other status to ACTIVE)
+            newStatus = userStatusRepository.findByName("ACTIVE")
+                    .orElseThrow(() -> new AppException(ErrorCode.UNCATEGORIZED, "ACTIVE status not found"));
+            description = "User activated successfully";
+            log.info("User activated, userId={}", id);
+        }
+
+        user.setStatus(newStatus);
+        userRepository.save(user);
+
+        return BaseResponse.<Void>builder()
+                .requestDateTime(String.valueOf(LocalDateTime.now()))
+                .respCode("0")
+                .description(description)
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public BaseResponse<Void> rejectMentor(Long userId, String reason) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.UNCATEGORIZED, "User not found"));
+
+        // Kiểm tra xem user có phải là Mentor đang chờ duyệt không
+        if (!"PENDING".equals(user.getStatus().getName())) {
+            throw new AppException(ErrorCode.UNCATEGORIZED, "User is not in PENDING status");
+        }
+
+        if (!"MENTOR".equals(user.getRole().getName())) {
+            throw new AppException(ErrorCode.UNCATEGORIZED, "User is not a MENTOR");
+        }
+
+        // Gửi email thông báo từ chối
+        try {
+            emailService.sendMentorRejection(
+                user.getEmail(),
+                user.getFullname() != null ? user.getFullname() : "Mentor",
+                reason
+            );
+            log.info("Rejection email sent to mentor userId={}, email={}", userId, user.getEmail());
+        } catch (Exception e) {
+            log.error("Failed to send rejection email to userId={}", userId, e);
+            // Không throw exception, vẫn tiếp tục xóa user
+        }
+
+        // Xóa user khỏi hệ thống
+        userRepository.delete(user);
+        log.info("Mentor rejected and deleted, userId={}", userId);
+
+        return BaseResponse.<Void>builder()
+                .requestDateTime(String.valueOf(LocalDateTime.now()))
+                .respCode("0")
+                .description("Mentor rejected and deleted successfully")
+                .build();
+    }
+
 
     private UserDetailResponse convertToResponse(User user) {
         return UserDetailResponse.builder()
@@ -192,6 +299,34 @@ public class UserServiceImpl implements UserService {
                 .roleName(user.getRole().getName().isEmpty() ? null : user.getRole().getName())
                 .status(user.getStatus().getName())
                 .createTime(user.getCreatedAt())
+                .build();
+    }
+
+    private AdminUserDetailResponse convertToAdminUserDetailResponse(User user) {
+        return AdminUserDetailResponse.builder()
+                .id(user.getId())
+                .email(user.getEmail())
+                .fullName(user.getFullname())
+                .roleName(user.getRole() != null ? user.getRole().getName() : null)
+                .status(user.getStatus() != null ? user.getStatus().getName() : null)
+                .createTime(user.getCreatedAt())
+                // Thông tin bổ sung
+                .dob(user.getDob())
+                .phone(user.getPhone())
+                .gender(user.getGender())
+                .address(user.getAddress())
+                .currentLocation(user.getCurrentLocation())
+                .title(user.getTitle())
+                .highestDegree(user.getHighestDegree() != null ? user.getHighestDegree().getName() : null)
+                .linkedinUrl(user.getLinkedinUrl())
+                .avatarUrl(user.getAvatarUrl())
+                .intro(user.getIntro())
+                .rating(user.getRating())
+                .numberOfBooking(user.getNumberOfBooking())
+                .bankName(user.getBankName())
+                .bankAccountNumber(user.getBankAccountNumber())
+                .lastLogin(user.getLastLogin())
+                .isBlocked(user.getIsBlocked())
                 .build();
     }
 }

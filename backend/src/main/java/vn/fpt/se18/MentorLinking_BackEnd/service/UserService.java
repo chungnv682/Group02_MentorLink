@@ -7,6 +7,7 @@ import vn.fpt.se18.MentorLinking_BackEnd.dto.request.user.GetUserRequest;
 import vn.fpt.se18.MentorLinking_BackEnd.dto.request.user.UserRequestDTO;
 import vn.fpt.se18.MentorLinking_BackEnd.dto.response.BaseResponse;
 import vn.fpt.se18.MentorLinking_BackEnd.dto.response.PageResponse;
+import vn.fpt.se18.MentorLinking_BackEnd.dto.response.admin.AdminUserDetailResponse;
 import vn.fpt.se18.MentorLinking_BackEnd.dto.response.user.UserDetailResponse;
 import vn.fpt.se18.MentorLinking_BackEnd.dto.response.user.UserStatisticsResponse;
 import vn.fpt.se18.MentorLinking_BackEnd.entity.User;
@@ -33,7 +34,13 @@ public interface UserService {
 
     BaseResponse<UserDetailResponse> getUserById(Long id);
 
+    BaseResponse<AdminUserDetailResponse> getAdminUserDetailById(Long id);
+
     BaseResponse<Void> deleteUser(Long id);
 
     BaseResponse<UserStatisticsResponse> getUserStatistics();
+
+    BaseResponse<Void> toggleBlockUser(Long id);
+
+    BaseResponse<Void> rejectMentor(Long userId, String reason);
 }

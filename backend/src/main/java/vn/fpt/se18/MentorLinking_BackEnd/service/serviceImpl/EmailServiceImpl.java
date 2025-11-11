@@ -1,3 +1,4 @@
+
 package vn.fpt.se18.MentorLinking_BackEnd.service.serviceImpl;
 
 
@@ -112,6 +113,52 @@ public class EmailServiceImpl implements EmailService {
     @Override
     public void sendRequestFeedback(String to, String subject, String body) {
 
+    }
+
+    @Override
+    public void sendMentorRejection(String to, String mentorName, String reason) {
+        Email fromEmail = new Email(from);
+        Email toEmail = new Email(to);
+
+        // Tạo nội dung email đơn giản dạng text
+        String emailBody = String.format(
+            "Xin chào %s,\n\n" +
+            "Cảm ơn bạn đã quan tâm và đăng ký trở thành Mentor tại MentorLink.\n\n" +
+            "Rất tiếc, sau khi xem xét hồ sơ của bạn, chúng tôi chưa thể chấp nhận đơn đăng ký của bạn tại thời điểm này.\n\n" +
+            "Lý do từ chối:\n%s\n\n" +
+            "Chúng tôi khuyến khích bạn:\n" +
+            "- Xem xét và cải thiện các điểm được nêu trong lý do từ chối\n" +
+            "- Cập nhật thêm kinh nghiệm và chứng chỉ liên quan\n" +
+            "- Đăng ký lại sau khi đã hoàn thiện hồ sơ\n\n" +
+            "Nếu bạn có bất kỳ câu hỏi nào, vui lòng liên hệ với chúng tôi qua email: support@mentorlink.com\n\n" +
+            "Chúng tôi hy vọng sẽ có cơ hội hợp tác với bạn trong tương lai!\n\n" +
+            "Trân trọng,\n" +
+            "Đội ngũ MentorLink",
+            mentorName != null ? mentorName : "bạn",
+            reason
+        );
+
+        Content content = new Content("text/plain", emailBody);
+        Mail mail = new Mail(fromEmail, "Thông báo từ chối đăng ký Mentor - MentorLink", toEmail, content);
+        
+        try {
+            Request request = new Request();
+            request.setMethod(Method.POST);
+            request.setEndpoint("mail/send");
+            request.setBody(mail.build());
+
+            Response response = sendGrid.api(request);
+
+            if (response.getStatusCode() == 202) { // Accepted
+                log.info("Mentor rejection email sent successfully to {}", to);
+            } else {
+                log.error("Email sent failed: StatusCode = {}, Body = {}", response.getStatusCode(), response.getBody());
+                throw new AppException(ErrorCode.EMAIL_INVALID);
+            }
+        } catch (IOException e) {
+            log.error("Email sent failed to {}", to, e);
+            throw new AppException(ErrorCode.EMAIL_INVALID);
+        }
     }
 }
 

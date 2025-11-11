@@ -7,12 +7,14 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import vn.fpt.se18.MentorLinking_BackEnd.dto.request.ModerateBlogRequest;
 import vn.fpt.se18.MentorLinking_BackEnd.dto.response.BaseResponse;
 import vn.fpt.se18.MentorLinking_BackEnd.dto.response.BlogPageResponse;
 import vn.fpt.se18.MentorLinking_BackEnd.dto.response.BlogResponse;
 import vn.fpt.se18.MentorLinking_BackEnd.entity.User;
+import vn.fpt.se18.MentorLinking_BackEnd.repository.UserRepository;
 import vn.fpt.se18.MentorLinking_BackEnd.service.BlogService;
 import vn.fpt.se18.MentorLinking_BackEnd.service.UserService;
 
@@ -27,6 +29,7 @@ public class BlogManagementController {
 
     private final BlogService blogService;
     private final UserService userService;
+    private final UserRepository userRepository;
 
     @GetMapping
     @Operation(summary = "Get all blogs for admin with search and pagination")
@@ -80,8 +83,11 @@ public class BlogManagementController {
             @Valid @RequestBody ModerateBlogRequest request,
             Authentication authentication
     ) {
-        User currentUser = userService.getUserByEmail(authentication.getName());
-        BlogResponse blog = blogService.moderateBlog(id, request, currentUser.getId());
+
+        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+        User user = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("User không tồn tại"));
+        BlogResponse blog = blogService.moderateBlog(id, request, user.getId());
 
         return BaseResponse.<BlogResponse>builder()
                 .requestDateTime(LocalDateTime.now().toString())
@@ -97,7 +103,9 @@ public class BlogManagementController {
             @PathVariable("id") Long id,
             Authentication authentication
     ) {
-        User currentUser = userService.getByUsername(authentication.getName());
+        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+        User currentUser = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("User không tồn tại"));
         BlogResponse blog = blogService.togglePublishStatus(id, currentUser.getId());
 
         return BaseResponse.<BlogResponse>builder()

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
     Container,
     Row,
@@ -12,7 +12,9 @@ import {
     Alert,
     Spinner,
     InputGroup,
-    Dropdown
+    Dropdown,
+    Pagination,
+    Nav
 } from 'react-bootstrap';
 import {
     FaCheck,
@@ -23,7 +25,10 @@ import {
     FaFlag,
     FaUser,
     FaCalendar,
-    FaExclamationTriangle
+    FaExclamationTriangle,
+    FaEdit,
+    FaTrash,
+    FaUndo
 } from 'react-icons/fa';
 import { BsThreeDotsVertical } from 'react-icons/bs';
 import CountryService from '../../services/country/CountryService';
@@ -41,6 +46,11 @@ const CountryManagement = () => {
         flagUrl: '',
         description: ''
     });
+    
+    // Pagination and Tab states
+    const [activeTab, setActiveTab] = useState('approved'); // 'pending' or 'approved'
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage] = useState(10);
 
     useEffect(() => {
         fetchData();
@@ -107,10 +117,130 @@ const CountryManagement = () => {
         setShowDetailModal(true);
     };
 
-    const filteredPending = pendingCountries.filter(country =>
-        country.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        country.suggestedBy?.name?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const handleUnapprove = async (country) => {
+        if (!window.confirm(`Bạn có chắc muốn chuyển "${country.name}" về trạng thái chờ duyệt?`)) {
+            return;
+        }
+
+        try {
+            await CountryService.unapproveCountry(country.id);
+            alert('Đã chuyển về trạng thái chờ duyệt!');
+            await fetchData();
+        } catch (err) {
+            alert('Có lỗi xảy ra. Vui lòng thử lại.');
+        }
+    };
+
+    const handleDelete = async (country) => {
+        if (!window.confirm(`Bạn có chắc muốn xóa nước "${country.name}"? Hành động này không thể hoàn tác!`)) {
+            return;
+        }
+
+        try {
+            await CountryService.deleteCountry(country.id);
+            alert('Đã xóa thành công!');
+            await fetchData();
+        } catch (err) {
+            alert('Có lỗi xảy ra khi xóa. Vui lòng thử lại.');
+        }
+    };
+
+    // Filter and pagination logic
+    const filteredData = useMemo(() => {
+        const dataToFilter = activeTab === 'pending' ? pendingCountries : countries;
+        
+        if (!searchTerm) return dataToFilter;
+        
+        return dataToFilter.filter(country => {
+            const nameMatch = country.name.toLowerCase().includes(searchTerm.toLowerCase());
+            const codeMatch = country.code?.toLowerCase().includes(searchTerm.toLowerCase());
+            const mentorMatch = country.suggestedBy?.name?.toLowerCase().includes(searchTerm.toLowerCase());
+            
+            return nameMatch || codeMatch || mentorMatch;
+        });
+    }, [activeTab, pendingCountries, countries, searchTerm]);
+
+    const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+    
+    const paginatedData = useMemo(() => {
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        return filteredData.slice(startIndex, endIndex);
+    }, [filteredData, currentPage, itemsPerPage]);
+
+    // Reset to first page when changing tabs or search term
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [activeTab, searchTerm]);
+
+    const handlePageChange = (pageNumber) => {
+        setCurrentPage(pageNumber);
+    };
+
+    const renderPagination = () => {
+        if (totalPages <= 1) return null;
+
+        const items = [];
+        const maxVisiblePages = 5;
+        let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+        let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+        if (endPage - startPage < maxVisiblePages - 1) {
+            startPage = Math.max(1, endPage - maxVisiblePages + 1);
+        }
+
+        items.push(
+            <Pagination.First 
+                key="first" 
+                onClick={() => handlePageChange(1)} 
+                disabled={currentPage === 1} 
+            />
+        );
+        items.push(
+            <Pagination.Prev 
+                key="prev" 
+                onClick={() => handlePageChange(currentPage - 1)} 
+                disabled={currentPage === 1} 
+            />
+        );
+
+        if (startPage > 1) {
+            items.push(<Pagination.Ellipsis key="start-ellipsis" disabled />);
+        }
+
+        for (let page = startPage; page <= endPage; page++) {
+            items.push(
+                <Pagination.Item
+                    key={page}
+                    active={page === currentPage}
+                    onClick={() => handlePageChange(page)}
+                >
+                    {page}
+                </Pagination.Item>
+            );
+        }
+
+        if (endPage < totalPages) {
+            items.push(<Pagination.Ellipsis key="end-ellipsis" disabled />);
+        }
+
+        items.push(
+            <Pagination.Next 
+                key="next" 
+                onClick={() => handlePageChange(currentPage + 1)} 
+                disabled={currentPage === totalPages} 
+            />
+        );
+        items.push(
+            <Pagination.Last 
+                key="last" 
+                onClick={() => handlePageChange(totalPages)} 
+                disabled={currentPage === totalPages} 
+            />
+        );
+
+        return <Pagination className="justify-content-center mb-0">{items}</Pagination>;
+    };
 
     if (loading) {
         return (
@@ -163,7 +293,7 @@ const CountryManagement = () => {
             </Row>
 
             {/* Search Bar */}
-            <Row className="mb-4">
+            <Row className="mb-3">
                 <Col md={6}>
                     <InputGroup>
                         <InputGroup.Text>
@@ -171,159 +301,247 @@ const CountryManagement = () => {
                         </InputGroup.Text>
                         <Form.Control
                             type="text"
-                            placeholder="Tìm kiếm theo tên nước hoặc người đề xuất..."
+                            placeholder="Tìm kiếm theo tên nước, mã nước hoặc người đề xuất..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
+                        {searchTerm && (
+                            <Button 
+                                variant="outline-secondary" 
+                                onClick={() => setSearchTerm('')}
+                            >
+                                <FaTimes />
+                            </Button>
+                        )}
                     </InputGroup>
+                </Col>
+                <Col md={6} className="text-end">
+                    <small className="text-muted">
+                        Hiển thị {paginatedData.length} / {filteredData.length} kết quả
+                    </small>
                 </Col>
             </Row>
 
-            {/* Pending Countries Section */}
-            <Card className="mb-4">
-                <Card.Header className="bg-warning text-dark">
-                    <h5 className="mb-0">
-                        <FaExclamationTriangle className="me-2" />
-                        Đề xuất chờ duyệt ({filteredPending.length})
-                    </h5>
+            {/* Main Table Card */}
+            <Card>
+                <Card.Header className="bg-white">
+                    <Nav variant="tabs" activeKey={activeTab} onSelect={(k) => setActiveTab(k)}>
+                        <Nav.Item>
+                            <Nav.Link eventKey="approved">
+                                <FaFlag className="me-2" />
+                                Đã duyệt
+                                <Badge bg="success" className="ms-2">
+                                    {countries.length}
+                                </Badge>
+                            </Nav.Link>
+                        </Nav.Item>
+                        <Nav.Item>
+                            <Nav.Link eventKey="pending">
+                                <FaExclamationTriangle className="me-2" />
+                                Chờ duyệt
+                                <Badge bg="warning" className="ms-2">
+                                    {pendingCountries.length}
+                                </Badge>
+                            </Nav.Link>
+                        </Nav.Item>
+                    </Nav>
                 </Card.Header>
                 <Card.Body className="p-0">
-                    {filteredPending.length === 0 ? (
-                        <div className="text-center py-4">
-                            <p className="text-muted mb-0">Không có đề xuất nào chờ duyệt</p>
+                    {paginatedData.length === 0 ? (
+                        <div className="text-center py-5">
+                            <FaSearch size={48} className="text-muted mb-3" />
+                            <p className="text-muted mb-0">
+                                {searchTerm 
+                                    ? 'Không tìm thấy kết quả phù hợp' 
+                                    : `Không có ${activeTab === 'pending' ? 'đề xuất chờ duyệt' : 'nước đã duyệt'}`
+                                }
+                            </p>
                         </div>
                     ) : (
-                        <Table responsive striped hover className="mb-0">
-                            <thead>
-                                <tr>
-                                    <th>Tên nước</th>
-                                    <th>Người đề xuất</th>
-                                    <th>Ngày đề xuất</th>
-                                    <th>Mô tả</th>
-                                    <th>Thao tác</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {filteredPending.map((country) => (
-                                    <tr key={country.id}>
-                                        <td>
-                                            <div className="d-flex align-items-center">
-                                                <span className="me-2">🏳️</span>
-                                                <strong>{country.name}</strong>
-                                                <Badge bg="warning" className="ms-2" size="sm">
-                                                    Chờ duyệt
-                                                </Badge>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div className="d-flex align-items-center">
-                                                <FaUser className="me-1 text-muted" />
-                                                {country.suggestedBy?.name || 'N/A'}
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div className="d-flex align-items-center">
-                                                <FaCalendar className="me-1 text-muted" />
-                                                <small>
-                                                    {new Date(country.createdAt).toLocaleDateString('vi-VN')}
-                                                </small>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <small className="text-muted">
-                                                {country.description?.substring(0, 50)}
-                                                {country.description?.length > 50 && '...'}
-                                            </small>
-                                        </td>
-                                        <td>
-                                            <Dropdown align="end">
-                                                <Dropdown.Toggle variant="light" size="sm" className="no-caret p-1">
-                                                    <BsThreeDotsVertical />
-                                                </Dropdown.Toggle>
-                                                <Dropdown.Menu>
-                                                    <Dropdown.Item onClick={() => viewDetails(country)}>
-                                                        Xem
-                                                    </Dropdown.Item>
-                                                    <Dropdown.Item onClick={() => handleApprove(country)}>
-                                                        Duyệt
-                                                    </Dropdown.Item>
-                                                    <Dropdown.Item className="text-danger" onClick={() => handleReject(country)}>
-                                                        Từ chối
-                                                    </Dropdown.Item>
-                                                </Dropdown.Menu>
-                                            </Dropdown>
-                                        </td>
+                        <>
+                            <Table responsive hover className="mb-0">
+                                <thead className="table-light">
+                                    <tr>
+                                        <th>Tên nước</th>
+                                        {activeTab === 'approved' && <th>Mã nước</th>}
+                                        {activeTab === 'pending' && <th>Người đề xuất</th>}
+                                        {activeTab === 'pending' && <th>Ngày đề xuất</th>}
+                                        {activeTab === 'approved' && <th>Số mentor</th>}
+                                        {activeTab === 'approved' && <th>Ngày thêm</th>}
+                                        <th>Mô tả</th>
+                                        <th>Trạng thái</th>
+                                        <th className="text-center">Thao tác</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </Table>
+                                </thead>
+                                <tbody>
+                                    {activeTab === 'pending' ? (
+                                        // Pending Countries Rows
+                                        paginatedData.map((country) => (
+                                            <tr key={country.id}>
+                                                <td>
+                                                    <div className="d-flex align-items-center">
+                                                        <span className="me-2">🏳️</span>
+                                                        <strong>{country.name}</strong>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div className="d-flex align-items-center">
+                                                        <FaUser className="me-1 text-muted" />
+                                                        <small>{country.suggestedBy?.name || 'N/A'}</small>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div className="d-flex align-items-center">
+                                                        <FaCalendar className="me-1 text-muted" />
+                                                        <small>
+                                                            {new Date(country.createdAt).toLocaleDateString('vi-VN')}
+                                                        </small>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <small className="text-muted">
+                                                        {country.description?.substring(0, 50)}
+                                                        {country.description?.length > 50 && '...'}
+                                                    </small>
+                                                </td>
+                                                <td>
+                                                    <Badge bg="warning" text="dark">
+                                                        Chờ duyệt
+                                                    </Badge>
+                                                </td>
+                                                <td className="text-center">
+                                                    <Dropdown align="end">
+                                                        <Dropdown.Toggle 
+                                                            variant="light" 
+                                                            size="sm" 
+                                                            className="no-caret p-1"
+                                                        >
+                                                            <BsThreeDotsVertical />
+                                                        </Dropdown.Toggle>
+                                                        <Dropdown.Menu>
+                                                            <Dropdown.Item onClick={() => viewDetails(country)}>
+                                                                <FaEye className="me-2" />
+                                                                Xem chi tiết
+                                                            </Dropdown.Item>
+                                                            <Dropdown.Divider />
+                                                            <Dropdown.Item 
+                                                                className="text-success"
+                                                                onClick={() => handleApprove(country)}
+                                                            >
+                                                                <FaCheck className="me-2" />
+                                                                Duyệt
+                                                            </Dropdown.Item>
+                                                            <Dropdown.Item 
+                                                                className="text-danger" 
+                                                                onClick={() => handleReject(country)}
+                                                            >
+                                                                <FaTimes className="me-2" />
+                                                                Từ chối
+                                                            </Dropdown.Item>
+                                                        </Dropdown.Menu>
+                                                    </Dropdown>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        // Approved Countries Rows
+                                        paginatedData.map((country) => (
+                                            <tr key={country.id}>
+                                                <td>
+                                                    <div className="d-flex align-items-center">
+                                                        {country.flagUrl ? (
+                                                            <img
+                                                                src={country.flagUrl}
+                                                                alt={`${country.name} flag`}
+                                                                style={{
+                                                                    width: '24px',
+                                                                    height: '18px',
+                                                                    marginRight: '8px',
+                                                                    objectFit: 'cover',
+                                                                    borderRadius: '2px'
+                                                                }}
+                                                            />
+                                                        ) : (
+                                                            <span className="me-2">🏳️</span>
+                                                        )}
+                                                        <strong>{country.name}</strong>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <Badge bg="secondary">{country.code}</Badge>
+                                                </td>
+                                                <td>
+                                                    <Badge bg="primary">
+                                                        {country.mentorCount || 0} mentor(s)
+                                                    </Badge>
+                                                </td>
+                                                <td>
+                                                    <small>
+                                                        {new Date(country.createdAt).toLocaleDateString('vi-VN')}
+                                                    </small>
+                                                </td>
+                                                <td>
+                                                    <small className="text-muted">
+                                                        {country.description?.substring(0, 50)}
+                                                        {country.description?.length > 50 && '...'}
+                                                    </small>
+                                                </td>
+                                                <td>
+                                                    <Badge bg="success">Đã duyệt</Badge>
+                                                </td>
+                                                <td className="text-center">
+                                                    <Dropdown align="end">
+                                                        <Dropdown.Toggle 
+                                                            variant="light" 
+                                                            size="sm" 
+                                                            className="no-caret p-1"
+                                                        >
+                                                            <BsThreeDotsVertical />
+                                                        </Dropdown.Toggle>
+                                                        <Dropdown.Menu>
+                                                            <Dropdown.Item onClick={() => viewDetails(country)}>
+                                                                <FaEye className="me-2" />
+                                                                Xem chi tiết
+                                                            </Dropdown.Item>
+                                                            <Dropdown.Divider />
+                                                            <Dropdown.Item 
+                                                                className="text-warning"
+                                                                onClick={() => handleUnapprove(country)}
+                                                            >
+                                                                <FaUndo className="me-2" />
+                                                                Chuyển về chờ duyệt
+                                                            </Dropdown.Item>
+                                                            <Dropdown.Item 
+                                                                className="text-danger" 
+                                                                onClick={() => handleDelete(country)}
+                                                            >
+                                                                <FaTrash className="me-2" />
+                                                                Xóa
+                                                            </Dropdown.Item>
+                                                        </Dropdown.Menu>
+                                                    </Dropdown>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </Table>
+                        </>
                     )}
                 </Card.Body>
-            </Card>
-
-            {/* Approved Countries Section */}
-            <Card>
-                <Card.Header className="bg-success text-white">
-                    <h5 className="mb-0">
-                        <FaFlag className="me-2" />
-                        Các nước đã duyệt ({countries.length})
-                    </h5>
-                </Card.Header>
-                <Card.Body className="p-0">
-                    <Table responsive striped hover className="mb-0">
-                        <thead>
-                            <tr>
-                                <th>Tên nước</th>
-                                <th>Mã nước</th>
-                                <th>Số mentor</th>
-                                <th>Ngày thêm</th>
-                                <th>Trạng thái</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {countries.map((country) => (
-                                <tr key={country.id}>
-                                    <td>
-                                        <div className="d-flex align-items-center">
-                                            {country.flagUrl ? (
-                                                <img
-                                                    src={country.flagUrl}
-                                                    alt={`${country.name} flag`}
-                                                    style={{
-                                                        width: '24px',
-                                                        height: '18px',
-                                                        marginRight: '8px',
-                                                        objectFit: 'cover',
-                                                        borderRadius: '2px'
-                                                    }}
-                                                />
-                                            ) : (
-                                                <span className="me-2">🏳️</span>
-                                            )}
-                                            <strong>{country.name}</strong>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <Badge bg="secondary">{country.code}</Badge>
-                                    </td>
-                                    <td>
-                                        <Badge bg="primary">
-                                            {country.mentorCount || 0} mentor(s)
-                                        </Badge>
-                                    </td>
-                                    <td>
-                                        <small>
-                                            {new Date(country.createdAt).toLocaleDateString('vi-VN')}
-                                        </small>
-                                    </td>
-                                    <td>
-                                        <Badge bg="success">Đã duyệt</Badge>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </Table>
-                </Card.Body>
+                {paginatedData.length > 0 && (
+                    <Card.Footer className="bg-white">
+                        <div className="d-flex justify-content-between align-items-center">
+                            <small className="text-muted">
+                                Trang {currentPage} / {totalPages}
+                            </small>
+                            {renderPagination()}
+                            <small className="text-muted">
+                                {itemsPerPage} mục/trang
+                            </small>
+                        </div>
+                    </Card.Footer>
+                )}
             </Card>
 
             {/* Detail Modal */}

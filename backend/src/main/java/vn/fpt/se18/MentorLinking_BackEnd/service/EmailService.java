@@ -9,4 +9,6 @@ public interface EmailService {
     public void sendRequestFeedback(String to, String subject, String body);
 
     public void sendRejectBooking(String to, String subject, String text);
+
+    public void sendMentorRejection(String to, String mentorName, String reason);
 }
