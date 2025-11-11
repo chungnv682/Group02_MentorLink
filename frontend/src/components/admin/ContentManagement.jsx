@@ -12,6 +12,9 @@ import { Editor } from '@tinymce/tinymce-react';
 import { getAllBlogs, moderateBlog, deleteBlog, togglePublishStatus } from '../../services/blog';
 import { getAllFaqsForAdmin, togglePublishFaq, deleteFaq, updateFaq } from '../../services/faq';
 import { useToast } from '../../contexts/ToastContext';
+import { extractTextFromHtml, sanitizeHtml } from '../../utils/htmlUtils';
+import '../../styles/components/quill-editor.css';
+import '../../styles/components/tinymce-content.css';
 
 const ContentManagement = () => {
     const [showModal, setShowModal] = useState(false);

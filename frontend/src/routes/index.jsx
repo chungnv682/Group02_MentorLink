@@ -4,6 +4,10 @@ import {
   RegisterPage
 } from '../pages/auth';
 
+// Import auth components directly
+import ForgotPassword from '../components/auth/ForgotPassword';
+import ResetPassword from '../components/auth/ResetPassword';
+
 import {
   AdminPage
 } from '../pages/admin';
@@ -62,6 +66,14 @@ const routes = createBrowserRouter([
   {
     path: "/register-mentor",
     element: <Layout><RegisterMentorPage /></Layout>,
+  },
+  {
+    path: "/forgot-password",
+    element: <ForgotPassword />,
+  },
+  {
+    path: "/reset-password",
+    element: <ResetPassword />,
   },
   {
     path: "/moderator",
