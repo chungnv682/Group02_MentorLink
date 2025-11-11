@@ -16,6 +16,7 @@ public class EmailController {
 
     @GetMapping("/send-email")
     public void send(@RequestParam String to, @RequestParam String subject, @RequestParam String body) {
+        emailService.send(to, subject, body);
     }
 
 }

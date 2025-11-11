@@ -6,15 +6,20 @@ import { notifications } from "@mantine/notifications";
 import { MdError } from "react-icons/md";
 import { IconAlertCircle, IconCheck } from "@tabler/icons-react";
 import { useQueryClient } from '@tanstack/react-query';
+import ClipLoader from "react-spinners/ClipLoader";
 
 const BookingManagement = () => {
 
     // test push
     const queryClient = useQueryClient();
+    const [cancelReason, setCancelReason] = useState("");
+    const [showReasonModal, setShowReasonModal] = useState(false);
+    const [cancelBookingId, setCancelBookingId] = useState(null);
     const [showDetailModal, setShowDetailModal] = useState(false);
     const [selectedBooking, setSelectedBooking] = useState(null);
     const [activeTab, setActiveTab] = useState('pending');
     const [notification, setNotification] = useState([]);
+    const [loading, setLoading] = useState(false);
     const [bookings, setBookings] = useState({
     pending: [],
     confirmed: [],
@@ -29,105 +34,41 @@ const BookingManagement = () => {
         console.log("Mentor Activity Bookings:", mentorActivity?.data);
     }
 
+    // Hàm sắp xếp bookings theo ngày giảm dần (mới nhất trước)
+    const sortBookingsByDate = (bookingsArray) => {
+        if (!bookingsArray || !Array.isArray(bookingsArray)) return [];
+        
+        return [...bookingsArray].sort((a, b) => {
+            const dateA = new Date(a.date);
+            const dateB = new Date(b.date);
+            
+            // Sắp xếp theo ngày giảm dần (mới nhất trước)
+            if (dateB - dateA !== 0) {
+                return dateB - dateA;
+            }
+            
+            // Nếu cùng ngày, sắp xếp theo giờ bắt đầu giảm dần
+            const timeA = a.timeSlot?.timeStart || 0;
+            const timeB = b.timeSlot?.timeStart || 0;
+            return timeB - timeA;
+        });
+    };
+
     useEffect(() => {
         if (mentorActivity) {
             console.log('Mentor activity data loaded:', mentorActivity?.data);
-            setBookings(mentorActivity?.data);
+            const activityData = mentorActivity?.data;
+            
+            // Sắp xếp từng loại booking
+            setBookings({
+                pending: sortBookingsByDate(activityData.pending),
+                confirmed: sortBookingsByDate(activityData.confirmed),
+                completed: sortBookingsByDate(activityData.completed),
+                cancelled: sortBookingsByDate(activityData.cancelled)
+            });
         }
     }, [mentorActivity]);
 
-
-
-    // Mock data cho bookings
-    //  bookings = {
-    //     pending: [
-    //         {
-    //             id: 1,
-    //             customer: {
-    //                 id: 1,
-    //                 fullname: 'Nguyễn Thị Lan',
-    //                 email: 'lan.nguyen@email.com',
-    //                 phone: '0901234567'
-    //             },
-    //             service: 'Tư vấn du học',
-    //             date: '2024-01-20',
-    //             timeSlot: { timestart: 14, timeend: 15 },
-    //             status: 'PENDING',
-    //             created_at: '2024-01-15T10:30:00',
-    //             note: 'Muốn tư vấn về du học Mỹ, ngành Computer Science'
-    //         },
-    //         {
-    //             id: 2,
-    //             customer: {
-    //                 id: 2,
-    //                 fullname: 'Trần Văn Đức',
-    //                 email: 'duc.tran@email.com',
-    //                 phone: '0912345678'
-    //             },
-    //             service: 'Hướng nghiệp',
-    //             date: '2024-01-21',
-    //             timeSlot: { timestart: 10, timeend: 11 },
-    //             status: 'PENDING',
-    //             created_at: '2024-01-16T09:15:00',
-    //             note: 'Cần tư vấn về lộ trình career trong IT'
-    //         }
-    //     ],
-    //     confirmed: [
-    //         {
-    //             id: 3,
-    //             customer: {
-    //                 id: 3,
-    //                 fullname: 'Lê Thị Mai',
-    //                 email: 'mai.le@email.com',
-    //                 phone: '0923456789'
-    //             },
-    //             service: 'Luyện thi IELTS',
-    //             date: '2024-01-18',
-    //             timeSlot: { timestart: 16, timeend: 17 },
-    //             status: 'CONFIRMED',
-    //             created_at: '2024-01-12T14:20:00',
-    //             note: 'Cần luyện Speaking và Writing'
-    //         }
-    //     ],
-    //     completed: [
-    //         {
-    //             id: 4,
-    //             customer: {
-    //                 id: 4,
-    //                 fullname: 'Phạm Văn Nam',
-    //                 email: 'nam.pham@email.com',
-    //                 phone: '0934567890'
-    //             },
-    //             service: 'Tư vấn du học',
-    //             date: '2024-01-10',
-    //             timeSlot: { timestart: 9, timeend: 10 },
-    //             status: 'COMPLETED',
-    //             created_at: '2024-01-05T11:45:00',
-    //             completed_at: '2024-01-10T10:00:00',
-    //             note: 'Tư vấn về du học Canada',
-    //             rating: 5,
-    //             review: 'Mentor rất nhiệt tình và có kinh nghiệm!'
-    //         }
-    //     ],
-    //     cancelled: [
-    //         {
-    //             id: 5,
-    //             customer: {
-    //                 id: 5,
-    //                 fullname: 'Hoàng Thị Thu',
-    //                 email: 'thu.hoang@email.com',
-    //                 phone: '0945678901'
-    //             },
-    //             service: 'Hướng nghiệp',
-    //             date: '2024-01-08',
-    //             timeSlot: { timestart: 15, timeend: 16 },
-    //             status: 'CANCELLED',
-    //             created_at: '2024-01-03T16:30:00',
-    //             cancelled_at: '2024-01-07T12:00:00',
-    //             note: 'Bận việc đột xuất, không thể tham gia'
-    //         }
-    //     ]
-    // };
 
     const formatTime = (hour) => {
         if (hour === undefined || hour === null) return '—'; // hoặc '00:00'
@@ -149,12 +90,13 @@ const BookingManagement = () => {
         return <Badge bg={statusInfo.bg}>{statusInfo.text}</Badge>;
     };
 
-    const handleBookingAction = async (bookingId, action) => {
+    const handleBookingAction = async (bookingId, action, cancelReason) => {
         console.log(`${action} booking:`, bookingId);
         try{
             console.log("handle booking......");
-            
-            await handleBookingActionApi(bookingId, action);
+            setLoading(true);
+            await handleBookingActionApi(bookingId, action, cancelReason);
+            setLoading(false);
             queryClient.invalidateQueries({ queryKey: ['mentorActivity'] });
             notifications.show({
                 title: "Cập nhật thành công!",
@@ -166,6 +108,7 @@ const BookingManagement = () => {
 
 
         }catch(error){
+            setLoading(false);
             notifications.show({
             title: "Lỗi!",
             message: "Đã có lỗi trong quá trình xử lý, vui lòng thử lại sau.",
@@ -176,6 +119,44 @@ const BookingManagement = () => {
         }
         // Logic xử lý booking
     };
+
+    const handleConfirmCancel = async () => {
+        if (!cancelReason.trim()) {
+            notifications.show({
+            title: "Thiếu lý do!",
+            message: "Vui lòng nhập lý do hủy buổi hẹn.",
+            color: "red",
+            icon: <MdError />,
+            });
+            return;
+            }
+
+        try {
+            setLoading(true);
+            await handleBookingActionApi(cancelBookingId, 'CANCELLED', cancelReason);
+            setLoading(false);
+            notifications.show({
+            title: "Đã hủy lịch",
+            message: "Lý do: " + cancelReason,
+            color: "orange",
+            icon: <IconCheck />,
+            });
+            queryClient.invalidateQueries({ queryKey: ['mentorActivity'] });
+        } catch (error) {
+            setLoading(false);
+            notifications.show({
+            title: "Lỗi!",
+            message: "Không thể hủy buổi hẹn.",
+            color: "red",
+            icon: <MdError />,
+            });
+        }
+
+        setShowReasonModal(false);
+        setCancelReason('');
+        setCancelBookingId(null);
+        };
+
 
     const handleViewDetail = (booking) => {
         setSelectedBooking(booking);
@@ -206,7 +187,7 @@ const BookingManagement = () => {
                                     </div>
                                 </div>
                             </Col>
-
+                            
                             {/* Booking Details */}
                             <Col md={4}>
                                 <div className="booking-details">
@@ -270,7 +251,11 @@ const BookingManagement = () => {
                                             <Button
                                                 variant="outline-danger"
                                                 size="sm"
-                                                onClick={() => handleBookingAction(booking.id, 'CANCELLED')}
+                                                onClick={() => {
+                                                    setCancelBookingId(booking.id);
+                                                    setShowReasonModal(true);
+                                                    
+                                                }}
                                             >
                                                 <i className="bi bi-x-lg"></i>
                                             </Button>
@@ -335,6 +320,24 @@ const BookingManagement = () => {
 
     return (
         <div className="booking-management">
+            {loading && (
+            <div
+                style={{
+                position: "fixed",
+                top: 0,
+                left: 0,
+                width: "100%",
+                height: "100%",
+                backgroundColor: "rgba(255,255,255,0.6)",
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                zIndex: 9999,
+                }}
+            >
+                <ClipLoader size={60} color="#2563eb" />
+            </div>
+            )}
             {/* Header */}
             <div className="d-flex justify-content-between align-items-center mb-4">
                 <div>
@@ -399,7 +402,7 @@ const BookingManagement = () => {
                             <div className="stat-icon" style={{ background: 'linear-gradient(135deg, #dc3545, #c82333)' }}>
                                 <i className="bi bi-x-circle"></i>
                             </div>
-                            <div className="stat-value">{bookings.cancelled.length}</div>
+                            <div className="stat-value">{bookings.cancelled?.length}</div>
                             <p className="stat-label">Đã hủy</p>
                         </Card.Body>
                     </Card>
@@ -431,7 +434,12 @@ const BookingManagement = () => {
                                 <Nav.Link eventKey="completed">Đã hoàn thành</Nav.Link>
                             </Nav.Item>
                             <Nav.Item>
-                                <Nav.Link eventKey="cancelled">Đã hủy</Nav.Link>
+                                <Nav.Link eventKey="cancelled">Đã hủy
+                                        {bookings.cancelled.length > 0 && (
+                                        <Badge bg="danger" className="ms-2">{bookings.cancelled.length}</Badge>
+                                    )}
+
+                                </Nav.Link>
                             </Nav.Item>
                         </Nav>
                     </Tab.Container>
@@ -648,6 +656,34 @@ const BookingManagement = () => {
                         Đóng
                     </Button>
                 </Modal.Footer>
+            </Modal>
+
+            <Modal show={showReasonModal} onHide={() => setShowReasonModal(false)}>
+            <Modal.Header closeButton>
+                <Modal.Title>Nhập lý do hủy lịch</Modal.Title>
+            </Modal.Header>
+            <Modal.Body>
+                <Form>
+                <Form.Group>
+                    <Form.Label>Lý do hủy:</Form.Label>
+                    <Form.Control
+                    as="textarea"
+                    rows={3}
+                    placeholder="Nhập lý do hủy buổi hẹn..."
+                    value={cancelReason}
+                    onChange={(e) => setCancelReason(e.target.value)}
+                    />
+                </Form.Group>
+                </Form>
+            </Modal.Body>
+            <Modal.Footer>
+                <Button variant="secondary" onClick={() => setShowReasonModal(false)}>
+                Đóng
+                </Button>
+                <Button variant="danger" onClick={handleConfirmCancel}>
+                <i className="bi bi-x-circle me-2"></i> Xác nhận hủy
+                </Button>
+            </Modal.Footer>
             </Modal>
 
             <style jsx>{`

@@ -9,6 +9,8 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 public class MentorExperienceResponse {
+    private Long id;
+    
     private String companyName;
 
     private String position;
@@ -18,4 +20,8 @@ public class MentorExperienceResponse {
     private java.time.LocalDate endDate;
 
     private String experienceImage;
+
+    private String status;
+
+    private String statusCode;
 }
