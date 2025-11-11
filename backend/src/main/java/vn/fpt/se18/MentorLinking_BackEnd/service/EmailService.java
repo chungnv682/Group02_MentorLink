@@ -18,4 +18,6 @@ public interface EmailService {
     public void sendOtp(String to, String subject, String otpCode);
 
     public void sendMentorRejection(String to, String mentorName, String reason);
+
+    public void sendPasswordResetEmail(String to, String subject, String userName, String resetLink, int expiryMinutes);
 }
