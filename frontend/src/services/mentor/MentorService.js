@@ -31,7 +31,7 @@ class MentorService {
     // Get mentor by ID
     static async getMentorById(id) {
         try {
-            const response = await instance.get(`/mentors/${id}`);
+            const response = await instance.get(`/api/mentors/${id}`);
             return response;
         } catch (error) {
             console.error('Error fetching mentor detail:', error);
@@ -166,7 +166,7 @@ class MentorService {
             if (!mentorEmail) {
                 throw new Error('No mentor ID found for current user');
             }
-            const response = await instance.get(`/mentors/activity/${mentorEmail}`);
+            const response = await instance.get(`/api/mentors/activity/${mentorEmail}`);
             return response;
         } catch (error) {
             console.error('Error fetching mentor activity:', error);

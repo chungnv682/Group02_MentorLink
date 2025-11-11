@@ -4,6 +4,7 @@ import 'quill/dist/quill.snow.css';
 import '../../../styles/components/quill-editor.css';
 import { createBlog, updateBlog, getBlogsByMentor, deleteBlogByMentor } from '../../../services/blog';
 import { instance } from '../../../api/axios';
+import { extractTextFromHtml } from '../../../utils/htmlUtils';
 import { API_ENDPOINTS } from '../../../utils';
 import { AuthContext } from '../../../contexts/AuthContext';
 import { useToast } from '../../../contexts/ToastContext';
@@ -364,7 +365,7 @@ const ContentManagement = () => {
                                                         <div>
                                                             <div className="fw-medium">{blog.title}</div>
                                                             <small className="text-muted">
-                                                                {blog.content ? blog.content.replace(/<[^>]*>/g, '').substring(0, 100) : ''}...
+                                                                {extractTextFromHtml(blog.content, 100)}
                                                             </small>
                                                         </div>
                                                     </td>
