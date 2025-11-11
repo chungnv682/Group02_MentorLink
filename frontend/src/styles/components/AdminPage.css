@@ -149,6 +149,11 @@
     color: white;
 }
 
+.admin-nav .nav-link.active:hover .nav-icon,
+.admin-nav .nav-link.active:hover .nav-text {
+    color: white;
+}
+
 .nav-icon {
     font-size: 1.2rem;
     width: 24px;

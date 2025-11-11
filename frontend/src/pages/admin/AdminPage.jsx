@@ -347,53 +347,6 @@ const AdminPage = () => {
         </Row>
       )}
 
-      <Row className="mb-4">
-        <Col>
-          <div className="d-flex justify-content-between align-items-center">
-            <div>
-              <h2 className="page-title mb-1">Quản trị hệ thống</h2>
-              <p className="text-muted mb-0">
-                Tổng quan và quản lý toàn bộ hệ thống MentorLink
-              </p>
-            </div>
-            <div className="admin-stats d-flex gap-3">
-              {loading ? (
-                <div className="spinner-border text-primary" role="status">
-                  <span className="visually-hidden">Loading...</span>
-                </div>
-              ) : (
-                <>
-                  <div className="stat-item text-center">
-                    <div className="stat-number text-primary">
-                      {stats?.totalUsers?.toLocaleString() || 0}
-                    </div>
-                    <div className="stat-label">Người dùng</div>
-                  </div>
-                  <div className="stat-item text-center">
-                    <div className="stat-number text-success">
-                      {stats?.totalMentors || 0}
-                    </div>
-                    <div className="stat-label">Mentor</div>
-                  </div>
-                  <div className="stat-item text-center">
-                    <div className="stat-number text-warning">
-                      {stats?.totalBookings || 0}
-                    </div>
-                    <div className="stat-label">Đặt lịch</div>
-                  </div>
-                  <div className="stat-item text-center">
-                    <div className="stat-number text-info">
-                      {stats?.pendingMentors || 0}
-                    </div>
-                    <div className="stat-label">Chờ duyệt</div>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </Col>
-      </Row>
-
       <Tab.Container activeKey={activeTab} onSelect={setActiveTab}>
         <Row>
           <Col lg={3} md={4} className="mb-4">
