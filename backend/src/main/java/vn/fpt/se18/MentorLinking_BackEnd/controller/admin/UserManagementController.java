@@ -11,6 +11,7 @@ import vn.fpt.se18.MentorLinking_BackEnd.dto.request.BaseRequest;
 import vn.fpt.se18.MentorLinking_BackEnd.dto.request.user.GetUserRequest;
 import vn.fpt.se18.MentorLinking_BackEnd.dto.response.BaseResponse;
 import vn.fpt.se18.MentorLinking_BackEnd.dto.response.PageResponse;
+import vn.fpt.se18.MentorLinking_BackEnd.dto.response.admin.AdminUserDetailResponse;
 import vn.fpt.se18.MentorLinking_BackEnd.dto.response.user.UserDetailResponse;
 import vn.fpt.se18.MentorLinking_BackEnd.dto.response.user.UserStatisticsResponse;
 import vn.fpt.se18.MentorLinking_BackEnd.service.UserService;
@@ -34,6 +35,11 @@ public class UserManagementController {
         return userService.getUserById(id);
     }
 
+    @GetMapping("/detail/{id}")
+    public BaseResponse<AdminUserDetailResponse> getAdminUserDetailById(@PathVariable Long id) {
+        return userService.getAdminUserDetailById(id);
+    }
+
     @DeleteMapping("/delete/{id}")
     public BaseResponse<Void> deleteUser(@PathVariable Long id) {
         return userService.deleteUser(id);
@@ -42,5 +48,15 @@ public class UserManagementController {
     @GetMapping("/statistics")
     public BaseResponse<UserStatisticsResponse> getUserStatistics() {
         return userService.getUserStatistics();
+    }
+
+    @PutMapping("/toggle-status/{id}")
+    public BaseResponse<Void> toggleUserStatus(@PathVariable Long id) {
+        return userService.toggleBlockUser(id);
+    }
+
+    @PostMapping("/reject-mentor")
+    public BaseResponse<Void> rejectMentor(@Valid @RequestBody vn.fpt.se18.MentorLinking_BackEnd.dto.request.user.RejectMentorRequest request) {
+        return userService.rejectMentor(request.getUserId(), request.getReason());
     }
 }

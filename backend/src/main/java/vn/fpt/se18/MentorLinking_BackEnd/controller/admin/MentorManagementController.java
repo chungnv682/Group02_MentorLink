@@ -67,4 +67,28 @@ public class MentorManagementController {
     public BaseResponse<MentorStatisticsResponse> getMentorStatistics() {
         return mentorService.getMentorStatistics();
     }
+
+    @GetMapping("/{id}/education")
+    @Operation(summary = "Get mentor's education history")
+    public BaseResponse<?> getMentorEducation(@PathVariable Long id) {
+        return mentorService.getMentorEducation(id);
+    }
+
+    @GetMapping("/{id}/experience")
+    @Operation(summary = "Get mentor's work experience")
+    public BaseResponse<?> getMentorExperience(@PathVariable Long id) {
+        return mentorService.getMentorExperience(id);
+    }
+
+    @GetMapping("/{id}/certificates")
+    @Operation(summary = "Get mentor's certificates and tests")
+    public BaseResponse<?> getMentorCertificates(@PathVariable Long id) {
+        return mentorService.getMentorCertificates(id);
+    }
+
+    @GetMapping("/{id}/services")
+    @Operation(summary = "Get mentor's services")
+    public BaseResponse<?> getMentorServices(@PathVariable Long id) {
+        return mentorService.getMentorServices(id);
+    }
 }
