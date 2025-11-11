@@ -92,4 +92,15 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     
     // Find bookings by schedule id
     List<Booking> findBySchedule_Id(Long scheduleId);
+    
+    // Find bookings by status code and payment process
+    @Query("SELECT b FROM Booking b " +
+           "LEFT JOIN FETCH b.schedule s " +
+           "LEFT JOIN FETCH s.timeSlots ts " +
+           "WHERE b.status.code = :statusCode " +
+           "AND b.paymentProcess = :paymentProcess")
+    List<Booking> findByStatusCodeAndPaymentProcess(
+            @Param("statusCode") String statusCode,
+            @Param("paymentProcess") PaymentProcess paymentProcess
+    );
 }
