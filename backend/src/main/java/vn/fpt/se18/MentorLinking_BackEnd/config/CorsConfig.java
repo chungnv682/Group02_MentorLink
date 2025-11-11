@@ -36,28 +36,4 @@ public class CorsConfig {
         return source;
     }
 
-    @Bean
-    public WebMvcConfigurer corsConfigurer() {
-        return new WebMvcConfigurer() {
-            @Override
-            public void addCorsMappings(CorsRegistry registry) {
-                // ✅ FIX: Use allowedOriginPatterns instead of wildcard when credentials enabled
-                registry.addMapping("/**")
-                        .allowedOriginPatterns(
-                            "http://localhost:*",
-                            "http://127.0.0.1:*",
-                            "https://localhost:*",
-                            "https://127.0.0.1:*",
-                            "http://localhost:3000",
-                            "http://localhost:5173",
-                            "http://localhost:5174"
-                        )
-                        .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH")
-                        .allowedHeaders("*")
-                        .allowCredentials(true)
-                        .maxAge(3600);
-            }
-        };
-    }
-
 }

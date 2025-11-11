@@ -39,12 +39,13 @@ export const cleanupUnpaidBookings = async () => {
     }
 };
 
-export const handleBookingActionApi = async (bookingId, action) => {
+export const handleBookingActionApi = async (bookingId, action, cancelReason) => {
     try {
         console.log(`Handling booking action: ${action} for bookingId: ${bookingId}`);
         const response = await instance.post(`/api/mentors/handle-booking`, {
             bookingId,
-            action
+            action,
+            cancelReason
         });
         console.log('Booking action response:', response);
         return response;

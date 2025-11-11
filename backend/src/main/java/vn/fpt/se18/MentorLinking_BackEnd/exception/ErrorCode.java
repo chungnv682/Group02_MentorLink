@@ -20,6 +20,7 @@ public enum ErrorCode {
     JWT_UNSUPPORTED("11", "JWT token is unsupported", HttpStatus.UNAUTHORIZED),
     JWT_ILLEGAL_ARGUMENT("12", "JWT token is invalid", HttpStatus.UNAUTHORIZED),
     EMAIL_INVALID("30", "EMAIL_INVALID", HttpStatus.BAD_REQUEST),
+    SEND_MAIL_FAILED("31", "SEND_MAIL_FAILED", HttpStatus.INTERNAL_SERVER_ERROR),
 
 
     ROLE_NOT_FOUND("13", "Vai trò không tồn tại", HttpStatus.NOT_FOUND),
@@ -36,6 +37,9 @@ public enum ErrorCode {
     STATUS_NOT_EXISTED("21", "Trạng thái không tồn tại", HttpStatus.NOT_FOUND),
     USER_NOT_EXISTED("22", "Người dùng không tồn tại", HttpStatus.NOT_FOUND),
     BANNER_NOT_EXISTED("23", "Banner không tồn tại", HttpStatus.NOT_FOUND),
+    MENTOR_SERVICE_NOT_FOUND("24", "Dịch vụ mentor không tồn tại", HttpStatus.NOT_FOUND),
+    ACCOUNT_LOCKED("25", "Tài khoản đã bị khóa", HttpStatus.FORBIDDEN),
+    MENTOR_PENDING_APPROVAL("26", "Yêu cầu làm cố vấn của bạn đang chờ phê duyệt", HttpStatus.FORBIDDEN),
     ;
     
     private final String code;
