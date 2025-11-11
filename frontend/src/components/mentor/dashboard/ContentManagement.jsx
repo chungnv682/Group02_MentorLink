@@ -366,6 +366,7 @@ const ContentManagement = () => {
                                                             <div className="fw-medium">{blog.title}</div>
                                                             <small className="text-muted">
                                                                 {extractTextFromHtml(blog.content, 100)}
+                                                                {blog.content ? blog.content.replace(/<[^>]*>/g, '').substring(0, 100) : ''}...
                                                             </small>
                                                         </div>
                                                     </td>
