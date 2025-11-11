@@ -11,6 +11,9 @@ import { BsThreeDotsVertical } from 'react-icons/bs';
 import { getAllBlogs, moderateBlog, deleteBlog, togglePublishStatus } from '../../services/blog';
 import { getAllFaqsForAdmin, togglePublishFaq, deleteFaq, updateFaq } from '../../services/faq';
 import { useToast } from '../../contexts/ToastContext';
+import { extractTextFromHtml, sanitizeHtml } from '../../utils/htmlUtils';
+import '../../styles/components/quill-editor.css';
+import '../../styles/components/tinymce-content.css';
 
 const ContentManagement = () => {
     const [showModal, setShowModal] = useState(false);
@@ -624,7 +627,7 @@ const ContentManagement = () => {
                                                         <div>
                                                             <div className="fw-medium">{blog.title}</div>
                                                             <small className="text-muted">
-                                                                {blog.content ? blog.content.substring(0, 60) + '...' : ''}
+                                                                {extractTextFromHtml(blog.content, 60)}
                                                             </small>
                                                         </div>
                                                     </td>
@@ -903,8 +906,8 @@ const ContentManagement = () => {
 
                             <div className="blog-content">
                                 <h6>Nội dung:</h6>
-                                <div className="p-3 bg-light rounded">
-                                    {selectedBlog.content}
+                                <div className="p-3 bg-light rounded blog-content-display tinymce-content-display">
+                                    <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(selectedBlog.content) }} />
                                 </div>
                             </div>
 

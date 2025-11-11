@@ -225,4 +225,37 @@ public class EmailServiceImpl implements EmailService {
         }
     }
 
+    @Override
+    public void sendPasswordResetEmail(String to, String subject, String userName, String resetLink, int expiryMinutes) {
+        try {
+            // ✅ 1. Chuẩn bị dữ liệu để inject vào template
+            Map<String, Object> model = new HashMap<>();
+            model.put("userName", userName != null ? userName : "bạn");
+            model.put("resetLink", resetLink);
+            model.put("expiryMinutes", expiryMinutes);
+
+            Context context = new Context();
+            context.setVariables(model);
+
+            // ✅ 2. Render HTML từ template `password-reset-email.html`
+            String htmlContent = templateEngine.process("password-reset-email.html", context);
+
+            // ✅ 3. Gửi email HTML
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            helper.setFrom("nguyenbahien170604@gmail.com");
+            helper.setTo(to);
+            helper.setSubject(subject);
+            helper.setText(htmlContent, true); // true = HTML content
+
+            mailSender.send(message);
+            log.info("✅ Email reset password gửi thành công đến {}", to);
+
+        } catch (MessagingException e) {
+            log.error("❌ Lỗi gửi email reset password: {}", e.getMessage());
+            throw new AppException(ErrorCode.SEND_MAIL_FAILED);
+        }
+    }
+
 }
