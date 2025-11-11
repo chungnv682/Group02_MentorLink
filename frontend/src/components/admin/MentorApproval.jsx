@@ -15,8 +15,12 @@ import {
     rejectMentor,
     bulkApproveMentors,
     bulkRejectMentors,
-    getMentorStatistics
-} from '../../services/admin/mentorManagementService';
+    getMentorStatistics,
+    getMentorEducation,
+    getMentorExperience,
+    getMentorCertificates,
+    getMentorServices
+} from '../../services/admin';
 import { useToast } from '../../contexts/ToastContext';
 
 const MentorApproval = () => {
@@ -38,6 +42,17 @@ const MentorApproval = () => {
         size: 10,
         totalPages: 0,
         totalElements: 0
+    });
+    // New states for mentor details tabs
+    const [mentorEducation, setMentorEducation] = useState([]);
+    const [mentorExperience, setMentorExperience] = useState([]);
+    const [mentorCertificates, setMentorCertificates] = useState([]);
+    const [mentorServices, setMentorServices] = useState([]);
+    const [loadingDetails, setLoadingDetails] = useState({
+        education: false,
+        experience: false,
+        certificates: false,
+        services: false
     });
     const { showToast } = useToast();
     const headerCheckboxRef = useRef(null);
@@ -130,20 +145,130 @@ const MentorApproval = () => {
 
     const handleViewMentor = async (mentor) => {
         try {
-            setLoading(true);
+            // Don't use setLoading here - it affects the main table display
+            // Use loadingDetails for individual tab loading states
             const response = await getMentorById(mentor.id);
             
             if (response.respCode === "0" || response.success) {
-                setSelectedMentor(response.data);
+                const mentorData = response.data;
+                setSelectedMentor(mentorData);
                 setShowModal(true);
+                
+                // Extract nested data if available from response
+                // Backend might return mentorEducations, mentorExperiences, mentorServices, mentorTests
+                console.log('Mentor data received:', mentorData);
+                
+                setMentorEducation(mentorData.mentorEducations || mentorData.educations || []);
+                setMentorExperience(mentorData.mentorExperiences || mentorData.experiences || []);
+                setMentorCertificates(mentorData.mentorTests || mentorData.tests || mentorData.certificates || []);
+                setMentorServices(mentorData.mentorServices || mentorData.services || []);
+                
+                // If services are not in response but serviceCount > 0, fetch them
+                if (!mentorData.mentorServices && !mentorData.services && mentorData.serviceCount > 0) {
+                    console.log('Service count is', mentorData.serviceCount, 'but no service details, fetching...');
+                    fetchMentorServices(mentor.id);
+                }
+                
+                // Similarly for other data
+                if (!mentorData.mentorEducations && !mentorData.educations) {
+                    fetchMentorEducation(mentor.id);
+                }
+                if (!mentorData.mentorExperiences && !mentorData.experiences) {
+                    fetchMentorExperience(mentor.id);
+                }
+                if (!mentorData.mentorTests && !mentorData.tests) {
+                    fetchMentorCertificates(mentor.id);
+                }
             } else {
                 showToast('Không thể tải thông tin mentor', 'error');
             }
         } catch (error) {
             console.error('Error fetching mentor details:', error);
             showToast('Không thể tải thông tin mentor', 'error');
+        }
+    };
+
+    // Fetch mentor education
+    const fetchMentorEducation = async (mentorId) => {
+        if (mentorEducation.length > 0) return; // Already loaded
+        
+        try {
+            setLoadingDetails(prev => ({ ...prev, education: true }));
+            const response = await getMentorEducation(mentorId);
+            
+            if (response.respCode === "0" || response.success) {
+                setMentorEducation(response.data || []);
+            } else {
+                showToast('Không thể tải thông tin học vấn', 'error');
+            }
+        } catch (error) {
+            console.error('Error fetching mentor education:', error);
+            showToast('Không thể tải thông tin học vấn', 'error');
         } finally {
-            setLoading(false);
+            setLoadingDetails(prev => ({ ...prev, education: false }));
+        }
+    };
+
+    // Fetch mentor experience
+    const fetchMentorExperience = async (mentorId) => {
+        if (mentorExperience.length > 0) return; // Already loaded
+        
+        try {
+            setLoadingDetails(prev => ({ ...prev, experience: true }));
+            const response = await getMentorExperience(mentorId);
+            
+            if (response.respCode === "0" || response.success) {
+                setMentorExperience(response.data || []);
+            } else {
+                showToast('Không thể tải thông tin kinh nghiệm', 'error');
+            }
+        } catch (error) {
+            console.error('Error fetching mentor experience:', error);
+            showToast('Không thể tải thông tin kinh nghiệm', 'error');
+        } finally {
+            setLoadingDetails(prev => ({ ...prev, experience: false }));
+        }
+    };
+
+    // Fetch mentor certificates
+    const fetchMentorCertificates = async (mentorId) => {
+        if (mentorCertificates.length > 0) return; // Already loaded
+        
+        try {
+            setLoadingDetails(prev => ({ ...prev, certificates: true }));
+            const response = await getMentorCertificates(mentorId);
+            
+            if (response.respCode === "0" || response.success) {
+                setMentorCertificates(response.data || []);
+            } else {
+                showToast('Không thể tải thông tin chứng chỉ', 'error');
+            }
+        } catch (error) {
+            console.error('Error fetching mentor certificates:', error);
+            showToast('Không thể tải thông tin chứng chỉ', 'error');
+        } finally {
+            setLoadingDetails(prev => ({ ...prev, certificates: false }));
+        }
+    };
+
+    // Fetch mentor services
+    const fetchMentorServices = async (mentorId) => {
+        if (mentorServices.length > 0) return; // Already loaded
+        
+        try {
+            setLoadingDetails(prev => ({ ...prev, services: true }));
+            const response = await getMentorServices(mentorId);
+            
+            if (response.respCode === "0" || response.success) {
+                setMentorServices(response.data || []);
+            } else {
+                showToast('Không thể tải thông tin dịch vụ', 'error');
+            }
+        } catch (error) {
+            console.error('Error fetching mentor services:', error);
+            showToast('Không thể tải thông tin dịch vụ', 'error');
+        } finally {
+            setLoadingDetails(prev => ({ ...prev, services: false }));
         }
     };
 
@@ -265,17 +390,6 @@ const MentorApproval = () => {
             <div className="d-flex justify-content-between align-items-center mb-4">
                 <div>
                     <h4 className="mb-1">Duyệt/xác thực mentor</h4>
-                    <p className="text-muted mb-0">Xem xét và phê duyệt đơn đăng ký mentor</p>
-                </div>
-                <div className="d-flex gap-2">
-                    <Button variant="outline-success" size="sm">
-                        <FaDownload className="me-1" />
-                        Xuất báo cáo
-                    </Button>
-                    <Button variant="primary" size="sm">
-                        <FaCheck className="me-1" />
-                        Duyệt hàng loạt
-                    </Button>
                 </div>
             </div>
 
@@ -548,19 +662,46 @@ const MentorApproval = () => {
                         <Tab.Container defaultActiveKey="personal">
                             <Nav variant="tabs" className="mb-3">
                                 <Nav.Item>
-                                    <Nav.Link eventKey="personal">Thông tin cá nhân</Nav.Link>
+                                    <Nav.Link eventKey="personal">
+                                        <FaUser className="me-1" />
+                                        Thông tin cá nhân
+                                    </Nav.Link>
                                 </Nav.Item>
                                 <Nav.Item>
-                                    <Nav.Link eventKey="services">Dịch vụ</Nav.Link>
+                                    <Nav.Link 
+                                        eventKey="services"
+                                        onClick={() => fetchMentorServices(selectedMentor.id)}
+                                    >
+                                        <FaBriefcase className="me-1" />
+                                        Dịch vụ
+                                    </Nav.Link>
                                 </Nav.Item>
                                 <Nav.Item>
-                                    <Nav.Link eventKey="education">Học vấn</Nav.Link>
+                                    <Nav.Link 
+                                        eventKey="education"
+                                        onClick={() => fetchMentorEducation(selectedMentor.id)}
+                                    >
+                                        <FaGraduationCap className="me-1" />
+                                        Học vấn
+                                    </Nav.Link>
                                 </Nav.Item>
                                 <Nav.Item>
-                                    <Nav.Link eventKey="experience">Kinh nghiệm</Nav.Link>
+                                    <Nav.Link 
+                                        eventKey="experience"
+                                        onClick={() => fetchMentorExperience(selectedMentor.id)}
+                                    >
+                                        <FaBriefcase className="me-1" />
+                                        Kinh nghiệm
+                                    </Nav.Link>
                                 </Nav.Item>
                                 <Nav.Item>
-                                    <Nav.Link eventKey="tests">Chứng chỉ</Nav.Link>
+                                    <Nav.Link 
+                                        eventKey="tests"
+                                        onClick={() => fetchMentorCertificates(selectedMentor.id)}
+                                    >
+                                        <FaCertificate className="me-1" />
+                                        Chứng chỉ
+                                    </Nav.Link>
                                 </Nav.Item>
                             </Nav>
 
@@ -601,30 +742,240 @@ const MentorApproval = () => {
                                 </Tab.Pane>
 
                                 <Tab.Pane eventKey="services">
-                                    <Alert variant="info">
-                                        <strong>Số lượng dịch vụ:</strong> {selectedMentor.serviceCount || 0}
-                                    </Alert>
-                                    <Alert variant="secondary">
-                                        Chi tiết dịch vụ cần được tải từ API riêng (đang phát triển)
-                                    </Alert>
+                                    {loadingDetails.services ? (
+                                        <div className="text-center py-5">
+                                            <Spinner animation="border" variant="primary" />
+                                            <p className="mt-2 text-muted">Đang tải dịch vụ...</p>
+                                        </div>
+                                    ) : (
+                                        <div>
+                                            <Alert variant="info" className="mb-3">
+                                                <div className="d-flex align-items-center">
+                                                    <FaBriefcase size={24} className="me-3" />
+                                                    <div>
+                                                        <strong>Tổng số dịch vụ:</strong> {selectedMentor.serviceCount || 0}
+                                                        <p className="mb-0 mt-1 small text-muted">
+                                                            {selectedMentor.serviceCount > 0 
+                                                                ? 'Mentor này đã đăng ký các dịch vụ tư vấn.'
+                                                                : 'Mentor này chưa đăng ký dịch vụ nào.'}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </Alert>
+                                            
+                                            {mentorServices.length > 0 ? (
+                                                <Table responsive hover>
+                                                    <thead className="bg-light">
+                                                        <tr>
+                                                            <th>Tên dịch vụ</th>
+                                                            <th>Mô tả</th>
+                                                            <th>Trạng thái</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {mentorServices.map((service, index) => (
+                                                            <tr key={index}>
+                                                                <td className="fw-medium">{service.serviceName || service.name || 'N/A'}</td>
+                                                                <td>{service.description || 'N/A'}</td>
+                                                                <td>
+                                                                    <Badge bg={service.statusCode === 'APPROVED' ? 'success' : service.statusCode === 'PENDING' ? 'warning' : 'secondary'} className="small px-2 py-1">
+                                                                        {service.statusName || 'N/A'}
+                                                                    </Badge>
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </Table>
+                                            ) : (
+                                                <div className="text-center py-4">
+                                                    <FaBriefcase size={48} className="text-muted mb-3" />
+                                                    <p className="text-muted">Chi tiết dịch vụ sẽ được hiển thị khi API hoàn tất</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
                                 </Tab.Pane>
 
                                 <Tab.Pane eventKey="education">
-                                    <Alert variant="secondary">
-                                        Thông tin học vấn cần được tải từ API riêng (đang phát triển)
-                                    </Alert>
+                                    {loadingDetails.education ? (
+                                        <div className="text-center py-5">
+                                            <Spinner animation="border" variant="primary" />
+                                            <p className="mt-2 text-muted">Đang tải học vấn...</p>
+                                        </div>
+                                    ) : mentorEducation.length === 0 ? (
+                                        <div className="text-center py-5">
+                                            <FaGraduationCap size={48} className="text-muted mb-3" />
+                                            <p className="text-muted mb-2">Chưa có thông tin học vấn</p>
+                                            <small className="text-muted">
+                                                Bằng cấp cao nhất: <strong>{selectedMentor.highestDegreeName || 'Chưa cập nhật'}</strong>
+                                            </small>
+                                        </div>
+                                    ) : (
+                                        <div>
+                                            {mentorEducation.map((edu, index) => (
+                                                <Card key={index} className="mb-3">
+                                                    <Card.Body>
+                                                        <Row>
+                                                            <Col md={8}>
+                                                                <h6 className="fw-bold mb-2">
+                                                                    <FaGraduationCap className="me-2 text-primary" />
+                                                                    {edu.degree || edu.schoolName || 'N/A'}
+                                                                </h6>
+                                                                <p className="mb-1 fw-medium">{edu.institution || edu.major || 'N/A'}</p>
+                                                                <p className="mb-1 text-muted">{edu.fieldOfStudy || edu.major || 'N/A'}</p>
+                                                                {edu.description && (
+                                                                    <p className="mb-0 text-muted small">{edu.description}</p>
+                                                                )}
+                                                            </Col>
+                                                            <Col md={4} className="text-end">
+                                                                <div className="mb-1">
+                                                                    <Badge bg="secondary" className="small px-2 py-1">
+                                                                        {edu.startDate && edu.endDate 
+                                                                            ? `${new Date(edu.startDate).getFullYear()} - ${new Date(edu.endDate).getFullYear()}`
+                                                                            : 'N/A'}
+                                                                    </Badge>
+                                                                    {edu.current && (
+                                                                        <Badge bg="success" className="ms-2 small px-2 py-1">Hiện tại</Badge>
+                                                                    )}
+                                                                </div>
+                                                                {edu.statusCode && (
+                                                                    <Badge bg={edu.statusCode === 'APPROVED' ? 'success' : 'warning'} className="small px-2 py-1">
+                                                                        {edu.statusName}
+                                                                    </Badge>
+                                                                )}
+                                                            </Col>
+                                                        </Row>
+                                                    </Card.Body>
+                                                </Card>
+                                            ))}
+                                        </div>
+                                    )}
                                 </Tab.Pane>
 
                                 <Tab.Pane eventKey="experience">
-                                    <Alert variant="secondary">
-                                        Thông tin kinh nghiệm cần được tải từ API riêng (đang phát triển)
-                                    </Alert>
+                                    {loadingDetails.experience ? (
+                                        <div className="text-center py-5">
+                                            <Spinner animation="border" variant="primary" />
+                                            <p className="mt-2 text-muted">Đang tải kinh nghiệm...</p>
+                                        </div>
+                                    ) : mentorExperience.length === 0 ? (
+                                        <div className="text-center py-5">
+                                            <FaBriefcase size={48} className="text-muted mb-3" />
+                                            <p className="text-muted mb-2">Chưa có thông tin kinh nghiệm làm việc</p>
+                                            <small className="text-muted">
+                                                Chức danh hiện tại: <strong>{selectedMentor.title || 'Chưa cập nhật'}</strong>
+                                            </small>
+                                        </div>
+                                    ) : (
+                                        <div>
+                                            {mentorExperience.map((exp, index) => (
+                                                <Card key={index} className="mb-3">
+                                                    <Card.Body>
+                                                        <Row>
+                                                            <Col md={8}>
+                                                                <h6 className="fw-bold mb-2">
+                                                                    <FaBriefcase className="me-2 text-success" />
+                                                                    {exp.title || exp.position || 'N/A'}
+                                                                </h6>
+                                                                <p className="mb-1 fw-medium">{exp.company || exp.companyName || 'N/A'}</p>
+                                                                <p className="mb-1 text-muted">{exp.location || 'N/A'}</p>
+                                                                {exp.description && (
+                                                                    <p className="mb-0 text-muted small">{exp.description}</p>
+                                                                )}
+                                                            </Col>
+                                                            <Col md={4} className="text-end">
+                                                                <div className="mb-1">
+                                                                    <Badge bg="secondary" className="small px-2 py-1">
+                                                                        {exp.startDate && exp.endDate 
+                                                                            ? `${new Date(exp.startDate).getFullYear()} - ${new Date(exp.endDate).getFullYear()}`
+                                                                            : 'N/A'}
+                                                                    </Badge>
+                                                                    {exp.current && (
+                                                                        <Badge bg="success" className="ms-2 small px-2 py-1">Hiện tại</Badge>
+                                                                    )}
+                                                                </div>
+                                                                {exp.statusCode && (
+                                                                    <Badge bg={exp.statusCode === 'APPROVED' ? 'success' : 'warning'} className="small px-2 py-1">
+                                                                        {exp.statusName}
+                                                                    </Badge>
+                                                                )}
+                                                            </Col>
+                                                        </Row>
+                                                    </Card.Body>
+                                                </Card>
+                                            ))}
+                                        </div>
+                                    )}
                                 </Tab.Pane>
 
                                 <Tab.Pane eventKey="tests">
-                                    <Alert variant="secondary">
-                                        Thông tin chứng chỉ cần được tải từ API riêng (đang phát triển)
-                                    </Alert>
+                                    {loadingDetails.certificates ? (
+                                        <div className="text-center py-5">
+                                            <Spinner animation="border" variant="primary" />
+                                            <p className="mt-2 text-muted">Đang tải chứng chỉ...</p>
+                                        </div>
+                                    ) : mentorCertificates.length === 0 ? (
+                                        <div className="text-center py-5">
+                                            <FaCertificate size={48} className="text-muted mb-3" />
+                                            <p className="text-muted">Chưa có chứng chỉ hoặc bài test nào</p>
+                                        </div>
+                                    ) : (
+                                        <div>
+                                            <Row>
+                                                {mentorCertificates.map((cert, index) => (
+                                                    <Col md={6} key={index} className="mb-3">
+                                                        <Card>
+                                                            <Card.Body>
+                                                                <div className="d-flex align-items-start">
+                                                                    <FaCertificate className="text-warning me-3 mt-1" size={24} />
+                                                                    <div className="flex-grow-1">
+                                                                        <h6 className="fw-bold mb-2">{cert.name || cert.testName || 'N/A'}</h6>
+                                                                        <p className="mb-1 text-muted small">
+                                                                            <strong>Tổ chức:</strong> {cert.organization || 'N/A'}
+                                                                        </p>
+                                                                        {cert.score && (
+                                                                            <p className="mb-1 text-muted small">
+                                                                                <strong>Điểm số:</strong> {cert.score}
+                                                                            </p>
+                                                                        )}
+                                                                        <p className="mb-1 text-muted small">
+                                                                            <strong>Ngày cấp:</strong> {cert.issueDate ? new Date(cert.issueDate).toLocaleDateString('vi-VN') : 'N/A'}
+                                                                        </p>
+                                                                        {cert.expiryDate && (
+                                                                            <p className="mb-1 text-muted small">
+                                                                                <strong>Ngày hết hạn:</strong> {new Date(cert.expiryDate).toLocaleDateString('vi-VN')}
+                                                                            </p>
+                                                                        )}
+                                                                        {cert.credentialId && (
+                                                                            <p className="mb-1 text-muted small">
+                                                                                <strong>ID:</strong> {cert.credentialId}
+                                                                            </p>
+                                                                        )}
+                                                                        {cert.statusCode && (
+                                                                            <Badge bg={cert.statusCode === 'APPROVED' ? 'success' : 'warning'} className="mt-2 small px-2 py-1">
+                                                                                {cert.statusName}
+                                                                            </Badge>
+                                                                        )}
+                                                                        {(cert.credentialUrl || cert.scoreImage) && (
+                                                                            <a 
+                                                                                href={cert.credentialUrl || cert.scoreImage} 
+                                                                                target="_blank" 
+                                                                                rel="noopener noreferrer"
+                                                                                className="btn btn-sm btn-outline-primary mt-2 d-block"
+                                                                            >
+                                                                                <FaDownload className="me-1" />
+                                                                                Xem chứng chỉ
+                                                                            </a>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </Card.Body>
+                                                        </Card>
+                                                    </Col>
+                                                ))}
+                                            </Row>
+                                        </div>
+                                    )}
                                 </Tab.Pane>
                             </Tab.Content>
 

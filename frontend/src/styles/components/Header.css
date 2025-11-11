@@ -5,10 +5,10 @@
     transition: background-color 0.3s ease;
 }
 
-/* Ensure header and dropdowns appear above floating widgets (chat/snippet tools) */
+/* Ensure header and dropdowns appear above content but below modals */
 .main-header {
     position: relative;
-    z-index: 2147483646; /* one less than dropdown to keep dropdown on top */
+    z-index: 1040; /* Below Bootstrap modals (1050+) but above normal content */
 }
 
 .brand-logo {
@@ -52,7 +52,7 @@
     border: 1px solid var(--border-color);
     padding: 10px;
     background-color: var(--card-background);
-    z-index: 2147483647 !important; /* bring to very front */
+    z-index: 1045 !important; /* Above header but below modals */
     position: absolute !important;
 }
 

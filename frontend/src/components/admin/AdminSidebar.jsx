@@ -24,12 +24,10 @@ const AdminSidebar = ({ menuItems, activeTab }) => {
               <Nav.Item key={item.key}>
                 <Nav.Link
                   eventKey={item.key}
-                  className="d-flex align-items-center justify-content-between py-3 px-3"
+                  className="py-3 px-3"
                 >
-                  <div className="d-flex align-items-center">
-                    <span className="nav-icon me-3">{item.icon}</span>
-                    <span className="nav-text">{item.title}</span>
-                  </div>
+                  <span className="nav-icon">{item.icon}</span>
+                  <span className="nav-text">{item.title}</span>
                   {item.badge && <span className="nav-badge">{item.badge}</span>}
                 </Nav.Link>
               </Nav.Item>
