@@ -8,6 +8,10 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 public class MentorEducationResponse {
+    private Long id;
+    
+    private Long mentorId;
+
     private String schoolName;
 
     private String major;
@@ -17,4 +21,12 @@ public class MentorEducationResponse {
     private java.time.LocalDate endDate;
 
     private String certificateImage;
+
+    private String status;
+
+    private String statusCode;
+    
+    private String createdAt;
+    
+    private String updatedAt;
 }

@@ -42,7 +42,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     // Find bookings for a given customer filtered by a list of payment processes
     List<Booking> findByCustomer_IdAndPaymentProcessIn(Long customerId, List<PaymentProcess> processes);
 
-    @Query("select b from Booking b where b.mentor.email = :mentorEmail and b.paymentProcess = :process")
+    @Query("select b from Booking b where b.mentor.email = :mentorEmail and b.paymentProcess = :process or b.paymentProcess = 'WAIT_REFUND'")
     List<Booking> findByMentorIdAndPaymentProcess(@Param("mentorEmail") String mentorEmail,
         @Param("process") PaymentProcess process);
     

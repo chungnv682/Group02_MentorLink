@@ -187,15 +187,15 @@
     background: linear-gradient(90deg, transparent 0%, #ffffff 50%, transparent 100%);
 }
 
-/* Tab Content Cards - Enhanced */
-.tab-content {
+/* Tab Content Cards - Enhanced (scoped to mentor detail page) */
+.mentor-detail-page .tab-content {
     background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
     border-radius: 0 0 12px 12px;
     padding: 1rem;
     min-height: 280px;
 }
 
-.tab-content .card {
+.mentor-detail-page .tab-content .card {
     transition: all 0.2s ease;
     border-radius: 10px;
     border: 1px solid rgba(0, 0, 0, 0.06);
@@ -203,21 +203,21 @@
     background: #ffffff;
 }
 
-.tab-content .card:hover {
+.mentor-detail-page .tab-content .card:hover {
     transform: translateY(-2px);
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
     border-color: rgba(255, 165, 0, 0.12);
 }
 
-.tab-content .card-body {
+.mentor-detail-page .tab-content .card-body {
     padding: 0.75rem;
 }
 
-.tab-content .card {
+.mentor-detail-page .tab-content .card {
     margin-bottom: 0.6rem;
 }
 
-.tab-content .card-title {
+.mentor-detail-page .tab-content .card-title {
     font-size: 1.4rem;
     font-weight: 800;
     margin-bottom: 0.75rem;
@@ -225,19 +225,19 @@
 }
 
 /* Education Cards */
-.tab-content .border-primary {
+.mentor-detail-page .tab-content .border-primary {
     border-left-width: 4px !important;
 }
 
-.tab-content .border-success {
+.mentor-detail-page .tab-content .border-success {
     border-left-width: 4px !important;
 }
 
-.tab-content .border-info {
+.mentor-detail-page .tab-content .border-info {
     border-color: var(--primary-color, #FFA500) !important;
 }
 
-.tab-content .border-warning {
+.mentor-detail-page .tab-content .border-warning {
     border-color: #ffc107 !important;
 }
 
@@ -318,7 +318,7 @@
         margin: 0 0.125rem;
     }
 
-    .tab-content {
+    .mentor-detail-page .tab-content {
         padding: 1.5rem;
     }
 }
@@ -356,7 +356,7 @@
     }
 }
 
-.tab-content .card {
+.mentor-detail-page .tab-content .card {
     animation: slideInUp 0.4s ease-out;
 }
 
@@ -571,7 +571,7 @@
 }
 
 /* Card improvements for better readability */
-.tab-content .card-body h6 {
+.mentor-detail-page .tab-content .card-body h6 {
     font-size: 1.3rem;
     margin-bottom: 1rem;
     color: #2c3e50;
@@ -579,7 +579,7 @@
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
-.tab-content .card-body p {
+.mentor-detail-page .tab-content .card-body p {
     font-size: 1.1rem;
     line-height: 1.7;
     margin-bottom: 0.75rem;
@@ -587,7 +587,7 @@
     font-weight: 500;
 }
 
-.tab-content .card-body strong {
+.mentor-detail-page .tab-content .card-body strong {
     font-weight: 800;
     color: #2c3e50;
     text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
@@ -595,15 +595,15 @@
 
 /* Better spacing for mobile */
 @media (max-width: 768px) {
-    .tab-content .card-body {
+    .mentor-detail-page .tab-content .card-body {
         padding: 1.25rem;
     }
 
-    .tab-content .card-body h6 {
+    .mentor-detail-page .tab-content .card-body h6 {
         font-size: 1.1rem;
     }
 
-    .tab-content .card-body p {
+    .mentor-detail-page .tab-content .card-body p {
         font-size: 1rem;
     }
 }

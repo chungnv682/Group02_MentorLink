@@ -1,108 +1,144 @@
-import React, { useState } from 'react';
-import { Row, Col, Card, Button, Table, Modal, Form, Alert } from 'react-bootstrap';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Row, Col, Card, Button, Modal, Form, Alert, Spinner, Table, Nav, Badge, ButtonGroup } from 'react-bootstrap';
+import MentorService from '../../../services/mentor/MentorService';
+import MentorServiceCrud from '../../../services/mentor/MentorServiceCrud';
 
 const ServiceManagement = () => {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [selectedService, setSelectedService] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [mentorId, setMentorId] = useState(null);
+    const [services, setServices] = useState([]);
     const [formData, setFormData] = useState({
-        service_name: '',
-        description: '',
-        price: '',
-        duration: ''
+        serviceName: '',
+        description: ''
     });
+    const scrollRef = useRef(null);
+    const [filterStatus, setFilterStatus] = useState('ALL');
+    const [showViewModal, setShowViewModal] = useState(false);
+    const [viewService, setViewService] = useState(null);
 
-    // Mock data cho services
-    const services = [
-        {
-            id: 1,
-            service_name: 'Tư vấn du học Mỹ',
-            description: 'Tư vấn toàn diện về quá trình xin học bổng, visa và chuẩn bị hồ sơ du học Mỹ. Bao gồm hướng dẫn viết essay, chuẩn bị phỏng vấn và định hướng ngành học phù hợp.',
-            created_at: '2024-01-01T10:00:00',
-            updated_at: '2024-01-10T15:30:00',
-            bookingCount: 25,
-            avgRating: 4.8,
-            isActive: true
-        },
-        {
-            id: 2,
-            service_name: 'Hướng nghiệp IT',
-            description: 'Tư vấn về lộ trình phát triển sự nghiệp trong lĩnh vực công nghệ thông tin. Hướng dẫn kỹ năng cần thiết, cách viết CV và chuẩn bị phỏng vấn cho các vị trí IT.',
-            created_at: '2024-01-05T14:20:00',
-            updated_at: '2024-01-12T09:45:00',
-            bookingCount: 18,
-            avgRating: 4.6,
-            isActive: true
-        },
-        {
-            id: 3,
-            service_name: 'Luyện thi IELTS Speaking',
-            description: 'Khóa luyện thi IELTS Speaking 1-on-1, tập trung vào phát âm, từ vựng và kỹ năng trả lời các dạng câu hỏi. Phù hợp cho mục tiêu 6.5-8.0.',
-            created_at: '2024-01-08T11:15:00',
-            updated_at: '2024-01-15T16:20:00',
-            bookingCount: 32,
-            avgRating: 4.9,
-            isActive: true
-        },
-        {
-            id: 4,
-            service_name: 'Tư vấn học thuật',
-            description: 'Hỗ trợ về phương pháp học tập hiệu quả, quản lý thời gian và kỹ thuật nghiên cứu khoa học cho sinh viên đại học và sau đại học.',
-            created_at: '2024-01-10T08:30:00',
-            updated_at: '2024-01-10T08:30:00',
-            bookingCount: 8,
-            avgRating: 4.3,
-            isActive: false
+    const normalizeStatus = (s) => (s || '').toUpperCase();
+    const filtered = useMemo(() => {
+        if (filterStatus === 'ALL') return services;
+        return services.filter(s => normalizeStatus(s.statusCode || s.status) === filterStatus);
+    }, [services, filterStatus]);
+
+    const countBy = (status) => services.filter(s => normalizeStatus(s.statusCode || s.status) === status).length;
+
+    const getStatusText = (statusCode) => {
+        const status = (statusCode || '').toUpperCase();
+        switch (status) {
+            case 'APPROVED':
+                return 'Đã duyệt';
+            case 'PENDING':
+                return 'Chờ duyệt';
+            case 'REJECTED':
+                return 'Từ chối';
+            default:
+                return status;
         }
-    ];
+    };
+
+    // Load current mentor and services
+    useEffect(() => {
+        const load = async () => {
+            try {
+                setLoading(true);
+                const profileRes = await MentorService.getCurrentMentorProfile();
+                const profile = profileRes?.data || profileRes;
+                const id = profile?.id;
+                setMentorId(id);
+                if (id) {
+                    await refreshServices(id);
+                }
+            } catch (e) {
+                console.error('Failed to load services', e);
+            } finally {
+                setLoading(false);
+            }
+        };
+        load();
+    }, []);
+
+    const refreshServices = async (id = mentorId) => {
+        if (!id) return;
+        const res = await MentorServiceCrud.listByMentor(id);
+        const list = res?.data || res || [];
+        setServices(Array.isArray(list) ? list : []);
+    };
 
     const formatDateTime = (dateString) => {
         return new Date(dateString).toLocaleString('vi-VN');
     };
 
-    const handleCreateService = () => {
-        console.log('Creating service:', formData);
-        // Logic tạo service mới
-        setShowCreateModal(false);
-        resetForm();
+    const handleCreateService = async () => {
+        if (!mentorId) return;
+        try {
+            setLoading(true);
+            await MentorServiceCrud.create(mentorId, {
+                serviceName: formData.serviceName,
+                description: formData.description
+            });
+            await refreshServices();
+            setShowCreateModal(false);
+            resetForm();
+        } catch (e) {
+            console.error('Create service failed', e);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleEditService = (service) => {
         setSelectedService(service);
         setFormData({
-            service_name: service.service_name,
-            description: service.description,
-            price: '',
-            duration: ''
+            serviceName: service.serviceName || service.service_name || '',
+            description: service.description || ''
         });
         setShowEditModal(true);
     };
 
-    const handleUpdateService = () => {
-        console.log('Updating service:', selectedService.id, formData);
-        // Logic cập nhật service
-        setShowEditModal(false);
-        resetForm();
-    };
-
-    const handleDeleteService = (serviceId) => {
-        if (window.confirm('Bạn có chắc chắn muốn xóa dịch vụ này?')) {
-            console.log('Deleting service:', serviceId);
-            // Logic xóa service
+    const handleUpdateService = async () => {
+        if (!mentorId || !selectedService?.id) return;
+        try {
+            setLoading(true);
+            await MentorServiceCrud.update(selectedService.id, mentorId, {
+                serviceName: formData.serviceName,
+                description: formData.description
+            });
+            await refreshServices();
+            setShowEditModal(false);
+            resetForm();
+        } catch (e) {
+            console.error('Update service failed', e);
+        } finally {
+            setLoading(false);
         }
     };
 
-    const handleToggleStatus = (serviceId, currentStatus) => {
-        console.log('Toggle service status:', serviceId, !currentStatus);
-        // Logic toggle trạng thái
+    const handleDeleteService = async (serviceId) => {
+        if (!mentorId) return;
+        if (window.confirm('Bạn có chắc chắn muốn xóa dịch vụ này?')) {
+            try {
+                setLoading(true);
+                await MentorServiceCrud.remove(serviceId, mentorId);
+                await refreshServices();
+            } catch (e) {
+                console.error('Delete service failed', e);
+            } finally {
+                setLoading(false);
+            }
+        }
     };
+
+    // Backend không có API toggle ON/OFF, trạng thái được duyệt bởi admin (PENDING/APPROVED/REJECTED)
 
     const resetForm = () => {
         setFormData({
-            service_name: '',
-            description: '',
-            price: '',
-            duration: ''
+            serviceName: '',
+            description: ''
         });
         setSelectedService(null);
     };
@@ -142,6 +178,12 @@ const ServiceManagement = () => {
                 </Button>
             </div>
 
+            {loading && (
+                <div className="text-center my-3">
+                    <Spinner animation="border" />
+                </div>
+            )}
+
             {/* Statistics Cards */}
             <Row className="mb-4">
                 <Col lg={3} md={6} className="mb-3">
@@ -161,8 +203,8 @@ const ServiceManagement = () => {
                             <div className="stat-icon success">
                                 <i className="bi bi-check-circle"></i>
                             </div>
-                            <div className="stat-value">{services.filter(s => s.isActive).length}</div>
-                            <p className="stat-label">Đang hoạt động</p>
+                            <div className="stat-value">{services.filter(s => (s.statusCode || '').toUpperCase() === 'APPROVED').length}</div>
+                            <p className="stat-label">Đã duyệt</p>
                         </Card.Body>
                     </Card>
                 </Col>
@@ -172,9 +214,7 @@ const ServiceManagement = () => {
                             <div className="stat-icon info">
                                 <i className="bi bi-calendar-check"></i>
                             </div>
-                            <div className="stat-value">
-                                {services.reduce((sum, s) => sum + s.bookingCount, 0)}
-                            </div>
+                            <div className="stat-value">--</div>
                             <p className="stat-label">Tổng lượt đặt</p>
                         </Card.Body>
                     </Card>
@@ -185,111 +225,94 @@ const ServiceManagement = () => {
                             <div className="stat-icon warning">
                                 <i className="bi bi-star"></i>
                             </div>
-                            <div className="stat-value">
-                                {(services.reduce((sum, s) => sum + s.avgRating, 0) / services.length).toFixed(1)}
-                            </div>
+                            <div className="stat-value">--</div>
                             <p className="stat-label">Đánh giá TB</p>
                         </Card.Body>
                     </Card>
                 </Col>
             </Row>
 
-            {/* Services Grid */}
-            <Row>
-                {services.map((service) => (
-                    <Col lg={6} className="mb-4" key={service.id}>
-                        <Card className="dashboard-card service-card h-100">
-                            <Card.Header className="bg-transparent border-0">
-                                <div className="d-flex justify-content-between align-items-start">
-                                    <div>
-                                        <h5 className="mb-1">{service.service_name}</h5>
-                                        <div className="d-flex align-items-center">
-                                            {renderStars(service.avgRating)}
-                                            <span className="ms-2 text-muted">
-                                                {service.avgRating} ({service.bookingCount} lượt đặt)
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div className="service-status">
-                                        <span className={`badge ${service.isActive ? 'bg-success' : 'bg-secondary'}`}>
-                                            {service.isActive ? 'Hoạt động' : 'Tạm dừng'}
-                                        </span>
-                                    </div>
-                                </div>
-                            </Card.Header>
-                            <Card.Body>
-                                <p className="text-muted mb-3">{service.description}</p>
+            {/* Toolbar giống phong cách "Lịch làm việc" */}
+            <div className="d-flex justify-content-between align-items-center mb-3">
+                <Nav variant="pills" className="gap-2 flex-wrap status-filter">
+                    <Nav.Item>
+                        <Nav.Link active={filterStatus === 'ALL'} onClick={() => setFilterStatus('ALL')}>
+                            <span className="filter-label" style={{color: "black"}}>Tất cả</span> <Badge bg={filterStatus==='ALL'?'light':'secondary'} text={filterStatus==='ALL'?'dark':'light'} className="ms-1">{services.length}</Badge>
+                        </Nav.Link>
+                    </Nav.Item>
+                    <Nav.Item>
+                        <Nav.Link active={filterStatus === 'PENDING'} onClick={() => setFilterStatus('PENDING')}>
+                            <span className="filter-label" style={{color: "black"}}>Chờ duyệt</span> <Badge bg="warning" text="dark" className="ms-1">{countBy('PENDING')}</Badge>
+                        </Nav.Link>
+                    </Nav.Item>
+                    <Nav.Item>
+                        <Nav.Link active={filterStatus === 'APPROVED'} onClick={() => setFilterStatus('APPROVED')}>
+                            <span className="filter-label" style={{color: "black"}}>Đã duyệt</span> <Badge bg="success" text="dark" className="ms-1">{countBy('APPROVED')}</Badge>
+                        </Nav.Link>
+                    </Nav.Item>
+                    <Nav.Item>
+                        <Nav.Link active={filterStatus === 'REJECTED'} onClick={() => setFilterStatus('REJECTED')}>
+                            <span className="filter-label" style={{color: "black"}}>Từ chối</span> <Badge bg="secondary" className="ms-1">{countBy('REJECTED')}</Badge>
+                        </Nav.Link>
+                    </Nav.Item>
+                </Nav>
+                <div className="d-flex align-items-center gap-2 text-muted small">
+                    {filtered.length} mục
+                </div>
+            </div>
 
-                                <div className="service-stats mb-3">
-                                    <Row className="text-center">
-                                        <Col xs={4}>
-                                            <div className="stat-mini">
-                                                <div className="stat-mini-value">{service.bookingCount}</div>
-                                                <div className="stat-mini-label">Lượt đặt</div>
-                                            </div>
-                                        </Col>
-                                        <Col xs={4}>
-                                            <div className="stat-mini">
-                                                <div className="stat-mini-value">{service.avgRating}</div>
-                                                <div className="stat-mini-label">Đánh giá</div>
-                                            </div>
-                                        </Col>
-                                        <Col xs={4}>
-                                            <div className="stat-mini">
-                                                <div className="stat-mini-value">
-                                                    {service.isActive ? 'ON' : 'OFF'}
-                                                </div>
-                                                <div className="stat-mini-label">Trạng thái</div>
-                                            </div>
-                                        </Col>
-                                    </Row>
-                                </div>
-
-                                <div className="service-meta mb-3">
-                                    <small className="text-muted d-block">
-                                        <i className="bi bi-calendar me-1"></i>
-                                        Tạo: {formatDateTime(service.created_at)}
-                                    </small>
-                                    {service.updated_at !== service.created_at && (
-                                        <small className="text-muted d-block">
-                                            <i className="bi bi-pencil me-1"></i>
-                                            Cập nhật: {formatDateTime(service.updated_at)}
-                                        </small>
-                                    )}
-                                </div>
-                            </Card.Body>
-                            <Card.Footer className="bg-transparent border-0">
-                                <div className="d-flex gap-2">
-                                    <Button
-                                        variant="outline-primary"
-                                        size="sm"
-                                        onClick={() => handleEditService(service)}
-                                    >
-                                        <i className="bi bi-pencil me-1"></i>
-                                        Sửa
-                                    </Button>
-                                    <Button
-                                        variant={service.isActive ? 'outline-warning' : 'outline-success'}
-                                        size="sm"
-                                        onClick={() => handleToggleStatus(service.id, service.isActive)}
-                                    >
-                                        <i className={`bi bi-${service.isActive ? 'pause' : 'play'} me-1`}></i>
-                                        {service.isActive ? 'Tạm dừng' : 'Kích hoạt'}
-                                    </Button>
-                                    <Button
-                                        variant="outline-danger"
-                                        size="sm"
-                                        onClick={() => handleDeleteService(service.id)}
-                                    >
-                                        <i className="bi bi-trash me-1"></i>
-                                        Xóa
-                                    </Button>
-                                </div>
-                            </Card.Footer>
-                        </Card>
-                    </Col>
-                ))}
-            </Row>
+            {/* Bảng danh sách thay cho card, dễ quản lý theo chiều ngang */}
+            <div className="table-responsive">
+                <Table hover className="align-middle">
+                    <thead>
+                        <tr>
+                            <th style={{minWidth: 260}}>Tên dịch vụ</th>
+                            
+                            <th style={{minWidth: 180}}>Người tạo</th>
+                            <th style={{minWidth: 140}}>Trạng thái</th>
+                            <th style={{minWidth: 220}}>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {filtered.map(service => (
+                            <tr key={service.id}>
+                                <td>
+                                    <div className="fw-semibold">{service.serviceName || service.service_name}</div>
+                                    <div className="text-muted small mt-1" style={{maxWidth: 560, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>
+                                        {service.description}
+                                    </div>
+                                </td>
+                                
+                                <td>{service.mentorName || 'Bạn'}</td>
+                                <td>
+                                    <span className={`badge ${
+                                        (service.statusCode || '').toUpperCase() === 'APPROVED' ? 'bg-success'
+                                        : (service.statusCode || '').toUpperCase() === 'PENDING' ? 'bg-warning text-dark'
+                                        : 'bg-secondary'
+                                    }`}>
+                                        {getStatusText(service.statusCode)}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div className="d-flex gap-2">
+                                        <Button variant="outline-secondary" size="sm" onClick={() => { setViewService(service); setShowViewModal(true); }}>
+                                            <i className="bi bi-eye me-1"></i> Xem
+                                        </Button>
+                                        <Button variant="outline-primary" size="sm" onClick={() => handleEditService(service)}>
+                                            <i className="bi bi-pencil me-1"></i> Cập nhật
+                                        </Button>
+                                    </div>
+                                </td>
+                            </tr>
+                        ))}
+                        {filtered.length === 0 && (
+                            <tr>
+                                <td colSpan={7} className="text-center text-muted py-4">Không có dịch vụ phù hợp</td>
+                            </tr>
+                        )}
+                    </tbody>
+                </Table>
+            </div>
 
             {/* Create Service Modal */}
             <Modal show={showCreateModal} onHide={() => setShowCreateModal(false)} size="lg">
@@ -302,9 +325,9 @@ const ServiceManagement = () => {
                             <Form.Label>Tên dịch vụ <span className="text-danger">*</span></Form.Label>
                             <Form.Control
                                 type="text"
-                                name="service_name"
+                                name="serviceName"
                                 placeholder="Nhập tên dịch vụ"
-                                value={formData.service_name}
+                                value={formData.serviceName}
                                 onChange={handleInputChange}
                             />
                         </Form.Group>
@@ -321,36 +344,9 @@ const ServiceManagement = () => {
                             />
                         </Form.Group>
 
-                        <Row>
-                            <Col md={6}>
-                                <Form.Group className="mb-3">
-                                    <Form.Label>Giá dịch vụ (VNĐ)</Form.Label>
-                                    <Form.Control
-                                        type="number"
-                                        name="price"
-                                        placeholder="0"
-                                        value={formData.price}
-                                        onChange={handleInputChange}
-                                    />
-                                </Form.Group>
-                            </Col>
-                            <Col md={6}>
-                                <Form.Group className="mb-3">
-                                    <Form.Label>Thời lượng (phút)</Form.Label>
-                                    <Form.Control
-                                        type="number"
-                                        name="duration"
-                                        placeholder="60"
-                                        value={formData.duration}
-                                        onChange={handleInputChange}
-                                    />
-                                </Form.Group>
-                            </Col>
-                        </Row>
-
                         <Alert variant="info">
                             <i className="bi bi-info-circle me-2"></i>
-                            Sau khi tạo dịch vụ, bạn có thể chỉnh sửa thông tin bất kỳ lúc nào. Dịch vụ sẽ được kích hoạt ngay sau khi tạo.
+                            Sau khi tạo/cập nhật, dịch vụ sẽ có trạng thái PENDING và chờ admin duyệt.
                         </Alert>
                     </Form>
                 </Modal.Body>
@@ -361,7 +357,7 @@ const ServiceManagement = () => {
                     <Button
                         variant="primary"
                         onClick={handleCreateService}
-                        disabled={!formData.service_name || !formData.description}
+                        disabled={!formData.serviceName || !formData.description}
                     >
                         <i className="bi bi-plus me-2"></i>
                         Tạo dịch vụ
@@ -380,9 +376,9 @@ const ServiceManagement = () => {
                             <Form.Label>Tên dịch vụ <span className="text-danger">*</span></Form.Label>
                             <Form.Control
                                 type="text"
-                                name="service_name"
+                                name="serviceName"
                                 placeholder="Nhập tên dịch vụ"
-                                value={formData.service_name}
+                                value={formData.serviceName}
                                 onChange={handleInputChange}
                             />
                         </Form.Group>
@@ -398,33 +394,6 @@ const ServiceManagement = () => {
                                 onChange={handleInputChange}
                             />
                         </Form.Group>
-
-                        <Row>
-                            <Col md={6}>
-                                <Form.Group className="mb-3">
-                                    <Form.Label>Giá dịch vụ (VNĐ)</Form.Label>
-                                    <Form.Control
-                                        type="number"
-                                        name="price"
-                                        placeholder="0"
-                                        value={formData.price}
-                                        onChange={handleInputChange}
-                                    />
-                                </Form.Group>
-                            </Col>
-                            <Col md={6}>
-                                <Form.Group className="mb-3">
-                                    <Form.Label>Thời lượng (phút)</Form.Label>
-                                    <Form.Control
-                                        type="number"
-                                        name="duration"
-                                        placeholder="60"
-                                        value={formData.duration}
-                                        onChange={handleInputChange}
-                                    />
-                                </Form.Group>
-                            </Col>
-                        </Row>
                     </Form>
                 </Modal.Body>
                 <Modal.Footer>
@@ -434,11 +403,42 @@ const ServiceManagement = () => {
                     <Button
                         variant="primary"
                         onClick={handleUpdateService}
-                        disabled={!formData.service_name || !formData.description}
+                        disabled={!formData.serviceName || !formData.description}
                     >
                         <i className="bi bi-save me-2"></i>
                         Cập nhật
                     </Button>
+                </Modal.Footer>
+            </Modal>
+
+            {/* View Detail Modal */}
+            <Modal show={showViewModal} onHide={() => setShowViewModal(false)}>
+                <Modal.Header closeButton>
+                    <Modal.Title>Chi tiết dịch vụ</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    {viewService ? (
+                        <div>
+                            <div className="mb-2"><strong>Tên dịch vụ:</strong> {viewService.serviceName || viewService.service_name}</div>
+                            <div className="mb-2"><strong>Trạng thái:</strong> {getStatusText(viewService.statusCode)}</div>
+                            <div className="mb-2"><strong>Người tạo:</strong> {viewService.mentorName || 'Bạn'}</div>
+                            <div className="mb-2"><strong>Mô tả:</strong><br/>{viewService.description}</div>
+                            <div className="text-muted small">
+                                <div><i className="bi bi-calendar me-1"></i> Tạo: {formatDateTime(viewService.createdAt || viewService.created_at)}</div>
+                                {viewService.updatedAt && <div><i className="bi bi-pencil me-1"></i> Cập nhật: {formatDateTime(viewService.updatedAt)}</div>}
+                            </div>
+                        </div>
+                    ) : 'Đang tải...'}
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="secondary" onClick={() => setShowViewModal(false)}>
+                        Đóng
+                    </Button>
+                    {viewService && (
+                        <Button variant="primary" onClick={() => { setShowViewModal(false); handleEditService(viewService); }}>
+                            <i className="bi bi-pencil me-1"></i> Cập nhật
+                        </Button>
+                    )}
                 </Modal.Footer>
             </Modal>
 
@@ -451,6 +451,20 @@ const ServiceManagement = () => {
                     transform: translateY(-5px);
                     box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);
                 }
+                .status-filter .nav-link {
+                    background-color: #f6f8fc;
+                    border: 1px solid #e5e7ef;
+                    color: #1f2937;
+                    padding: 10px 16px;
+                    font-weight: 600;
+                    border-radius: 10px;
+                }
+                .status-filter .nav-link.active {
+                    background-color: #0d6efd;
+                    color: #fff;
+                    border-color: #0d6efd;
+                }
+                .status-filter .filter-label { letter-spacing: .2px; }
                 
                 .stat-mini {
                     padding: 0.5rem;

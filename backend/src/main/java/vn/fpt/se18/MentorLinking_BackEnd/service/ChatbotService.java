@@ -99,12 +99,17 @@ public class ChatbotService {
      */
     private String generateDbBasedResponse(String userMessage) {
         if (userMessage == null || userMessage.isBlank()) {
-            return "Xin chào! Tôi là trợ lý của MentorLink. Bạn có thể hỏi về mentor, đặt lịch, thanh toán, chính sách hoặc bất kỳ điều gì về nền tảng. Hãy mô tả câu hỏi của bạn!";
+            return "Xin lỗi, tôi không thể trả lời những câu không liên quan.";
         }
 
         // Tokenize user message
         Set<String> userTokens = tokenize(userMessage);
         String userLower = userMessage.toLowerCase();
+
+        // If after tokenization there's nothing meaningful, consider it unrelated
+        if (userTokens.isEmpty()) {
+            return "Xin lỗi, tôi không thể trả lời những câu không liên quan.";
+        }
 
         // Enhanced FAQ pattern matching with 10 categories - highest priority
         String structuredResponse = handleStructuredFAQ(userMessage, userLower, userTokens);
@@ -232,8 +237,8 @@ public class ChatbotService {
             return sb.toString();
         }
 
-        // 4) Fallback: helpful guidance
-        return "Xin cảm ơn câu hỏi! Hiện tại tôi chưa tìm thấy thông tin chính xác trong hệ thống. Vui lòng mô tả rõ hơn hoặc thử hỏi về 'cách đặt lịch', 'chính sách', hoặc 'tìm mentor theo quốc gia'.";
+        // 4) Fallback: treat as unrelated
+        return "Xin lỗi, tôi không thể trả lời những câu không liên quan.";
     }
 
     // --- Improved mentor recommendation with scoring ---
@@ -524,21 +529,8 @@ public class ChatbotService {
      * Generate fallback response when AI services are unavailable
      */
     private ChatResponseDTO generateFallbackResponse(String userMessage) {
-        String userMessageLower = userMessage.toLowerCase();
-        String response = "Xin cảm ơn câu hỏi của bạn! ";
-
-        if (userMessageLower.contains("mentor") || userMessageLower.contains("hướng dẫn")) {
-            response += "Bạn có thể tìm mentor phù hợp bằng cách click vào nút 'Tìm Cố vấn' trên trang chủ. ";
-        } else if (userMessageLower.contains("booking") || userMessageLower.contains("đặt lịch")) {
-            response += "Để đặt lịch với mentor, vui lòng chọn mentor và chọn khoảng thời gian phù hợp. ";
-        } else if (userMessageLower.contains("chính sách") || userMessageLower.contains("policy")) {
-            response += "Vui lòng xem phần 'Trở thành Cố vấn' hoặc 'Hỏi Đáp' để biết thêm về chính sách. ";
-        } else {
-            response += "Tôi sẵn sàng giúp bạn! Vui lòng hỏi về mentor, booking, hoặc chính sách. ";
-        }
-
         return ChatResponseDTO.builder()
-                .message(response)
+                .message("Xin lỗi, tôi không thể trả lời những câu không liên quan.")
                 .recommendedMentors(new ArrayList<>())
                 .confidence(0.5)
                 .build();
