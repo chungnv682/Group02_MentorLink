@@ -65,4 +65,10 @@ public interface PaymentHistoryRepository extends JpaRepository<PaymentHistory, 
            "AND MONTH(ph.createdAt) = MONTH(CURRENT_DATE) " +
            "AND YEAR(ph.createdAt) = YEAR(CURRENT_DATE)")
     BigDecimal calculateMonthlyRevenue();
+
+    // Calculate total earned amount for a specific mentor (COMPLETED bookings only)
+    @Query("SELECT COALESCE(SUM(ph.amount), 0) FROM PaymentHistory ph " +
+           "WHERE ph.booking.mentor.id = :mentorId " +
+           "AND ph.booking.paymentProcess = 'COMPLETED'")
+    BigDecimal calculateMentorEarnings(@Param("mentorId") Long mentorId);
 }
