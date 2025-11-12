@@ -1,11 +1,7 @@
 package vn.fpt.se18.MentorLinking_BackEnd.service;
 
-import vn.fpt.se18.MentorLinking_BackEnd.repository.FaqRepository;
-import vn.fpt.se18.MentorLinking_BackEnd.repository.MentorCountryRepository;
-import vn.fpt.se18.MentorLinking_BackEnd.repository.MentorRepository;
-import vn.fpt.se18.MentorLinking_BackEnd.repository.MentorPolicyRepository;
-import vn.fpt.se18.MentorLinking_BackEnd.repository.CustomerPolicyRepository;
-import vn.fpt.se18.MentorLinking_BackEnd.repository.BlogRepository;
+import vn.fpt.se18.MentorLinking_BackEnd.entity.Policy;
+import vn.fpt.se18.MentorLinking_BackEnd.repository.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -13,11 +9,8 @@ import vn.fpt.se18.MentorLinking_BackEnd.dto.ChatMessageDTO;
 import vn.fpt.se18.MentorLinking_BackEnd.dto.ChatResponseDTO;
 import vn.fpt.se18.MentorLinking_BackEnd.dto.MentorRecommendationDTO;
 import vn.fpt.se18.MentorLinking_BackEnd.entity.User;
-import vn.fpt.se18.MentorLinking_BackEnd.repository.UserRepository;
 
-import java.time.Duration;
 import java.util.*;
-import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 /**
@@ -47,7 +40,7 @@ public class ChatbotService {
     private MentorCountryRepository mentorCountryRepository;
 
     @Autowired(required = false)
-    private MentorPolicyRepository mentorPolicyRepository;
+    private PolicyRepository policyRepository;
 
     @Autowired(required = false)
     private CustomerPolicyRepository customerPolicyRepository;
@@ -68,16 +61,16 @@ public class ChatbotService {
 
             // Try to use full AI pipeline
             try {
-        // Prefer DB-based answers (fallback) so we can run without external services
-        String answer = generateDbBasedResponse(userMessage);
-        List<MentorRecommendationDTO> recommendations = extractAndRecommendMentorsFromDb(userMessage);
-        double confidence = recommendations.isEmpty() ? 0.6 : 0.9;
+                // Prefer DB-based answers (fallback) so we can run without external services
+                String answer = generateDbBasedResponse(userMessage);
+                List<MentorRecommendationDTO> recommendations = extractAndRecommendMentorsFromDb(userMessage);
+                double confidence = recommendations.isEmpty() ? 0.6 : 0.9;
 
-        return ChatResponseDTO.builder()
-            .message(answer)
-            .recommendedMentors(recommendations)
-            .confidence(confidence)
-            .build();
+                return ChatResponseDTO.builder()
+                        .message(answer)
+                        .recommendedMentors(recommendations)
+                        .confidence(confidence)
+                        .build();
             } catch (Exception aiException) {
                 log.warn("AI pipeline failed, using fallback response", aiException);
                 // Fallback: return simple response without AI
@@ -118,9 +111,9 @@ public class ChatbotService {
         }
 
         // Handle specific mentor search requests
-        boolean mentionsMentor = userLower.contains("mentor") || userLower.contains("cố vấn") || 
-                                userLower.contains("tìm mentor") || userLower.contains("tìm cố vấn") ||
-                                userLower.contains("gợi ý mentor") || userLower.contains("mentor nào");
+        boolean mentionsMentor = userLower.contains("mentor") || userLower.contains("cố vấn") ||
+                userLower.contains("tìm mentor") || userLower.contains("tìm cố vấn") ||
+                userLower.contains("gợi ý mentor") || userLower.contains("mentor nào");
 
         if (mentionsMentor && !userLower.contains("blog") && !userLower.contains("bài viết")) {
             List<MentorRecommendationDTO> mentorResults = extractAndRecommendMentorsFromDbWithScoring(userMessage, userTokens);
@@ -129,9 +122,9 @@ public class ChatbotService {
                 sb.append("🎯 Gợi ý mentor phù hợp với bạn:\n");
                 mentorResults.stream().limit(3).forEach(m -> {
                     sb.append("\n👨‍🎓 ").append(m.getName())
-                      .append("\n   📚 ").append(m.getExpertise())
-                      .append("\n   ⭐ Rating: ").append(String.format("%.1f", m.getRating()))
-                      .append("/5\n");
+                            .append("\n   📚 ").append(m.getExpertise())
+                            .append("\n   ⭐ Rating: ").append(String.format("%.1f", m.getRating()))
+                            .append("/5\n");
                 });
                 sb.append("\n💡 Bạn có thể xem chi tiết và đặt lịch tại trang 'Tìm Cố vấn'!");
                 return sb.toString();
@@ -158,10 +151,10 @@ public class ChatbotService {
             }
         }
 
-    // 2) Policy / Blog search: look for top-matching titles/content
+        // 2) Policy / Blog search: look for top-matching titles/content
         Map<String, Double> policyMatches = new LinkedHashMap<>();
-        if (mentorPolicyRepository != null) {
-            for (var p : mentorPolicyRepository.findAll()) {
+        if (policyRepository != null) {
+            for (var p : policyRepository.findAll()) {
                 double s = jaccardSimilarity(userTokens, tokenize(p.getTitle() + " " + (p.getDescription() == null ? "" : p.getDescription())));
                 if (s > 0.15) policyMatches.put("MENTOR_POLICY:" + p.getId() + ":" + p.getTitle(), s);
             }
@@ -215,7 +208,7 @@ public class ChatbotService {
                 var topPolicies = policyMatches.entrySet().stream().sorted(Map.Entry.<String, Double>comparingByValue().reversed()).limit(3).collect(Collectors.toList());
                 sb.append("Các chính sách liên quan:\n");
                 for (var e : topPolicies) {
-                    sb.append("- ").append(e.getKey().split(":" ,3)[2]).append("\n");
+                    sb.append("- ").append(e.getKey().split(":", 3)[2]).append("\n");
                 }
             }
             if (!blogScores.isEmpty()) {
@@ -280,8 +273,8 @@ public class ChatbotService {
                 MentorRecommendationDTO dto = MentorRecommendationDTO.builder()
                         .mentorId(m.getId())
                         .name(m.getFullname())
-                        .expertise(String.join(", ", m.getMentorServices()==null?List.of("Chưa cập nhật"):m.getMentorServices().stream().map(s->s.getServiceName()).limit(3).collect(Collectors.toList())))
-                        .rating(m.getRating()==null?0.0:m.getRating())
+                        .expertise(String.join(", ", m.getMentorServices() == null ? List.of("Chưa cập nhật") : m.getMentorServices().stream().map(s -> s.getServiceName()).limit(3).collect(Collectors.toList())))
+                        .rating(m.getRating() == null ? 0.0 : m.getRating())
                         .profileImage(m.getProfileImage())
                         .reason("Gợi ý dựa trên nội dung hồ sơ và từ khoá trong câu hỏi")
                         .relevanceScore(score)
@@ -295,11 +288,11 @@ public class ChatbotService {
     }
 
     // --- Tokenization & similarity helpers ---
-    private static final Set<String> STOP_WORDS = Set.of("và","là","của","cho","có","tôi","muốn","những","theo","trong","với","cần","được","để","cái","một","các");
+    private static final Set<String> STOP_WORDS = Set.of("và", "là", "của", "cho", "có", "tôi", "muốn", "những", "theo", "trong", "với", "cần", "được", "để", "cái", "một", "các");
 
     private Set<String> tokenize(String text) {
         if (text == null) return Collections.emptySet();
-        String normalized = text.toLowerCase().replaceAll("[^a-z0-9àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ\\s]"," ");
+        String normalized = text.toLowerCase().replaceAll("[^a-z0-9àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ\\s]", " ");
         String[] parts = normalized.split("\\s+");
         Set<String> tokens = new HashSet<>();
         for (String p : parts) {
@@ -325,7 +318,7 @@ public class ChatbotService {
      */
     private String handleStructuredFAQ(String userMessage, String userLower, Set<String> userTokens) {
         // Special handling for frequently asked questions with improved patterns
-        
+
         // Blog-related questions - handle these specifically
         if (matchesPattern(userLower, "số câu hỏi thường xuyên", "câu hỏi thường gặp", "câu hỏi phổ biến", "hỏi thường xuyên")) {
             return "Các câu hỏi thường gặp về MentorLink:\n• Cách tìm và chọn mentor phù hợp\n• Quy trình đặt lịch và thanh toán\n• Chính sách hoàn tiền và hủy lịch\n• Các quốc gia và chương trình du học được hỗ trợ\n• Cách trở thành mentor trên nền tảng\n\nBạn có thể hỏi cụ thể về bất kỳ chủ đề nào!";
@@ -358,8 +351,8 @@ public class ChatbotService {
 
         // Policy questions - Mentor policies  
         if (matchesPattern(userLower, "chính sách mentor", "quy định mentor", "chính sách cố vấn")) {
-            if (mentorPolicyRepository != null) {
-                List<vn.fpt.se18.MentorLinking_BackEnd.entity.MentorPolicy> policies = mentorPolicyRepository.findAll();
+            if (policyRepository != null) {
+                List<Policy> policies = policyRepository.findAll();
                 if (!policies.isEmpty()) {
                     StringBuilder sb = new StringBuilder();
                     sb.append("Chính sách dành cho mentor:\n");
@@ -376,10 +369,10 @@ public class ChatbotService {
             if (mentorCountryRepository != null) {
                 List<vn.fpt.se18.MentorLinking_BackEnd.entity.MentorCountry> mentorCountries = mentorCountryRepository.findAll();
                 Set<String> countries = mentorCountries.stream()
-                    .filter(mc -> mc.getCountry() != null && mc.getCountry().getName() != null)
-                    .map(mc -> mc.getCountry().getName())
-                    .collect(Collectors.toSet());
-                
+                        .filter(mc -> mc.getCountry() != null && mc.getCountry().getName() != null)
+                        .map(mc -> mc.getCountry().getName())
+                        .collect(Collectors.toSet());
+
                 if (!countries.isEmpty()) {
                     StringBuilder sb = new StringBuilder();
                     sb.append("MentorLink hiện có mentor từ các quốc gia:\n");
@@ -512,8 +505,8 @@ public class ChatbotService {
                 MentorRecommendationDTO dto = MentorRecommendationDTO.builder()
                         .mentorId(m.getId())
                         .name(m.getFullname())
-                        .expertise(String.join(", ", m.getMentorServices()==null?List.of("Chưa cập nhật"):m.getMentorServices().stream().map(s->s.getServiceName()).limit(3).collect(Collectors.toList())))
-                        .rating(m.getRating()==null?0.0:m.getRating())
+                        .expertise(String.join(", ", m.getMentorServices() == null ? List.of("Chưa cập nhật") : m.getMentorServices().stream().map(s -> s.getServiceName()).limit(3).collect(Collectors.toList())))
+                        .rating(m.getRating() == null ? 0.0 : m.getRating())
                         .profileImage(m.getProfileImage())
                         .reason("Gợi ý dựa trên hồ sơ và đánh giá")
                         .relevanceScore(0.75)
@@ -592,7 +585,7 @@ public class ChatbotService {
     private float[] generateQueryEmbedding(String text) {
         float[] embedding = new float[768];
         String[] words = text.toLowerCase().split("\\s+");
-        
+
         for (int i = 0; i < 768; i++) {
             float value = 0;
             for (String word : words) {
@@ -600,7 +593,7 @@ public class ChatbotService {
             }
             embedding[i] = value / 2;
         }
-        
+
         return embedding;
     }
 

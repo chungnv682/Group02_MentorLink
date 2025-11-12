@@ -17,7 +17,7 @@ const CustomerPolicyModal = ({ show, onHide, onAgree }) => {
         setLoading(true);
         setError('');
         try {
-            const response = await PolicyService.getActiveCustomerPolicies();
+            const response = await PolicyService.getActiveMenteePolicies();
             if (response.respCode === "0") {
                 setPolicies(response.data || []);
             } else {

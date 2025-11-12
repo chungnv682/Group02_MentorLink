@@ -1,7 +1,7 @@
 package vn.fpt.se18.MentorLinking_BackEnd.service;
 
-import vn.fpt.se18.MentorLinking_BackEnd.dto.request.admin.MentorPolicyRequest;
-import vn.fpt.se18.MentorLinking_BackEnd.dto.response.admin.MentorPolicyResponse;
+import vn.fpt.se18.MentorLinking_BackEnd.dto.request.admin.PolicyRequest;
+import vn.fpt.se18.MentorLinking_BackEnd.dto.response.admin.PolicyResponse;
 
 import java.util.List;
 
@@ -10,27 +10,27 @@ public interface CustomerPolicyService {
     /**
      * Get all customer policies
      */
-    List<MentorPolicyResponse> getAllCustomerPolicies();
+    List<PolicyResponse> getAllCustomerPolicies();
 
     /**
      * Get all active customer policies
      */
-    List<MentorPolicyResponse> getActiveCustomerPolicies();
+    List<PolicyResponse> getActiveCustomerPolicies();
 
     /**
      * Get customer policy by ID
      */
-    MentorPolicyResponse getCustomerPolicyById(Long id);
+    PolicyResponse getCustomerPolicyById(Long id);
 
     /**
      * Create new customer policy
      */
-    MentorPolicyResponse createCustomerPolicy(MentorPolicyRequest request);
+    PolicyResponse createCustomerPolicy(PolicyRequest request);
 
     /**
      * Update customer policy
      */
-    MentorPolicyResponse updateCustomerPolicy(Long id, MentorPolicyRequest request);
+    PolicyResponse updateCustomerPolicy(Long id, PolicyRequest request);
 
     /**
      * Delete customer policy
@@ -40,10 +40,10 @@ public interface CustomerPolicyService {
     /**
      * Toggle active status of customer policy
      */
-    MentorPolicyResponse toggleActiveStatus(Long id);
+    PolicyResponse toggleActiveStatus(Long id);
 
     /**
      * Search customer policies by title
      */
-    List<MentorPolicyResponse> searchCustomerPoliciesByTitle(String keyword);
+    List<PolicyResponse> searchCustomerPoliciesByTitle(String keyword);
 }

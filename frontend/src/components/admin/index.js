@@ -13,3 +13,4 @@ export { default as ReviewManagement } from './ReviewManagement';
 export { default as RolePermissions } from './RolePermissions';
 export { default as SystemSettings } from './SystemSettings';
 export { default as UserManagement } from './UserManagement';
+export { default as PolicyManagement } from './PolicyManagement';
