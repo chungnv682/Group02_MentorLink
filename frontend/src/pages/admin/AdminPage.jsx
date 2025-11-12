@@ -15,23 +15,7 @@ import {
   FaFileAlt,
   FaAd,
 } from "react-icons/fa";
-import {
-  UserManagement,
-  ContentManagement,
-  Analytics,
-  MentorApproval,
-  FeedbackManagement,
-  BookingManagement,
-  PaymentHistory,
-  ReviewManagement,
-  BannerManagement,
-  SystemSettings,
-  RolePermissions,
-  CountryManagement,
-  AdminSidebar,
-  PolicyManagement,
-  MentorAdManagement,
-} from "../../components/admin";
+import { AdminSidebar, PolicyManagement, MentorAdManagement } from "../../components/admin";
 import {
   getAllUsers,
   getUserStatistics,
