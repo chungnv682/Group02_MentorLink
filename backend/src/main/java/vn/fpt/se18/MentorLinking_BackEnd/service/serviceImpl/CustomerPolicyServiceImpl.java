@@ -3,8 +3,8 @@ package vn.fpt.se18.MentorLinking_BackEnd.service.serviceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import vn.fpt.se18.MentorLinking_BackEnd.dto.request.admin.MentorPolicyRequest;
-import vn.fpt.se18.MentorLinking_BackEnd.dto.response.admin.MentorPolicyResponse;
+import vn.fpt.se18.MentorLinking_BackEnd.dto.request.admin.PolicyRequest;
+import vn.fpt.se18.MentorLinking_BackEnd.dto.response.admin.PolicyResponse;
 import vn.fpt.se18.MentorLinking_BackEnd.entity.CustomerPolicy;
 import vn.fpt.se18.MentorLinking_BackEnd.repository.CustomerPolicyRepository;
 import vn.fpt.se18.MentorLinking_BackEnd.service.CustomerPolicyService;
@@ -21,7 +21,7 @@ public class CustomerPolicyServiceImpl implements CustomerPolicyService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<MentorPolicyResponse> getAllCustomerPolicies() {
+    public List<PolicyResponse> getAllCustomerPolicies() {
         return customerPolicyRepository.findAll()
                 .stream()
                 .map(this::mapToResponse)
@@ -30,7 +30,7 @@ public class CustomerPolicyServiceImpl implements CustomerPolicyService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<MentorPolicyResponse> getActiveCustomerPolicies() {
+    public List<PolicyResponse> getActiveCustomerPolicies() {
         return customerPolicyRepository.findByIsActiveTrue()
                 .stream()
                 .map(this::mapToResponse)
@@ -39,14 +39,14 @@ public class CustomerPolicyServiceImpl implements CustomerPolicyService {
 
     @Override
     @Transactional(readOnly = true)
-    public MentorPolicyResponse getCustomerPolicyById(Long id) {
+    public PolicyResponse getCustomerPolicyById(Long id) {
         CustomerPolicy policy = customerPolicyRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Customer policy not found with id: " + id));
         return mapToResponse(policy);
     }
 
     @Override
-    public MentorPolicyResponse createCustomerPolicy(MentorPolicyRequest request) {
+    public PolicyResponse createCustomerPolicy(PolicyRequest request) {
         CustomerPolicy policy = CustomerPolicy.builder()
                 .title(request.getTitle())
                 .content(request.getContent())
@@ -58,7 +58,7 @@ public class CustomerPolicyServiceImpl implements CustomerPolicyService {
     }
 
     @Override
-    public MentorPolicyResponse updateCustomerPolicy(Long id, MentorPolicyRequest request) {
+    public PolicyResponse updateCustomerPolicy(Long id, PolicyRequest request) {
         CustomerPolicy existingPolicy = customerPolicyRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Customer policy not found with id: " + id));
 
@@ -79,7 +79,7 @@ public class CustomerPolicyServiceImpl implements CustomerPolicyService {
     }
 
     @Override
-    public MentorPolicyResponse toggleActiveStatus(Long id) {
+    public PolicyResponse toggleActiveStatus(Long id) {
         CustomerPolicy policy = customerPolicyRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Customer policy not found with id: " + id));
 
@@ -90,15 +90,15 @@ public class CustomerPolicyServiceImpl implements CustomerPolicyService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<MentorPolicyResponse> searchCustomerPoliciesByTitle(String keyword) {
+    public List<PolicyResponse> searchCustomerPoliciesByTitle(String keyword) {
         return customerPolicyRepository.findByTitleContainingIgnoreCase(keyword)
                 .stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
 
-    private MentorPolicyResponse mapToResponse(CustomerPolicy policy) {
-        return MentorPolicyResponse.builder()
+    private PolicyResponse mapToResponse(CustomerPolicy policy) {
+        return PolicyResponse.builder()
                 .id(policy.getId())
                 .title(policy.getTitle())
                 .content(policy.getContent())
