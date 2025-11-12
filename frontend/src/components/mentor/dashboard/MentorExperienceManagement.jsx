@@ -287,7 +287,7 @@ const MentorExperienceManagement = () => {
 
             {/* Statistics Cards */}
             <Row className="mb-4">
-                <Col lg={3} md={6} className="mb-3">
+                <Col lg={4} md={6} className="mb-3">
                     <Card className="dashboard-card stat-card">
                         <Card.Body>
                             <div className="stat-icon primary">
@@ -298,7 +298,7 @@ const MentorExperienceManagement = () => {
                         </Card.Body>
                     </Card>
                 </Col>
-                <Col lg={3} md={6} className="mb-3">
+                <Col lg={4} md={6} className="mb-3">
                     <Card className="dashboard-card stat-card">
                         <Card.Body>
                             <div className="stat-icon success">
@@ -309,7 +309,7 @@ const MentorExperienceManagement = () => {
                         </Card.Body>
                     </Card>
                 </Col>
-                <Col lg={3} md={6} className="mb-3">
+                <Col lg={4} md={6} className="mb-3">
                     <Card className="dashboard-card stat-card">
                         <Card.Body>
                             <div className="stat-icon warning">
@@ -320,19 +320,7 @@ const MentorExperienceManagement = () => {
                         </Card.Body>
                     </Card>
                 </Col>
-                <Col lg={3} md={6} className="mb-3">
-                    <Card className="dashboard-card stat-card">
-                        <Card.Body>
-                            <div className="stat-icon info">
-                                <i className="bi bi-calendar-event"></i>
-                            </div>
-                            <div className="stat-value">
-                                {experiences.filter(e => !e.endDate || e.endDate === '').length}
-                            </div>
-                            <p className="stat-label">Đang làm việc</p>
-                        </Card.Body>
-                    </Card>
-                </Col>
+                
             </Row>
 
             {/* Status Filter Toolbar */}
