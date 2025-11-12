@@ -29,7 +29,7 @@ const MentorListPage = () => {
         keyword: '',
         country: '',
         sort: 'numberOfBooking:desc',
-        page: 0,
+        page: 1,
         size: 12,
         gender: '',
         minRating: '',
@@ -86,7 +86,7 @@ const MentorListPage = () => {
         // Only prioritize (do NOT filter hard) — keep others but push matches on top
         setSelectedCountryCode(countryFromQuery);
         // Ensure hard filter isn't carried over from previous state
-        setFilters(prev => ({ ...prev, approvedCountry: '', page: 0 }));
+        setFilters(prev => ({ ...prev, approvedCountry: '', page: 1 }));
     }, [location.search]);
 
     // Fetch mentors khi component mount hoặc filters thay đổi
@@ -138,7 +138,7 @@ const MentorListPage = () => {
         setFilters(prev => ({
             ...prev,
             keyword: searchTerm,
-            page: 0
+            page: 1
         }));
     };
 
@@ -157,7 +157,7 @@ const MentorListPage = () => {
             setFilters(prev => ({
                 ...prev,
                 keyword: value,
-                page: 0
+                page: 1
             }));
             setIsSearching(false);
         }, 500); // Debounce 500ms
@@ -173,7 +173,7 @@ const MentorListPage = () => {
         setFilters(prev => ({
             ...prev,
             [key]: value,
-            page: 0 // Reset to first page when filters change
+            page: 1 // Reset to first page when filters change
         }));
     };
 
@@ -183,6 +183,8 @@ const MentorListPage = () => {
             ...prev,
             page: pageNumber
         }));
+        // Scroll to top of page
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     // Clear filters
@@ -192,7 +194,7 @@ const MentorListPage = () => {
             keyword: '',
             country: '',
             sort: 'numberOfBooking:desc',
-            page: 0,
+            page: 1,
             size: 12,
             gender: '',
             minRating: '',
@@ -217,35 +219,37 @@ const MentorListPage = () => {
     const generatePaginationItems = () => {
         const items = [];
         const { pageNumber, totalPages } = pagination;
+        // pageNumber from backend is 0-indexed, but we send 1-indexed to backend
+        const currentPage = pageNumber + 1;
 
         // Previous button
         items.push(
             <Pagination.Prev
                 key="prev"
-                disabled={pageNumber === 0}
-                onClick={() => handlePageChange(pageNumber - 1)}
+                disabled={currentPage === 1}
+                onClick={() => handlePageChange(currentPage - 1)}
             />
         );
 
-        // Page numbers
-        for (let i = 0; i < totalPages; i++) {
+        // Page numbers (display 1-indexed)
+        for (let i = 1; i <= totalPages; i++) {
             if (
-                i === 0 || // First page
-                i === totalPages - 1 || // Last page
-                (i >= pageNumber - 1 && i <= pageNumber + 1) // Current page ± 1
+                i === 1 || // First page
+                i === totalPages || // Last page
+                (i >= currentPage - 1 && i <= currentPage + 1) // Current page ± 1
             ) {
                 items.push(
                     <Pagination.Item
                         key={i}
-                        active={i === pageNumber}
+                        active={i === currentPage}
                         onClick={() => handlePageChange(i)}
                     >
-                        {i + 1}
+                        {i}
                     </Pagination.Item>
                 );
             } else if (
-                i === pageNumber - 2 ||
-                i === pageNumber + 2
+                i === currentPage - 2 ||
+                i === currentPage + 2
             ) {
                 items.push(<Pagination.Ellipsis key={`ellipsis-${i}`} />);
             }
@@ -255,8 +259,8 @@ const MentorListPage = () => {
         items.push(
             <Pagination.Next
                 key="next"
-                disabled={pageNumber >= totalPages - 1}
-                onClick={() => handlePageChange(pageNumber + 1)}
+                disabled={currentPage >= totalPages}
+                onClick={() => handlePageChange(currentPage + 1)}
             />
         );
 
@@ -389,12 +393,7 @@ const MentorListPage = () => {
                     {/* Active filters display */}
                     {(filters.country || selectedCountryCode) && (
                         <Alert variant="info" className="mb-3 py-2">
-                            {filters.country && (
-                                <span>Đang lọc theo quốc gia: <strong>{filters.country}</strong></span>
-                            )}
-                            {selectedCountryCode && !filters.country && (
-                                <span>Ưu tiên hiển thị mentor hỗ trợ quốc gia: <strong>{selectedCountryCode}</strong></span>
-                            )}
+                            
                             <Button 
                                 variant="link" 
                                 size="sm" 
@@ -407,7 +406,6 @@ const MentorListPage = () => {
                                     }
                                 }}
                             >
-                                <FaTimes /> Bỏ lọc
                             </Button>
                         </Alert>
                     )}
