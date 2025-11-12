@@ -10,7 +10,7 @@ import vn.fpt.se18.MentorLinking_BackEnd.dto.request.mentor.MentorServiceRequest
 import org.springframework.data.domain.Page;
 
 public interface MentorService {
-     MentorPageResponse getAllMentors(String keyword, String sort, int page, int size);
+     MentorPageResponse getAllMentors(String keyword, String country, String sort, int page, int size);
 
      MentorDetailResponse getMentorById(Long id);
 

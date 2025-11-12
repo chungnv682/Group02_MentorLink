@@ -277,7 +277,7 @@ const MentorEducationManagement = () => {
 
             {/* Statistics Cards */}
             <Row className="mb-4">
-                <Col lg={3} md={6} className="mb-3">
+                <Col lg={4} md={6} className="mb-3">
                     <Card className="dashboard-card stat-card">
                         <Card.Body>
                             <div className="stat-icon primary">
@@ -288,7 +288,7 @@ const MentorEducationManagement = () => {
                         </Card.Body>
                     </Card>
                 </Col>
-                <Col lg={3} md={6} className="mb-3">
+                <Col lg={4} md={6} className="mb-3">
                     <Card className="dashboard-card stat-card">
                         <Card.Body>
                             <div className="stat-icon success">
@@ -299,7 +299,7 @@ const MentorEducationManagement = () => {
                         </Card.Body>
                     </Card>
                 </Col>
-                <Col lg={3} md={6} className="mb-3">
+                <Col lg={4} md={6} className="mb-3">
                     <Card className="dashboard-card stat-card">
                         <Card.Body>
                             <div className="stat-icon warning">
@@ -310,19 +310,7 @@ const MentorEducationManagement = () => {
                         </Card.Body>
                     </Card>
                 </Col>
-                <Col lg={3} md={6} className="mb-3">
-                    <Card className="dashboard-card stat-card">
-                        <Card.Body>
-                            <div className="stat-icon info">
-                                <i className="bi bi-calendar-event"></i>
-                            </div>
-                            <div className="stat-value">
-                                {educations.filter(e => e.endDate && new Date(e.endDate) > new Date()).length}
-                            </div>
-                            <p className="stat-label">Đang học</p>
-                        </Card.Body>
-                    </Card>
-                </Col>
+                
             </Row>
 
             {/* Status Filter Toolbar */}
@@ -359,13 +347,13 @@ const MentorEducationManagement = () => {
                 <Table hover className="align-middle">
                     <thead>
                         <tr>
-                            <th style={{minWidth: 220}}>Trường học</th>
-                            <th style={{minWidth: 180}}>Chuyên ngành</th>
-                            <th style={{minWidth: 150}}>Thời gian</th>
-                            <th style={{minWidth: 180}}>Chứng chỉ</th>
-                            <th style={{minWidth: 140}}>Trạng thái</th>
+                            <th style={{minWidth: 200}}>Trường học</th>
+                            <th style={{minWidth: 160}}>Chuyên ngành</th>
+                            <th style={{minWidth: 130}}>Thời gian</th>
+                            <th style={{minWidth: 160}}>Chứng chỉ</th>
+                            <th style={{minWidth: 120}}>Trạng thái</th>
                             <th style={{minWidth: 200}}>Action</th>
-                        </tr>
+                        </tr>   
                     </thead>
                     <tbody>
                         {filtered.map((education, index) => {
