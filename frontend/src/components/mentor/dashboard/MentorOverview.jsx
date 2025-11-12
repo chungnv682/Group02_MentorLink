@@ -1,9 +1,9 @@
 import React from 'react';
-import { Row, Col, Card, Button, Table, Badge, ProgressBar } from 'react-bootstrap';
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement } from 'chart.js';
+import { Row, Col, Card, Button, Table, Badge, ProgressBar, OverlayTrigger, Tooltip } from 'react-bootstrap';
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip as ChartTooltip, Legend, ArcElement } from 'chart.js';
 import { Bar, Doughnut } from 'react-chartjs-2';
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement);
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, ChartTooltip, Legend, ArcElement);
 
 const MentorOverview = ({ mentorData }) => {
     // Mock data cho biểu đồ
@@ -96,22 +96,111 @@ const MentorOverview = ({ mentorData }) => {
         }).format(amount);
     };
 
+    // Format currency to short format (1.5M, 2.3B, etc.)
+    const formatCurrencyShort = (amount) => {
+        if (!amount) return '0 đ';
+        if (amount >= 1000000000) {
+            return (amount / 1000000000).toFixed(2) + ' tỷ';
+        }
+        if (amount >= 1000000) {
+            return (amount / 1000000).toFixed(2) + ' triệu';
+        }
+        if (amount >= 1000) {
+            return (amount / 1000).toFixed(1) + 'k';
+        }
+        return amount.toFixed(0);
+    };
+
     return (
         <div className="mentor-overview">
             {/* Statistics Cards */}
             <Row className="mb-4">
                 <Col lg={3} md={6} className="mb-3">
-                    <Card className="dashboard-card stat-card">
-                        <Card.Body>
-                            <div className="stat-icon primary">
-                                <i className="bi bi-currency-dollar"></i>
-                            </div>
-                            <div className="stat-value">
-                                {formatCurrency(mentorData.totalEarnings || 0)}
-                            </div>
-                            <p className="stat-label">Tổng thu nhập</p>
-                        </Card.Body>
-                    </Card>
+                    <OverlayTrigger
+                        placement="top"
+                        overlay={
+                            <Tooltip id="earnings-tooltip" className="custom-tooltip">
+                                <div className="text-start p-2">
+                                    <div className="mb-2">
+                                        <small className="text-light d-block mb-1">📊 <strong>Chi tiết thu nhập</strong></small>
+                                    </div>
+                                    <div className="mb-1">
+                                        <small className="text-light d-block">
+                                            Tổng từ bookings:
+                                        </small>
+                                        <small className="text-white fw-bold">
+                                            {formatCurrency(mentorData.totalEarnings || 0)}
+                                        </small>
+                                    </div>
+                                    <div className="mb-1">
+                                        <small className="text-light d-block">
+                                            Phí nền tảng (10%):
+                                        </small>
+                                        <small className="text-warning fw-bold">
+                                            - {formatCurrency(mentorData.platformCommission || 0)}
+                                        </small>
+                                    </div>
+                                    <hr className="my-2" style={{ borderColor: 'rgba(255,255,255,0.2)' }} />
+                                    <div>
+                                        <small className="text-light d-block">
+                                            Thu nhập thực nhận (90%):
+                                        </small>
+                                        <small className="text-success fw-bold" style={{ fontSize: '1.1em' }}>
+                                            ✓ {formatCurrency(mentorData.netEarnings || 0)}
+                                        </small>
+                                    </div>
+                                </div>
+                            </Tooltip>
+                        }
+                    >
+                        <Card 
+                            className="dashboard-card stat-card earnings-card" 
+                            style={{ 
+                                cursor: 'pointer',
+                                transition: 'all 0.3s ease',
+                                background: 'linear-gradient(135deg, rgba(113, 201, 206, 0.1) 0%, rgba(52, 152, 219, 0.1) 100%)'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.transform = 'translateY(-5px)';
+                                e.currentTarget.style.boxShadow = '0 10px 25px rgba(113, 201, 206, 0.2)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.transform = 'translateY(0)';
+                                e.currentTarget.style.boxShadow = '';
+                            }}
+                        >
+                            <Card.Body>
+                                <div className="stat-icon primary" style={{
+                                    background: 'linear-gradient(135deg, #71c9ce, #3498db)',
+                                    fontSize: '1.8em'
+                                }}>
+                                    <i className="bi bi-wallet2"></i>
+                                </div>
+                                <div className="stat-value" style={{
+                                    fontSize: '2rem',
+                                    fontWeight: '700',
+                                    background: 'linear-gradient(135deg, #71c9ce, #3498db)',
+                                    WebkitBackgroundClip: 'text',
+                                    WebkitTextFillColor: 'transparent',
+                                    backgroundClip: 'text',
+                                }}>
+                                    {formatCurrencyShort(mentorData.netEarnings || 0)}
+                                </div>
+                                <p className="stat-label" style={{ marginTop: '0.5rem', marginBottom: '0.25rem' }}>
+                                    Tổng Thu Nhập
+                                </p>
+                                <small className="text-muted d-block" style={{ fontSize: '0.85em' }}>
+                                    <i className="bi bi-info-circle me-1"></i>
+                                    90% sau trừ phí
+                                </small>
+                                <div style={{ marginTop: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid rgba(113, 201, 206, 0.2)' }}>
+                                    <small className="text-muted d-block" style={{ fontSize: '0.8em' }}>
+                                        Đầy đủ: {formatCurrency(mentorData.netEarnings || 0)}
+                                    </small>
+                                </div>
+                            </Card.Body>
+                        </Card>
+                    </OverlayTrigger>
                 </Col>
                 <Col lg={3} md={6} className="mb-3">
                     <Card className="dashboard-card stat-card">
@@ -177,158 +266,6 @@ const MentorOverview = ({ mentorData }) => {
             </Row>
 
             {/* Upcoming Sessions and Quick Actions */}
-            <Row>
-                <Col lg={8} className="mb-3">
-                    <Card className="dashboard-card">
-                        <Card.Header className="bg-transparent border-0 d-flex justify-content-between align-items-center">
-                            <h5 className="mb-0">Lịch sắp tới</h5>
-                            <Button variant="outline-primary" size="sm">
-                                Xem tất cả
-                            </Button>
-                        </Card.Header>
-                        <Card.Body className="p-0">
-                            <Table className="custom-table mb-0">
-                                <thead>
-                                    <tr>
-                                        <th>Học viên</th>
-                                        <th>Dịch vụ</th>
-                                        <th>Thời gian</th>
-                                        <th>Trạng thái</th>
-                                        <th>Thao tác</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {upcomingSessions.map((session) => (
-                                        <tr key={session.id}>
-                                            <td>
-                                                <div className="d-flex align-items-center">
-                                                    <div className="avatar-sm me-2">
-                                                        <div className="bg-primary rounded-circle d-flex align-items-center justify-content-center" style={{ width: '32px', height: '32px' }}>
-                                                            <span className="text-white small fw-bold">
-                                                                {session.customerName.charAt(0)}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                    <span className="fw-medium">{session.customerName}</span>
-                                                </div>
-                                            </td>
-                                            <td>{session.service}</td>
-                                            <td>
-                                                <div>
-                                                    <div className="fw-medium">{session.date}</div>
-                                                    <small className="text-muted">{session.time}</small>
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <Badge
-                                                    className={`status-badge ${session.status}`}
-                                                >
-                                                    {session.status === 'confirmed' ? 'Đã xác nhận' : 'Chờ xác nhận'}
-                                                </Badge>
-                                            </td>
-                                            <td>
-                                                <div className="d-flex gap-1">
-                                                    <Button variant="outline-primary" size="sm">
-                                                        <i className="bi bi-eye"></i>
-                                                    </Button>
-                                                    <Button variant="outline-success" size="sm">
-                                                        <i className="bi bi-chat-dots"></i>
-                                                    </Button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </Table>
-                        </Card.Body>
-                    </Card>
-                </Col>
-                <Col lg={4} className="mb-3">
-                    <Card className="dashboard-card">
-                        <Card.Header className="bg-transparent border-0">
-                            <h5 className="mb-0">Hoạt động gần đây</h5>
-                        </Card.Header>
-                        <Card.Body>
-                            <div className="recent-activities">
-                                <div className="activity-item mb-3 pb-3 border-bottom">
-                                    <div className="d-flex">
-                                        <div className="activity-icon me-3">
-                                            <div className="bg-success rounded-circle d-flex align-items-center justify-content-center" style={{ width: '24px', height: '24px' }}>
-                                                <i className="bi bi-check text-white small"></i>
-                                            </div>
-                                        </div>
-                                        <div className="flex-grow-1">
-                                            <p className="mb-1 small">
-                                                Hoàn thành buổi tư vấn với <strong>Nguyễn Văn A</strong>
-                                            </p>
-                                            <small className="text-muted">2 giờ trước</small>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="activity-item mb-3 pb-3 border-bottom">
-                                    <div className="d-flex">
-                                        <div className="activity-icon me-3">
-                                            <div className="bg-primary rounded-circle d-flex align-items-center justify-content-center" style={{ width: '24px', height: '24px' }}>
-                                                <i className="bi bi-star text-white small"></i>
-                                            </div>
-                                        </div>
-                                        <div className="flex-grow-1">
-                                            <p className="mb-1 small">
-                                                Nhận đánh giá 5 sao từ <strong>Trần Thị B</strong>
-                                            </p>
-                                            <small className="text-muted">1 ngày trước</small>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="activity-item mb-3">
-                                    <div className="d-flex">
-                                        <div className="activity-icon me-3">
-                                            <div className="bg-warning rounded-circle d-flex align-items-center justify-content-center" style={{ width: '24px', height: '24px' }}>
-                                                <i className="bi bi-calendar text-white small"></i>
-                                            </div>
-                                        </div>
-                                        <div className="flex-grow-1">
-                                            <p className="mb-1 small">
-                                                Có lịch đặt mới từ <strong>Lê Văn C</strong>
-                                            </p>
-                                            <small className="text-muted">2 ngày trước</small>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </Card.Body>
-                    </Card>
-
-                    <Card className="dashboard-card mt-3">
-                        <Card.Header className="bg-transparent border-0">
-                            <h5 className="mb-0">Mục tiêu tháng này</h5>
-                        </Card.Header>
-                        <Card.Body>
-                            <div className="goal-item mb-3">
-                                <div className="d-flex justify-content-between mb-2">
-                                    <span className="small fw-medium">Số buổi tư vấn</span>
-                                    <span className="small text-muted">18/25</span>
-                                </div>
-                                <ProgressBar variant="primary" now={72} className="mb-2" style={{ height: '6px' }} />
-                            </div>
-                            <div className="goal-item mb-3">
-                                <div className="d-flex justify-content-between mb-2">
-                                    <span className="small fw-medium">Thu nhập</span>
-                                    <span className="small text-muted">85%</span>
-                                </div>
-                                <ProgressBar variant="success" now={85} className="mb-2" style={{ height: '6px' }} />
-                            </div>
-                            <div className="goal-item">
-                                <div className="d-flex justify-content-between mb-2">
-                                    <span className="small fw-medium">Đánh giá tích cực</span>
-                                    <span className="small text-muted">95%</span>
-                                </div>
-                                <ProgressBar variant="info" now={95} style={{ height: '6px' }} />
-                            </div>
-                        </Card.Body>
-                    </Card>
-                </Col>
-            </Row>
         </div>
     );
 };

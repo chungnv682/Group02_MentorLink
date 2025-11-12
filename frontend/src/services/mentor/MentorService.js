@@ -9,6 +9,7 @@ class MentorService {
             const queryParams = new URLSearchParams();
 
             if (params.keyword) queryParams.append('keyword', params.keyword);
+            if (params.country) queryParams.append('country', params.country);
             if (params.sort) queryParams.append('sort', params.sort);
             if (params.page !== undefined) queryParams.append('page', params.page);
             if (params.size) queryParams.append('size', params.size);
@@ -181,6 +182,31 @@ class MentorService {
             return response; // interceptor returns response.data already
         } catch (error) {
             console.error('Error fetching current mentor profile:', error);
+            throw error;
+        }
+    }
+
+    // Get all approved countries for filter dropdown
+    static async getAllCountries() {
+        try {
+            const response = await instance.get('/api/countries');
+            return response;
+        } catch (error) {
+            console.error('Error fetching countries:', error);
+            throw error;
+        }
+    }
+
+    // Search mentors by country
+    static async getMentorsByCountry(country, options = {}) {
+        try {
+            const params = {
+                country,
+                ...options
+            };
+            return await this.getMentors(params);
+        } catch (error) {
+            console.error('Error fetching mentors by country:', error);
             throw error;
         }
     }

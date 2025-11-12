@@ -38,6 +38,8 @@ public enum ErrorCode {
     USER_NOT_EXISTED("22", "Người dùng không tồn tại", HttpStatus.NOT_FOUND),
     BANNER_NOT_EXISTED("23", "Banner không tồn tại", HttpStatus.NOT_FOUND),
     MENTOR_SERVICE_NOT_FOUND("24", "Dịch vụ mentor không tồn tại", HttpStatus.NOT_FOUND),
+    ACCOUNT_LOCKED("25", "Tài khoản đã bị khóa", HttpStatus.FORBIDDEN),
+    MENTOR_PENDING_APPROVAL("26", "Yêu cầu làm cố vấn của bạn đang chờ phê duyệt", HttpStatus.FORBIDDEN),
     ;
     
     private final String code;

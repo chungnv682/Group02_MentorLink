@@ -11,6 +11,9 @@ import { BsThreeDotsVertical } from 'react-icons/bs';
 import { getAllBlogs, moderateBlog, deleteBlog, togglePublishStatus } from '../../services/blog';
 import { getAllFaqsForAdmin, togglePublishFaq, deleteFaq, updateFaq } from '../../services/faq';
 import { useToast } from '../../contexts/ToastContext';
+import { extractTextFromHtml, sanitizeHtml } from '../../utils/htmlUtils';
+import '../../styles/components/quill-editor.css';
+import '../../styles/components/tinymce-content.css';
 
 const ContentManagement = () => {
     const [showModal, setShowModal] = useState(false);
@@ -156,7 +159,7 @@ const ContentManagement = () => {
                 // Calculate FAQ stats
                 setFaqStats({
                     total: data.totalElements || 0,
-                    published: faqsList.filter(f => f.isPublished).length
+                    published: faqsList.filter(f => f.published).length
                 });
             }
         } catch (error) {
@@ -439,9 +442,8 @@ const ContentManagement = () => {
             <div className="d-flex justify-content-between align-items-center mb-4">
                 <div>
                     <h4 className="mb-1">Quản lý nội dung</h4>
-                    <p className="text-muted mb-0">Quản lý FAQ, bài viết hướng dẫn và nội dung blog</p>
                 </div>
-                <div className="d-flex gap-2">
+                {/* <div className="d-flex gap-2">
                     <Button 
                         variant="outline-primary" 
                         size="sm"
@@ -458,7 +460,7 @@ const ContentManagement = () => {
                         <FaEdit className="me-1" />
                         Tạo bài viết
                     </Button>
-                </div>
+                </div> */}
             </div>
 
             {/* Stats Cards - simple version */}
@@ -625,7 +627,7 @@ const ContentManagement = () => {
                                                         <div>
                                                             <div className="fw-medium">{blog.title}</div>
                                                             <small className="text-muted">
-                                                                {blog.content ? blog.content.substring(0, 60) + '...' : ''}
+                                                                {extractTextFromHtml(blog.content, 60)}
                                                             </small>
                                                         </div>
                                                     </td>
@@ -743,10 +745,10 @@ const ContentManagement = () => {
                                         >
                                             Xóa đã chọn {selectedFaqIds.size > 0 ? `(${selectedFaqIds.size})` : ''}
                                         </Button>
-                                        <Button variant="primary" size="sm" disabled>
+                                        {/* <Button variant="primary" size="sm" disabled>
                                             <FaEdit className="me-1" />
                                             Thêm FAQ mới
-                                        </Button>
+                                        </Button> */}
                                     </div>
                                 </div>
                             </Card.Header>
@@ -807,7 +809,7 @@ const ContentManagement = () => {
                                                         </Badge>
                                                     </td>
                                                     <td>
-                                                        {faq.isPublished ? (
+                                                        {faq.published ? (
                                                             <Badge bg="success" className="d-flex align-items-center justify-content-center gap-1" style={{width: 'fit-content'}}>
                                                                 <FaEye size={10} /> Hiện
                                                             </Badge>
@@ -832,8 +834,8 @@ const ContentManagement = () => {
                                                             </Dropdown.Toggle>
                                                             <Dropdown.Menu>
                                                                 <Dropdown.Item onClick={() => handleViewFaq(faq)}>Xem</Dropdown.Item>
-                                                                <Dropdown.Item onClick={() => handleTogglePublishFaq(faq.id, faq.isPublished)}>
-                                                                    {faq.isPublished ? 'Ẩn FAQ' : 'Hiển thị FAQ'}
+                                                                <Dropdown.Item onClick={() => handleTogglePublishFaq(faq.id, faq.published)}>
+                                                                    {faq.published ? 'Ẩn FAQ' : 'Hiển thị FAQ'}
                                                                 </Dropdown.Item>
                                                                 <Dropdown.Item onClick={() => handleDeleteFaq(faq.id)} className="text-danger">Xóa</Dropdown.Item>
                                                             </Dropdown.Menu>
@@ -904,8 +906,8 @@ const ContentManagement = () => {
 
                             <div className="blog-content">
                                 <h6>Nội dung:</h6>
-                                <div className="p-3 bg-light rounded">
-                                    {selectedBlog.content}
+                                <div className="p-3 bg-light rounded blog-content-display tinymce-content-display">
+                                    <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(selectedBlog.content) }} />
                                 </div>
                             </div>
 
@@ -956,8 +958,7 @@ const ContentManagement = () => {
                 </Modal.Footer>
             </Modal>
 
-            {/* Create Blog Modal */}
-            <Modal show={showCreateModal} onHide={() => setShowCreateModal(false)} size="lg">
+            {/* <Modal show={showCreateModal} onHide={() => setShowCreateModal(false)} size="lg">
                 <Modal.Header closeButton>
                     <Modal.Title>Tạo bài viết mới</Modal.Title>
                 </Modal.Header>
@@ -977,7 +978,6 @@ const ContentManagement = () => {
                 </Modal.Footer>
             </Modal>
 
-            {/* FAQ Detail Modal */}
             <Modal show={showFAQModal} onHide={() => { setShowFAQModal(false); setSelectedFaq(null); }} size="lg">
                 <Modal.Header closeButton>
                     <Modal.Title>Chi tiết FAQ</Modal.Title>
@@ -1062,7 +1062,7 @@ const ContentManagement = () => {
                         </>
                     )}
                 </Modal.Footer>
-            </Modal>
+            </Modal> */}
         </div>
     );
 };

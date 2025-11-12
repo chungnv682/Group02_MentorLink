@@ -27,4 +27,12 @@ public interface MentorService {
     BaseResponse<Void> bulkRejectMentors(List<Long> mentorIds);
 
     BaseResponse<MentorStatisticsResponse> getMentorStatistics();
+
+    BaseResponse<?> getMentorEducation(Long id);
+
+    BaseResponse<?> getMentorExperience(Long id);
+
+    BaseResponse<?> getMentorCertificates(Long id);
+
+    BaseResponse<?> getMentorServices(Long id);
 }

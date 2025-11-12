@@ -13,9 +13,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import vn.fpt.se18.MentorLinking_BackEnd.dto.request.BaseRequest;
-import vn.fpt.se18.MentorLinking_BackEnd.dto.request.auth.SignInRequest;
-import vn.fpt.se18.MentorLinking_BackEnd.dto.request.auth.SignUpMentorRequest;
-import vn.fpt.se18.MentorLinking_BackEnd.dto.request.auth.SignUpRequest;
+import vn.fpt.se18.MentorLinking_BackEnd.dto.request.auth.*;
 import vn.fpt.se18.MentorLinking_BackEnd.dto.response.BaseResponse;
 import vn.fpt.se18.MentorLinking_BackEnd.dto.response.auth.TokenResponse;
 import vn.fpt.se18.MentorLinking_BackEnd.service.AuthenticationService;
@@ -81,6 +79,33 @@ public class AuthenticationController {
                 .requestDateTime(String.valueOf(java.time.LocalDateTime.now()))
                 .respCode("0")
                 .description("Mentor registered successfully")
+                .data(tokenResponse)
+                .build();
+    }
+
+    @PostMapping("/signup-with-otp")
+    public BaseResponse<TokenResponse> signUpWithOtp(@Valid @RequestBody BaseRequest<SignUpWithOtpRequest> request) {
+        log.info("🔐 Đăng ký với OTP cho email: {}", request.getData().getEmail());
+
+        TokenResponse tokenResponse = authenticationService.signUpWithOtp(request.getData());
+        return BaseResponse.<TokenResponse>builder()
+                .requestDateTime(request.getRequestDateTime())
+                .respCode("0")
+                .description("Đăng ký thành công với xác thực OTP")
+                .data(tokenResponse)
+                .build();
+    }
+
+    @PostMapping(value = "/mentor-signup-with-otp", consumes = {"multipart/form-data"})
+    public BaseResponse<TokenResponse> mentorSignUpWithOtp(@Valid @ModelAttribute SignUpMentorWithOtpRequest request) {
+        log.info("🔐 Đăng ký mentor với OTP cho email: '{}'", request.getEmail());
+        log.info("🔐 Đăng ký mentor với OTP cho họ tên: '{}'", request.getFullName());
+
+        TokenResponse tokenResponse = authenticationService.signUpMentorWithOtp(request);
+        return BaseResponse.<TokenResponse>builder()
+                .requestDateTime(String.valueOf(java.time.LocalDateTime.now()))
+                .respCode("0")
+                .description("Đăng ký mentor thành công với xác thực OTP")
                 .data(tokenResponse)
                 .build();
     }

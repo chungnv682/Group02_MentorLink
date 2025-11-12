@@ -18,6 +18,7 @@ import {
 } from '../../../components/mentor/dashboard';
 import { useAuth } from '../../../contexts';
 import MentorService from '../../../services/mentor/MentorService';
+import PaymentHistoryService from '../../../services/mentor/PaymentHistoryService';
 import { colors } from '@mui/material';
 
 const MentorDashboard = () => {
@@ -28,6 +29,7 @@ const MentorDashboard = () => {
     const [loading, setLoading] = useState(true);
     const [mentor, setMentor] = useState(null);
     const [activity, setActivity] = useState(null);
+    const [earnings, setEarnings] = useState(null);
 
     // Fetch mentor profile and activity for the logged-in mentor
     useEffect(() => {
@@ -43,6 +45,11 @@ const MentorDashboard = () => {
                 const act = await MentorService.getMentorActivity();
                 const actData = act?.data || act; 
                 setActivity(actData || null);
+
+                // 3) Get earnings data
+                const earningsRes = await PaymentHistoryService.getMyEarnings();
+                const earningsData = earningsRes?.data || earningsRes;
+                setEarnings(earningsData || null);
             } catch (err) {
                 console.error('Error loading mentor dashboard data', err);
             } finally {
@@ -68,12 +75,14 @@ const MentorDashboard = () => {
             avatar_url: avatarUrl,
             rating: Number(rating) || 0,
             number_of_booking: Number(numberOfBooking) || 0,
-            totalEarnings: 0, // Backend không trả về doanh thu -> để 0 hoặc tính sau khi có API
+            totalEarnings: earnings?.totalEarnings || 0,
+            platformCommission: earnings?.platformCommission || 0,
+            netEarnings: earnings?.netEarnings || 0,
             pendingBookings: pendingCount,
             completedBookings: completedCount,
             upcomingSessions: activity?.confirmed?.length || 0,
         };
-    }, [mentor, activity, user]);
+    }, [mentor, activity, earnings, user]);
 
     const renderTabContent = () => {
         switch (activeTab) {

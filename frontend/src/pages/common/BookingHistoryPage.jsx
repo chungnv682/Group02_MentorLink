@@ -59,6 +59,7 @@ const BookingHistoryPage = () => {
             'APPROVED': { bg: 'success', text: 'Đã xác nhận' },
             'SUCCESS': { bg: 'info', text: 'Đã hoàn thành' },
             'CANCELLED': { bg: 'danger', text: 'Đã hủy' },
+            'COMPLETED': { bg: 'primary', text: 'Đã hoàn tất' },
             'REJECTED': { bg: 'danger', text: 'Đã bị từ chối' },
             'CONFIRMED': { bg: 'success', text: 'Đã xử lý' },
         };
