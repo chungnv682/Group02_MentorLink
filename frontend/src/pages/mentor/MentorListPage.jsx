@@ -17,6 +17,7 @@ import { FaSearch, FaFilter, FaTimes } from 'react-icons/fa';
 import useMentors from '../../hooks/useMentors';
 import MentorCard from '../../components/mentor/MentorCard';
 import { useToast } from '../../contexts/ToastContext';
+import MentorService from '../../services/mentor/MentorService';
 import '../../styles/components/MentorList.css';
 
 const MentorListPage = () => {
@@ -26,8 +27,9 @@ const MentorListPage = () => {
 
     const [filters, setFilters] = useState({
         keyword: '',
+        country: '',
         sort: 'numberOfBooking:desc',
-        page: 0,
+        page: 1,
         size: 12,
         gender: '',
         minRating: '',
@@ -43,6 +45,29 @@ const MentorListPage = () => {
     const [showFilters, setShowFilters] = useState(false);
     const [searchTimeout, setSearchTimeout] = useState(null);
     const [isSearching, setIsSearching] = useState(false);
+    
+    // Countries for dropdown
+    const [countries, setCountries] = useState([]);
+    const [countriesLoading, setCountriesLoading] = useState(false);
+
+    // Load countries for filter dropdown
+    useEffect(() => {
+        const loadCountries = async () => {
+            try {
+                setCountriesLoading(true);
+                const response = await MentorService.getAllCountries();
+                const countryData = response?.data || response || [];
+                setCountries(countryData);
+            } catch (error) {
+                console.error('Error loading countries:', error);
+                showToast('Không thể tải danh sách quốc gia', 'error');
+            } finally {
+                setCountriesLoading(false);
+            }
+        };
+        
+        loadCountries();
+    }, [showToast]);
 
     // Check if payment failed and show toast
     useEffect(() => {
@@ -61,7 +86,7 @@ const MentorListPage = () => {
         // Only prioritize (do NOT filter hard) — keep others but push matches on top
         setSelectedCountryCode(countryFromQuery);
         // Ensure hard filter isn't carried over from previous state
-        setFilters(prev => ({ ...prev, approvedCountry: '', page: 0 }));
+        setFilters(prev => ({ ...prev, approvedCountry: '', page: 1 }));
     }, [location.search]);
 
     // Fetch mentors khi component mount hoặc filters thay đổi
@@ -113,7 +138,7 @@ const MentorListPage = () => {
         setFilters(prev => ({
             ...prev,
             keyword: searchTerm,
-            page: 0
+            page: 1
         }));
     };
 
@@ -132,7 +157,7 @@ const MentorListPage = () => {
             setFilters(prev => ({
                 ...prev,
                 keyword: value,
-                page: 0
+                page: 1
             }));
             setIsSearching(false);
         }, 500); // Debounce 500ms
@@ -140,10 +165,15 @@ const MentorListPage = () => {
         setSearchTimeout(newTimeout);
     };    // Handle filter changes
     const handleFilterChange = (key, value) => {
+        // If country filter is changed, clear the priority country from URL
+        if (key === 'country') {
+            setSelectedCountryCode('');
+        }
+        
         setFilters(prev => ({
             ...prev,
             [key]: value,
-            page: 0 // Reset to first page when filters change
+            page: 1 // Reset to first page when filters change
         }));
     };
 
@@ -153,6 +183,8 @@ const MentorListPage = () => {
             ...prev,
             page: pageNumber
         }));
+        // Scroll to top of page
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     // Clear filters
@@ -160,8 +192,9 @@ const MentorListPage = () => {
         setSearchTerm('');
         setFilters({
             keyword: '',
+            country: '',
             sort: 'numberOfBooking:desc',
-            page: 0,
+            page: 1,
             size: 12,
             gender: '',
             minRating: '',
@@ -186,35 +219,37 @@ const MentorListPage = () => {
     const generatePaginationItems = () => {
         const items = [];
         const { pageNumber, totalPages } = pagination;
+        // pageNumber from backend is 0-indexed, but we send 1-indexed to backend
+        const currentPage = pageNumber + 1;
 
         // Previous button
         items.push(
             <Pagination.Prev
                 key="prev"
-                disabled={pageNumber === 0}
-                onClick={() => handlePageChange(pageNumber - 1)}
+                disabled={currentPage === 1}
+                onClick={() => handlePageChange(currentPage - 1)}
             />
         );
 
-        // Page numbers
-        for (let i = 0; i < totalPages; i++) {
+        // Page numbers (display 1-indexed)
+        for (let i = 1; i <= totalPages; i++) {
             if (
-                i === 0 || // First page
-                i === totalPages - 1 || // Last page
-                (i >= pageNumber - 1 && i <= pageNumber + 1) // Current page ± 1
+                i === 1 || // First page
+                i === totalPages || // Last page
+                (i >= currentPage - 1 && i <= currentPage + 1) // Current page ± 1
             ) {
                 items.push(
                     <Pagination.Item
                         key={i}
-                        active={i === pageNumber}
+                        active={i === currentPage}
                         onClick={() => handlePageChange(i)}
                     >
-                        {i + 1}
+                        {i}
                     </Pagination.Item>
                 );
             } else if (
-                i === pageNumber - 2 ||
-                i === pageNumber + 2
+                i === currentPage - 2 ||
+                i === currentPage + 2
             ) {
                 items.push(<Pagination.Ellipsis key={`ellipsis-${i}`} />);
             }
@@ -224,8 +259,8 @@ const MentorListPage = () => {
         items.push(
             <Pagination.Next
                 key="next"
-                disabled={pageNumber >= totalPages - 1}
-                onClick={() => handlePageChange(pageNumber + 1)}
+                disabled={currentPage >= totalPages}
+                onClick={() => handlePageChange(currentPage + 1)}
             />
         );
 
@@ -256,7 +291,7 @@ const MentorListPage = () => {
                 <Card.Body className="bg-light rounded">
                     <div>
                         <Row className="align-items-end">
-                            <Col md={6} lg={4}>
+                            <Col md={6} lg={3}>
                                 <Form.Group className="mb-3 mb-md-0">
                                     <Form.Label>Tìm kiếm</Form.Label>
                                     <InputGroup>
@@ -266,17 +301,31 @@ const MentorListPage = () => {
                                             value={searchTerm}
                                             onChange={(e) => handleSearchChange(e.target.value)}
                                         />
-                                        <InputGroup.Text className="bg-primary text-white">
-                                            {isSearching ? (
-                                                <Spinner animation="border" size="sm" />
-                                            ) : (
-                                                <FaSearch />
-                                            )}
-                                        </InputGroup.Text>
+                                        
                                     </InputGroup>
-                                    {searchTerm && (
+                                    
+                                </Form.Group>
+                            </Col>
+
+                            <Col md={3} lg={2}>
+                                <Form.Group className="mb-3 mb-md-0">
+                                    <Form.Label>Quốc gia</Form.Label>
+                                    <Form.Select
+                                        value={filters.country}
+                                        onChange={(e) => handleFilterChange('country', e.target.value)}
+                                        disabled={countriesLoading}
+                                    >
+                                        <option value="">Tất cả quốc gia</option>
+                                        {countries.map(country => (
+                                            <option key={country.id} value={country.name}>
+                                                {country.name}
+                                            </option>
+                                        ))}
+                                    </Form.Select>
+                                    {countriesLoading && (
                                         <Form.Text className="text-muted">
-                                            {isSearching ? 'Đang tìm kiếm...' : `Tìm thấy ${pagination.totalElements} mentor`}
+                                            <Spinner animation="border" size="sm" className="me-1" />
+                                            Đang tải...
                                         </Form.Text>
                                     )}
                                 </Form.Group>
@@ -341,10 +390,23 @@ const MentorListPage = () => {
                 </Alert>
             ) : (
                 <>
-                    {/* If a country was selected from the mega-menu, show a small hint */}
-                    {selectedCountryCode && (
-                        <Alert variant="success" className="mb-3 py-2">
-                            Ưu tiên hiển thị mentor hỗ trợ quốc gia: <strong>{selectedCountryCode}</strong>
+                    {/* Active filters display */}
+                    {(filters.country || selectedCountryCode) && (
+                        <Alert variant="info" className="mb-3 py-2">
+                            
+                            <Button 
+                                variant="link" 
+                                size="sm" 
+                                className="p-0 ms-2 text-decoration-none"
+                                onClick={() => {
+                                    if (filters.country) {
+                                        handleFilterChange('country', '');
+                                    } else {
+                                        setSelectedCountryCode('');
+                                    }
+                                }}
+                            >
+                            </Button>
                         </Alert>
                     )}
                     {/* Mentor Horizontal List */}

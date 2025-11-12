@@ -21,6 +21,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import vn.fpt.se18.MentorLinking_BackEnd.service.UserService;
 
 import static org.springframework.security.config.http.SessionCreationPolicy.STATELESS;
+
 import org.springframework.http.HttpMethod;
 
 @Configuration
@@ -48,12 +49,12 @@ public class AppConfig {
                                 "/admin/**",
                                 "/mentors", "/mentors/**",
                                 "/blogs", "/blogs/**",
-                                "/mentor-policies/**", "/customer-policies/**", "/banners/**", "/blogs/**",
+                                "/mentor-policies/**", "/policies/active", "/customer-policies/**", "/banners/**", "/blogs/**",
                                 "/mentor-countries/**", "/faqs/**", "/schedules/**",
                                 "/countries/**", "/api/countries/popular", "/api/countries/search")
                         .permitAll()
                         .requestMatchers("/auth/**", "/profile/**", "/bookings/**", "/payments/**", "/comments/**",
-                                "/ratings/**", "/chat/**", "/recommendations/**","/chatbot/**","/schedules/**","/time-slots/**")
+                                "/ratings/**", "/chat/**", "/recommendations/**", "/chatbot/**", "/schedules/**", "/time-slots/**")
                         .permitAll()
                         .anyRequest().authenticated())
                 .sessionManagement(manager -> manager.sessionCreationPolicy(STATELESS))

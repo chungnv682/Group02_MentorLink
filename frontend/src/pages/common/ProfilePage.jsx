@@ -6,6 +6,7 @@ import { API_ENDPOINTS, USER_ROLES } from '../../utils';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import '../../styles/components/Profile.css';
+import MentorService from '../../services/mentor/MentorService';
 
 const allowedFieldsForCustomer = [
     'username', 'email', 'fullname', 'dob', 'phone', 'gender', 'address', 'avatarUrl', 'bankAccountNumber', 'bankName'
@@ -26,7 +27,7 @@ const ProfilePage = () => {
         const fetchProfile = async () => {
             try {
                 setLoading(true);
-                const res = await instance.get(API_ENDPOINTS.USERS.PROFILE);
+                const res = await MentorService.getCurrentMentorProfile();
                 // res may contain wrapper (data) or direct object depending on interceptors
                 const data = res?.data || res;
                 setProfile(data);

@@ -12,8 +12,24 @@ import {
   FaCog,
   FaShieldAlt,
   FaGlobeAmericas,
+  FaFileAlt,
 } from "react-icons/fa";
-import { AdminSidebar } from "../../components/admin";
+import {
+  UserManagement,
+  ContentManagement,
+  Analytics,
+  MentorApproval,
+  FeedbackManagement,
+  BookingManagement,
+  PaymentHistory,
+  ReviewManagement,
+  BannerManagement,
+  SystemSettings,
+  RolePermissions,
+  CountryManagement,
+  AdminSidebar,
+  PolicyManagement,
+} from "../../components/admin";
 import {
   getAllUsers,
   getUserStatistics,
@@ -259,7 +275,7 @@ const AdminPage = () => {
       key: "content",
       icon: <FaBlog />,
       title: "Quản lý nội dung",
-      badge:null,
+      badge: null,
       component: (
         <Suspense fallback={<LoadingFallback />}>
           <ContentManagement
@@ -357,6 +373,13 @@ const AdminPage = () => {
           <Analytics stats={stats} mentors={mentors} />
         </Suspense>
       ),
+    },
+    {
+      key: "policies",
+      icon: <FaFileAlt />,
+      title: "Quản lý chính sách",
+      badge: null,
+      component: <PolicyManagement />,
     },
     {
       key: "roles",

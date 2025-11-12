@@ -68,27 +68,7 @@ import '../../styles/components/MentorDetail.css'; const MentorDetailPage = () =
             const response = await MentorService.getMentorById(id);
 
             if (response.respCode === "0") {
-                console.log('🔍 Mentor Detail Debug Info:');
-                console.log('📋 Full response:', response);
-                console.log('👤 Mentor data:', response.data);
-                console.log('🔑 Available keys:', Object.keys(response.data));
-                console.log('🎓 Education data:', response.data.educations);
-                console.log('💼 Experience data check:', {
-                    experiences: response.data.experiences,
-                    experience: response.data.experience,
-                    workExperiences: response.data.workExperiences
-                });
-                console.log('⚙️ Services data check:', {
-                    services: response.data.services,
-                    service: response.data.service,
-                    mentorServices: response.data.mentorServices
-                });
-                console.log('🏆 Tests/Certs data check:', {
-                    tests: response.data.tests,
-                    test: response.data.test,
-                    certifications: response.data.certifications,
-                    certificates: response.data.certificates
-                }); setMentor(response.data);
+                setMentor(response.data);
             } else {
                 setError('Không thể tải thông tin mentor');
             }

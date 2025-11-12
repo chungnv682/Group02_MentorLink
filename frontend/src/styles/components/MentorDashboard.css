@@ -466,6 +466,52 @@
     color: #e9ecef !important;
 }
 
+/* Earnings Card Styles */
+.earnings-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.earnings-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(113, 201, 206, 0.1) 0%, transparent 70%);
+    animation: shimmer 3s infinite;
+}
+
+@keyframes shimmer {
+    0% {
+        transform: translate(0, 0);
+    }
+    50% {
+        transform: translate(50px, 50px);
+    }
+    100% {
+        transform: translate(0, 0);
+    }
+}
+
+.earnings-card:hover {
+    border-color: #71c9ce !important;
+}
+
+/* Custom Tooltip */
+.custom-tooltip .tooltip-inner {
+    background-color: rgba(0, 0, 0, 0.9) !important;
+    border-radius: 12px;
+    padding: 1rem;
+    max-width: 300px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.custom-tooltip .tooltip-arrow::before {
+    border-top-color: rgba(0, 0, 0, 0.9) !important;
+}
+
 /* Tables */
 .custom-table {
     background-color: #ffffff !important;
