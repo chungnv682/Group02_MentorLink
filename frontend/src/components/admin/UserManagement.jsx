@@ -49,7 +49,7 @@ const UserManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterRole, setFilterRole] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
-  
+
   // Add user modal states
   const [showAddUserModal, setShowAddUserModal] = useState(false);
   const [newUserData, setNewUserData] = useState({
@@ -82,6 +82,7 @@ const UserManagement = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [statsLoading, setStatsLoading] = useState(false);
+
   // Selection state for bulk actions
   const [selectedIds, setSelectedIds] = useState(new Set());
   const headerCheckboxRef = useRef(null);
@@ -106,13 +107,10 @@ const UserManagement = () => {
     try {
       setStatsLoading(true);
       const response = await getUserStatistics();
-      console.log("Statistics response:", response); // Debug log
       if (response && response.data) {
         setStatistics(response.data);
       }
     } catch (err) {
-      console.error("Error fetching statistics:", err);
-      // Set default values on error
       setStatistics({
         totalUsers: 0,
         totalMentors: 0,
@@ -137,21 +135,15 @@ const UserManagement = () => {
         status: filterStatus !== "all" ? getStatusValue(filterStatus) : null,
       };
 
-      console.log("Fetching users with params:", params); // Debug log
       const response = await getAllUsers(params);
-      console.log("Response:", response); // Debug log
 
       if (response && response.data) {
         const pageData = response.data;
-        console.log("Page data:", pageData); // Debug log
         setUsers(pageData.content || []);
-        // Ensure selection set doesn't include users that no longer exist (e.g., after filtering)
         setSelectedIds((prev) => {
           if (!prev || prev.size === 0) return prev;
           const valid = new Set(prev);
           const currentIds = new Set((pageData.content || []).map((u) => u.id));
-          // Keep selection across pages; do not prune unless the user is totally gone from dataset
-          // We can't know global dataset, so keep as-is
           return valid;
         });
         setPagination((prev) => ({
@@ -162,7 +154,6 @@ const UserManagement = () => {
         }));
       }
     } catch (err) {
-      console.error("Error fetching users:", err);
       setError(
         err.description || err.message || "Không thể tải danh sách người dùng"
       );
@@ -171,8 +162,6 @@ const UserManagement = () => {
       setLoading(false);
     }
   };
-
-  // Helpers for roles/status mapping remain unchanged
 
   const getRoleId = (role) => {
     const roleMap = {
@@ -186,10 +175,9 @@ const UserManagement = () => {
 
   const getStatusValue = (status) => {
     const statusMap = {
-      ACTIVE: 1,
-      INACTIVE: 0,
-      PENDING: 2,
-      BLOCKED: 3,
+      APPROVED: 4,
+      REJECTED: 5,
+      PENDING: 3,
     };
     return statusMap[status];
   };
@@ -197,13 +185,11 @@ const UserManagement = () => {
   const handleViewUser = async (user) => {
     try {
       const response = await getAdminUserDetailById(user.id);
-      console.log("Admin user detail response:", response); // Debug log
       if (response && response.data) {
         setSelectedUser(response.data);
         setShowModal(true);
       }
     } catch (err) {
-      console.error("Error fetching user details:", err);
       alert("Không thể tải thông tin người dùng");
     }
   };
@@ -215,43 +201,45 @@ const UserManagement = () => {
 
     try {
       const response = await deleteUser(userId);
-      console.log("Delete user response:", response); // Debug log
       if (response && response.respCode === "0") {
         alert("Xóa người dùng thành công");
         fetchUsers();
         fetchStatistics();
       }
     } catch (err) {
-      console.error("Error deleting user:", err);
       alert(err.description || "Không thể xóa người dùng");
     }
   };
 
   const handleToggleUserStatus = async (user) => {
-    // Không cho phép toggle nếu user đang ở trạng thái PENDING
     if (user.status === "PENDING") {
-      alert("Không thể thay đổi trạng thái của người dùng đang chờ duyệt. Vui lòng duyệt hoặc từ chối trước.");
+      alert(
+        "Không thể thay đổi trạng thái của người dùng đang chờ duyệt. Vui lòng duyệt hoặc từ chối trước."
+      );
       return;
     }
 
-    const isActive = user.status === "ACTIVE";
+    const isActive = user.status === "APPROVED";
     const action = isActive ? "vô hiệu hóa" : "kích hoạt";
-    const newStatus = isActive ? "INACTIVE" : "ACTIVE";
-    
+    const newStatus = isActive ? "REJECTED" : "APPROVED";
+
     if (!window.confirm(`Bạn có chắc chắn muốn ${action} người dùng này?`)) {
       return;
     }
 
     try {
       const response = await toggleUserStatus(user.id);
-      console.log("Toggle user status response:", response); // Debug log
       if (response && response.respCode === "0") {
-        alert(response.description || `${action.charAt(0).toUpperCase() + action.slice(1)} người dùng thành công`);
+        alert(
+          response.description ||
+            `${
+              action.charAt(0).toUpperCase() + action.slice(1)
+            } người dùng thành công`
+        );
         fetchUsers();
         fetchStatistics();
       }
     } catch (err) {
-      console.error("Error toggling user status:", err);
       alert(err.description || `Không thể ${action} người dùng`);
     }
   };
@@ -276,7 +264,6 @@ const UserManagement = () => {
 
     try {
       const response = await rejectMentor(userToReject.id, rejectionReason);
-      console.log("Reject mentor response:", response);
       if (response && response.respCode === "0") {
         alert("Đã từ chối mentor và gửi email thông báo thành công");
         handleCloseRejectModal();
@@ -284,7 +271,6 @@ const UserManagement = () => {
         fetchStatistics();
       }
     } catch (err) {
-      console.error("Error rejecting mentor:", err);
       alert(err.description || "Không thể từ chối mentor");
     }
   };
@@ -318,7 +304,9 @@ const UserManagement = () => {
   const handleAddUser = async () => {
     // Validation
     if (!newUserData.email || !newUserData.password || !newUserData.fullName) {
-      alert("Vui lòng điền đầy đủ các thông tin bắt buộc (Email, Mật khẩu, Họ tên)");
+      alert(
+        "Vui lòng điền đầy đủ các thông tin bắt buộc (Email, Mật khẩu, Họ tên)"
+      );
       return;
     }
 
@@ -353,8 +341,7 @@ const UserManagement = () => {
       }
 
       const response = await createUser(userData);
-      console.log("Create user response:", response);
-      
+
       if (response && response.respCode === "0") {
         alert("Tạo người dùng thành công!");
         handleCloseAddUserModal();
@@ -362,16 +349,10 @@ const UserManagement = () => {
         fetchStatistics();
       }
     } catch (err) {
-      console.error("Error creating user:", err);
       alert(err.description || err.message || "Không thể tạo người dùng");
     } finally {
       setAddUserLoading(false);
     }
-  };
-
-  const handleSearch = () => {
-    setPagination((prev) => ({ ...prev, currentPage: 1 }));
-    fetchUsers();
   };
 
   const handlePageChange = (pageNumber) => {
@@ -388,10 +369,9 @@ const UserManagement = () => {
 
   const statuses = [
     { value: "all", label: "Tất cả trạng thái" },
-    { value: "ACTIVE", label: "Hoạt động" },
-    { value: "INACTIVE", label: "Không hoạt động" },
+    { value: "APPROVED", label: "Hoạt động" },
+    { value: "REJECTED", label: "Không hoạt động" },
     { value: "PENDING", label: "Chờ duyệt" },
-    { value: "BLOCKED", label: "Bị khóa" },
   ];
 
   const getRoleBadgeVariant = (role) => {
@@ -411,9 +391,9 @@ const UserManagement = () => {
 
   const getStatusBadgeVariant = (status) => {
     switch (status) {
-      case "ACTIVE":
+      case "APPROVED":
         return "success";
-      case "INACTIVE":
+      case "REJECTED":
         return "danger";
       case "PENDING":
         return "warning";
@@ -424,9 +404,9 @@ const UserManagement = () => {
 
   const getStatusLabel = (status) => {
     switch (status) {
-      case "ACTIVE":
+      case "APPROVED":
         return "Hoạt động";
-      case "INACTIVE":
+      case "REJECTED":
         return "Không hoạt động";
       case "PENDING":
         return "Chờ duyệt";
@@ -477,10 +457,8 @@ const UserManagement = () => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (allSelectedOnPage) {
-        // Unselect all on current page
         currentPageIds.forEach((id) => next.delete(id));
       } else {
-        // Select all on current page
         currentPageIds.forEach((id) => next.add(id));
       }
       return next;
@@ -509,23 +487,17 @@ const UserManagement = () => {
       await fetchUsers();
       await fetchStatistics();
     } catch (err) {
-      console.error("Bulk delete error:", err);
       alert("Có lỗi xảy ra khi xóa nhiều người dùng");
     }
   };
 
   return (
     <div className="user-management">
-      {/* Header */}
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h4 className="mb-1">Quản lý người dùng</h4>
         </div>
         <div className="d-flex gap-2">
-          {/* <Button variant="outline-success" size="sm">
-            <FaDownload className="me-1" />
-            Xuất Excel
-          </Button> */}
           <Button variant="primary" size="sm" onClick={handleOpenAddUserModal}>
             <FaPlus className="me-1" />
             Thêm người dùng
@@ -533,72 +505,10 @@ const UserManagement = () => {
         </div>
       </div>
 
-      {/* Stats Cards - simple version */}
-      <Row className="mb-3 g-3">
-        <Col md={3}>
-          <Card className="shadow-sm border-0">
-            <Card.Body className="text-center">
-              <h6 className="text-muted mb-1">Tổng người dùng</h6>
-              <h4 className="fw-semibold mb-0">
-                {statsLoading ? (
-                  <Spinner animation="border" size="sm" />
-                ) : (
-                  statistics.totalUsers
-                )}
-              </h4>
-            </Card.Body>
-          </Card>
-        </Col>
-        <Col md={3}>
-          <Card className="shadow-sm border-0">
-            <Card.Body className="text-center">
-              <h6 className="text-muted mb-1">Mentor</h6>
-              <h4 className="fw-semibold mb-0">
-                {statsLoading ? (
-                  <Spinner animation="border" size="sm" />
-                ) : (
-                  statistics.totalMentors
-                )}
-              </h4>
-            </Card.Body>
-          </Card>
-        </Col>
-        <Col md={3}>
-          <Card className="shadow-sm border-0">
-            <Card.Body className="text-center">
-              <h6 className="text-muted mb-1">Chờ duyệt</h6>
-              <h4 className="fw-semibold mb-0">
-                {statsLoading ? (
-                  <Spinner animation="border" size="sm" />
-                ) : (
-                  statistics.totalMentorPending
-                )}
-              </h4>
-            </Card.Body>
-          </Card>
-        </Col>
-        <Col md={3}>
-          <Card className="shadow-sm border-0">
-            <Card.Body className="text-center">
-              <h6 className="text-muted mb-1">Bị khóa</h6>
-              <h4 className="fw-semibold mb-0">
-                {statsLoading ? (
-                  <Spinner animation="border" size="sm" />
-                ) : (
-                  statistics.totalUserBlocked
-                )}
-              </h4>
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
-
-      {/* Filters */}
       <Card className="mb-4">
         <Card.Body>
           <Row className="align-items-end">
-            <Col md={4}>
-              <Form.Label>Tìm kiếm</Form.Label>
+            <Col md={6}>
               <InputGroup>
                 <InputGroup.Text>
                   <FaSearch />
@@ -611,8 +521,7 @@ const UserManagement = () => {
                 />
               </InputGroup>
             </Col>
-            <Col md={3}>
-              <Form.Label>Vai trò</Form.Label>
+            <Col md={2}>
               <Form.Select
                 value={filterRole}
                 onChange={(e) => setFilterRole(e.target.value)}
@@ -625,7 +534,6 @@ const UserManagement = () => {
               </Form.Select>
             </Col>
             <Col md={3}>
-              <Form.Label>Trạng thái</Form.Label>
               <Form.Select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
@@ -636,16 +544,6 @@ const UserManagement = () => {
                   </option>
                 ))}
               </Form.Select>
-            </Col>
-            <Col md={2}>
-              <Button
-                variant="outline-secondary"
-                className="w-100"
-                onClick={handleSearch}
-              >
-                <FaFilter className="me-1" />
-                Lọc
-              </Button>
             </Col>
           </Row>
         </Card.Body>
@@ -709,10 +607,10 @@ const UserManagement = () => {
                       ref={headerCheckboxRef}
                     />
                   </th>
-                  <th width="28%">Thông tin</th>
+                  <th width="24%">Thông tin</th>
+                  <th width="25%">Email</th>
                   <th width="14%">Vai trò</th>
                   <th width="14%">Trạng thái</th>
-                  <th width="30%">Email</th>
                   <th width="10%">Thao tác</th>
                 </tr>
               </thead>
@@ -728,11 +626,6 @@ const UserManagement = () => {
                     </td>
                     <td>
                       <div className="d-flex align-items-center">
-                        <div className="user-avatar me-3">
-                          <div className="avatar-placeholder">
-                            {user.fullName?.charAt(0) || "U"}
-                          </div>
-                        </div>
                         <div>
                           <div className="fw-medium">
                             {user.fullName || "N/A"}
@@ -740,14 +633,14 @@ const UserManagement = () => {
                         </div>
                       </div>
                     </td>
+                    <td>
+                      <small className="text-muted">{user.email}</small>
+                    </td>
                     <td>{getRoleLabel(user.roleName)}</td>
                     <td>
                       <Badge bg={getStatusBadgeVariant(user.status)}>
                         {getStatusLabel(user.status)}
                       </Badge>
-                    </td>
-                    <td>
-                      <small className="text-muted">{user.email}</small>
                     </td>
                     <td>
                       <Dropdown align="end">
@@ -764,18 +657,22 @@ const UserManagement = () => {
                             <FaEye className="me-2" />
                             Xem
                           </Dropdown.Item>
-                          
+
                           {user.status === "PENDING" ? (
                             // Mentor đang chờ duyệt - hiển thị Duyệt/Từ chối
                             <>
-                              <Dropdown.Item 
-                                onClick={() => alert("Chức năng duyệt mentor đang được phát triển")}
+                              <Dropdown.Item
+                                onClick={() =>
+                                  alert(
+                                    "Chức năng duyệt mentor đang được phát triển"
+                                  )
+                                }
                                 className="text-success"
                               >
                                 <FaCheck className="me-2" />
                                 Duyệt
                               </Dropdown.Item>
-                              <Dropdown.Item 
+                              <Dropdown.Item
                                 onClick={() => handleOpenRejectModal(user)}
                                 className="text-warning"
                               >
@@ -783,9 +680,8 @@ const UserManagement = () => {
                                 Từ chối
                               </Dropdown.Item>
                             </>
-                          ) : user.status === "ACTIVE" ? (
-                            // User đang hoạt động - hiển thị Vô hiệu hóa
-                            <Dropdown.Item 
+                          ) : user.status === "APPROVED" ? (
+                            <Dropdown.Item
                               onClick={() => handleToggleUserStatus(user)}
                               className="text-warning"
                             >
@@ -793,8 +689,7 @@ const UserManagement = () => {
                               Vô hiệu hóa
                             </Dropdown.Item>
                           ) : (
-                            // User không hoạt động - hiển thị Kích hoạt
-                            <Dropdown.Item 
+                            <Dropdown.Item
                               onClick={() => handleToggleUserStatus(user)}
                               className="text-success"
                             >
@@ -802,7 +697,7 @@ const UserManagement = () => {
                               Kích hoạt
                             </Dropdown.Item>
                           )}
-                          
+
                           <Dropdown.Divider />
                           <Dropdown.Item
                             onClick={() => handleDeleteUser(user.id)}
@@ -823,48 +718,95 @@ const UserManagement = () => {
 
         {/* Pagination */}
         {!loading && users.length > 0 && (
-          <Card.Footer className="bg-light">
-            <div className="d-flex justify-content-between align-items-center">
-              <div className="text-muted">
+          <Card.Footer className="bg-white border-top">
+            <div className="d-flex justify-content-between align-items-center flex-wrap gap-3">
+              <div className="text-muted small">
                 Hiển thị{" "}
-                {(pagination.currentPage - 1) * pagination.pageSize + 1} -{" "}
-                {Math.min(
-                  pagination.currentPage * pagination.pageSize,
-                  pagination.totalElements
-                )}{" "}
-                trong tổng số {pagination.totalElements} người dùng
+                <strong>
+                  {(pagination.currentPage - 1) * pagination.pageSize + 1}
+                </strong>{" "}
+                -{" "}
+                <strong>
+                  {Math.min(
+                    pagination.currentPage * pagination.pageSize,
+                    pagination.totalElements
+                  )}
+                </strong>{" "}
+                trong tổng số <strong>{pagination.totalElements}</strong> người
+                dùng
               </div>
-              <Pagination className="mb-0">
+              <Pagination className="mb-0" size="sm">
                 <Pagination.Prev
                   onClick={() => handlePageChange(pagination.currentPage - 1)}
                   disabled={pagination.currentPage === 1}
                 />
-                {[...Array(Math.min(5, pagination.totalPages))].map(
-                  (_, idx) => {
-                    let pageNum;
-                    if (pagination.totalPages <= 5) {
-                      pageNum = idx + 1;
-                    } else if (pagination.currentPage <= 3) {
-                      pageNum = idx + 1;
-                    } else if (
-                      pagination.currentPage >=
-                      pagination.totalPages - 2
-                    ) {
-                      pageNum = pagination.totalPages - 4 + idx;
-                    } else {
-                      pageNum = pagination.currentPage - 2 + idx;
+
+                {(() => {
+                  const items = [];
+                  const total = pagination.totalPages;
+                  const current = pagination.currentPage;
+                  const maxVisible = 5;
+
+                  if (total <= maxVisible) {
+                    for (let i = 1; i <= total; i++) {
+                      items.push(
+                        <Pagination.Item
+                          key={i}
+                          active={i === current}
+                          onClick={() => handlePageChange(i)}
+                        >
+                          {i}
+                        </Pagination.Item>
+                      );
                     }
-                    return (
+                  } else {
+                    items.push(
                       <Pagination.Item
-                        key={pageNum}
-                        active={pageNum === pagination.currentPage}
-                        onClick={() => handlePageChange(pageNum)}
+                        key={1}
+                        active={1 === current}
+                        onClick={() => handlePageChange(1)}
                       >
-                        {pageNum}
+                        1
+                      </Pagination.Item>
+                    );
+
+                    let startPage = Math.max(2, current - 1);
+                    let endPage = Math.min(total - 1, current + 1);
+
+                    if (startPage > 2) {
+                      items.push(<Pagination.Ellipsis key="ellipsis-start" disabled />);
+                      startPage = Math.max(startPage, current - 1);
+                    }
+
+                    for (let i = startPage; i <= endPage; i++) {
+                      items.push(
+                        <Pagination.Item
+                          key={i}
+                          active={i === current}
+                          onClick={() => handlePageChange(i)}
+                        >
+                          {i}
+                        </Pagination.Item>
+                      );
+                    }
+
+                    if (endPage < total - 1) {
+                      items.push(<Pagination.Ellipsis key="ellipsis-end" disabled />);
+                    }
+                    items.push(
+                      <Pagination.Item
+                        key={total}
+                        active={total === current}
+                        onClick={() => handlePageChange(total)}
+                      >
+                        {total}
                       </Pagination.Item>
                     );
                   }
-                )}
+
+                  return items;
+                })()}
+
                 <Pagination.Next
                   onClick={() => handlePageChange(pagination.currentPage + 1)}
                   disabled={pagination.currentPage === pagination.totalPages}
@@ -883,30 +825,19 @@ const UserManagement = () => {
         <Modal.Body>
           {selectedUser && (
             <Tab.Container defaultActiveKey="info">
-              <Nav variant="tabs" className="mb-3">
-                <Nav.Item>
-                  <Nav.Link eventKey="info">Thông tin cơ bản</Nav.Link>
-                </Nav.Item>
-                <Nav.Item>
-                  <Nav.Link eventKey="activity">Hoạt động</Nav.Link>
-                </Nav.Item>
-                <Nav.Item>
-                  <Nav.Link eventKey="settings">Cài đặt</Nav.Link>
-                </Nav.Item>
-              </Nav>
               <Tab.Content>
                 <Tab.Pane eventKey="info">
                   <Row>
                     <Col md={6}>
+                      <p>
+                        <strong>ID:</strong> {selectedUser.id}
+                      </p>
                       <p>
                         <strong>Email:</strong> {selectedUser.email || "N/A"}
                       </p>
                       <p>
                         <strong>Họ tên:</strong>{" "}
                         {selectedUser.fullName || "N/A"}
-                      </p>
-                      <p>
-                        <strong>ID:</strong> #{selectedUser.id}
                       </p>
                       {selectedUser.phone && (
                         <p>
@@ -915,19 +846,30 @@ const UserManagement = () => {
                       )}
                       {selectedUser.dob && (
                         <p>
-                          <strong>Ngày sinh:</strong> {new Date(selectedUser.dob).toLocaleDateString('vi-VN')}
+                          <strong>Ngày sinh:</strong>{" "}
+                          {new Date(selectedUser.dob).toLocaleDateString(
+                            "vi-VN"
+                          )}
                         </p>
                       )}
                       {selectedUser.gender && (
                         <p>
-                          <strong>Giới tính:</strong> {selectedUser.gender === "MALE" ? "Nam" : selectedUser.gender === "FEMALE" ? "Nữ" : selectedUser.gender}
+                          <strong>Giới tính:</strong>{" "}
+                          {selectedUser.gender === "MALE"
+                            ? "Nam"
+                            : selectedUser.gender === "FEMALE"
+                            ? "Nữ"
+                            : selectedUser.gender}
                         </p>
                       )}
                     </Col>
                     <Col md={6}>
                       <p>
                         <strong>Vai trò:</strong>
-                        <Badge bg={getRoleBadgeVariant(selectedUser.roleName)} className="ms-2">
+                        <Badge
+                          bg={getRoleBadgeVariant(selectedUser.roleName)}
+                          className="ms-2"
+                        >
                           {getRoleLabel(selectedUser.roleName)}
                         </Badge>
                       </p>
@@ -947,19 +889,25 @@ const UserManagement = () => {
                       )}
                       {selectedUser.currentLocation && (
                         <p>
-                          <strong>Vị trí hiện tại:</strong> {selectedUser.currentLocation}
+                          <strong>Vị trí hiện tại:</strong>{" "}
+                          {selectedUser.currentLocation}
                         </p>
                       )}
                       {selectedUser.createTime && (
                         <p>
-                          <strong>Ngày tạo:</strong> {new Date(selectedUser.createTime).toLocaleDateString('vi-VN')}
+                          <strong>Ngày tạo:</strong>{" "}
+                          {new Date(selectedUser.createTime).toLocaleDateString(
+                            "vi-VN"
+                          )}
                         </p>
                       )}
                     </Col>
                   </Row>
-                  
+
                   {/* Thông tin bổ sung */}
-                  {(selectedUser.title || selectedUser.linkedinUrl || selectedUser.avatarUrl) && (
+                  {(selectedUser.title ||
+                    selectedUser.linkedinUrl ||
+                    selectedUser.avatarUrl) && (
                     <Row className="mt-3">
                       <Col>
                         <hr />
@@ -972,7 +920,11 @@ const UserManagement = () => {
                         {selectedUser.linkedinUrl && (
                           <p>
                             <strong>LinkedIn:</strong>{" "}
-                            <a href={selectedUser.linkedinUrl} target="_blank" rel="noopener noreferrer">
+                            <a
+                              href={selectedUser.linkedinUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
                               {selectedUser.linkedinUrl}
                             </a>
                           </p>
@@ -981,10 +933,15 @@ const UserManagement = () => {
                           <div>
                             <strong>Avatar:</strong>
                             <div className="mt-2">
-                              <img 
-                                src={selectedUser.avatarUrl} 
-                                alt="Avatar" 
-                                style={{ maxWidth: '150px', maxHeight: '150px', objectFit: 'cover', borderRadius: '8px' }}
+                              <img
+                                src={selectedUser.avatarUrl}
+                                alt="Avatar"
+                                style={{
+                                  maxWidth: "150px",
+                                  maxHeight: "150px",
+                                  objectFit: "cover",
+                                  borderRadius: "8px",
+                                }}
                               />
                             </div>
                           </div>
@@ -992,39 +949,52 @@ const UserManagement = () => {
                       </Col>
                     </Row>
                   )}
-                  
+
                   {selectedUser.intro && (
                     <Row className="mt-3">
                       <Col>
                         <hr />
                         <h6>Giới thiệu</h6>
-                        <p className="text-muted" style={{ whiteSpace: 'pre-wrap' }}>{selectedUser.intro}</p>
+                        <p
+                          className="text-muted"
+                          style={{ whiteSpace: "pre-wrap" }}
+                        >
+                          {selectedUser.intro}
+                        </p>
                       </Col>
                     </Row>
                   )}
-                  
+
                   {/* Thông tin mentor (nếu có) */}
-                  {selectedUser.roleName === "MENTOR" && (selectedUser.rating !== undefined || selectedUser.numberOfBooking !== undefined) && (
-                    <Row className="mt-3">
-                      <Col>
-                        <hr />
-                        <h6>Thông tin Mentor</h6>
-                        {selectedUser.rating !== undefined && (
-                          <p>
-                            <strong>Đánh giá:</strong> ⭐ {selectedUser.rating ? selectedUser.rating.toFixed(1) : '0.0'}/5
-                          </p>
-                        )}
-                        {selectedUser.numberOfBooking !== undefined && (
-                          <p>
-                            <strong>Số lượng booking:</strong> {selectedUser.numberOfBooking || 0}
-                          </p>
-                        )}
-                      </Col>
-                    </Row>
-                  )}
-                  
+                  {selectedUser.roleName === "MENTOR" &&
+                    (selectedUser.rating !== undefined ||
+                      selectedUser.numberOfBooking !== undefined) && (
+                      <Row className="mt-3">
+                        <Col>
+                          <hr />
+                          <h6>Thông tin Mentor</h6>
+                          {selectedUser.rating !== undefined && (
+                            <p>
+                              <strong>Đánh giá:</strong> ⭐{" "}
+                              {selectedUser.rating
+                                ? selectedUser.rating.toFixed(1)
+                                : "0.0"}
+                              /5
+                            </p>
+                          )}
+                          {selectedUser.numberOfBooking !== undefined && (
+                            <p>
+                              <strong>Số lượng booking:</strong>{" "}
+                              {selectedUser.numberOfBooking || 0}
+                            </p>
+                          )}
+                        </Col>
+                      </Row>
+                    )}
+
                   {/* Thông tin tài khoản ngân hàng (nếu có) */}
-                  {(selectedUser.bankName || selectedUser.bankAccountNumber) && (
+                  {(selectedUser.bankName ||
+                    selectedUser.bankAccountNumber) && (
                     <Row className="mt-3">
                       <Col>
                         <hr />
@@ -1036,22 +1006,13 @@ const UserManagement = () => {
                         )}
                         {selectedUser.bankAccountNumber && (
                           <p>
-                            <strong>Số tài khoản:</strong> {selectedUser.bankAccountNumber}
+                            <strong>Số tài khoản:</strong>{" "}
+                            {selectedUser.bankAccountNumber}
                           </p>
                         )}
                       </Col>
                     </Row>
                   )}
-                </Tab.Pane>
-                <Tab.Pane eventKey="activity">
-                  <p className="text-muted">
-                    Lịch sử hoạt động của người dùng sẽ hiển thị ở đây...
-                  </p>
-                </Tab.Pane>
-                <Tab.Pane eventKey="settings">
-                  <p className="text-muted">
-                    Cài đặt tài khoản sẽ hiển thị ở đây...
-                  </p>
                 </Tab.Pane>
               </Tab.Content>
             </Tab.Container>
@@ -1061,14 +1022,16 @@ const UserManagement = () => {
           <Button variant="secondary" onClick={() => setShowModal(false)}>
             Đóng
           </Button>
-          {/* <Button variant="primary">
-                        Chỉnh sửa
-                    </Button> */}
         </Modal.Footer>
       </Modal>
 
       {/* Add User Modal */}
-      <Modal show={showAddUserModal} onHide={handleCloseAddUserModal} centered size="lg">
+      <Modal
+        show={showAddUserModal}
+        onHide={handleCloseAddUserModal}
+        centered
+        size="lg"
+      >
         <Modal.Header closeButton>
           <Modal.Title>
             <FaPlus className="me-2 text-primary" />
@@ -1080,9 +1043,7 @@ const UserManagement = () => {
             <Row>
               <Col md={6}>
                 <Form.Group className="mb-3">
-                  <Form.Label>
-                    <strong className="text-danger">* Email:</strong>
-                  </Form.Label>
+                  <Form.Label>Email:</Form.Label>
                   <Form.Control
                     type="email"
                     placeholder="user@example.com"
@@ -1096,15 +1057,16 @@ const UserManagement = () => {
               </Col>
               <Col md={6}>
                 <Form.Group className="mb-3">
-                  <Form.Label>
-                    <strong className="text-danger">* Họ tên:</strong>
-                  </Form.Label>
+                  <Form.Label>Họ tên:</Form.Label>
                   <Form.Control
                     type="text"
                     placeholder="Nguyễn Văn A"
                     value={newUserData.fullName}
                     onChange={(e) =>
-                      setNewUserData({ ...newUserData, fullName: e.target.value })
+                      setNewUserData({
+                        ...newUserData,
+                        fullName: e.target.value,
+                      })
                     }
                     required
                   />
@@ -1115,16 +1077,17 @@ const UserManagement = () => {
             <Row>
               <Col md={6}>
                 <Form.Group className="mb-3">
-                  <Form.Label>
-                    <strong className="text-danger">* Mật khẩu:</strong>
-                  </Form.Label>
+                  <Form.Label>Mật khẩu:</Form.Label>
                   <InputGroup>
                     <Form.Control
                       type={showPassword ? "text" : "password"}
                       placeholder="Tối thiểu 6 ký tự"
                       value={newUserData.password}
                       onChange={(e) =>
-                        setNewUserData({ ...newUserData, password: e.target.value })
+                        setNewUserData({
+                          ...newUserData,
+                          password: e.target.value,
+                        })
                       }
                       required
                     />
@@ -1142,13 +1105,14 @@ const UserManagement = () => {
               </Col>
               <Col md={6}>
                 <Form.Group className="mb-3">
-                  <Form.Label>
-                    <strong className="text-danger">* Vai trò:</strong>
-                  </Form.Label>
+                  <Form.Label>Vai trò:</Form.Label>
                   <Form.Select
                     value={newUserData.roleId}
                     onChange={(e) =>
-                      setNewUserData({ ...newUserData, roleId: parseInt(e.target.value) })
+                      setNewUserData({
+                        ...newUserData,
+                        roleId: parseInt(e.target.value),
+                      })
                     }
                     required
                   >
@@ -1198,28 +1162,18 @@ const UserManagement = () => {
                 </Form.Group>
               </Col>
             </Row>
-
-            <Alert variant="info" className="mb-0">
-              <strong>📌 Lưu ý:</strong>
-              <ul className="mb-0 mt-2">
-                <li>Các trường có dấu <span className="text-danger">*</span> là bắt buộc</li>
-                <li>Email phải là duy nhất trong hệ thống</li>
-                <li>Tài khoản mới sẽ được tạo với trạng thái ACTIVE</li>
-                {newUserData.roleId === 1 && (
-                  <li className="text-warning">
-                    <strong>Tài khoản Admin sẽ có toàn quyền quản trị hệ thống</strong>
-                  </li>
-                )}
-              </ul>
-            </Alert>
           </Form>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={handleCloseAddUserModal} disabled={addUserLoading}>
+          <Button
+            variant="secondary"
+            onClick={handleCloseAddUserModal}
+            disabled={addUserLoading}
+          >
             Hủy
           </Button>
-          <Button 
-            variant="primary" 
+          <Button
+            variant="primary"
             onClick={handleAddUser}
             disabled={addUserLoading}
           >
@@ -1230,7 +1184,6 @@ const UserManagement = () => {
               </>
             ) : (
               <>
-                <FaPlus className="me-2" />
                 Tạo người dùng
               </>
             )}
@@ -1250,7 +1203,8 @@ const UserManagement = () => {
           {userToReject && (
             <>
               <Alert variant="warning">
-                <strong>⚠️ Lưu ý:</strong> Sau khi từ chối, tài khoản sẽ bị xóa khỏi hệ thống và email thông báo sẽ được gửi đến mentor.
+                <strong>⚠️ Lưu ý:</strong> Sau khi từ chối, tài khoản sẽ bị xóa
+                khỏi hệ thống và email thông báo sẽ được gửi đến mentor.
               </Alert>
               <div className="mb-3">
                 <strong>Mentor:</strong> {userToReject.fullName || "N/A"}
@@ -1280,8 +1234,8 @@ const UserManagement = () => {
           <Button variant="secondary" onClick={handleCloseRejectModal}>
             Hủy
           </Button>
-          <Button 
-            variant="danger" 
+          <Button
+            variant="danger"
             onClick={handleRejectMentor}
             disabled={!rejectionReason.trim()}
           >

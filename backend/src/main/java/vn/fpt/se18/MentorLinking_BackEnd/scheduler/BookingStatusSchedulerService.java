@@ -43,24 +43,24 @@ public class BookingStatusSchedulerService {
     public void updateExpiredBookings() {
         try {
             log.info("Starting scheduled task to update expired bookings...");
-            
+
             LocalDateTime now = LocalDateTime.now();
             LocalDate today = now.toLocalDate();
             LocalTime currentTime = now.toLocalTime();
-            
+
             // Find all bookings with CONFIRMED status and COMPLETED payment process
             List<Booking> confirmedBookings = bookingRepository.findByStatusCodeAndPaymentProcess(
-                    "CONFIRMED", 
+                    "CONFIRMED",
                     PaymentProcess.COMPLETED
             );
-            
+
             if (confirmedBookings.isEmpty()) {
                 log.debug("No confirmed bookings found to check");
                 return;
             }
-            
+
             log.info("Found {} confirmed bookings to check", confirmedBookings.size());
-            
+
             // Get COMPLETED status
             Optional<Status> completedStatusOpt = statusRepository.findByCode("COMPLETED");
             if (completedStatusOpt.isEmpty()) {
@@ -68,13 +68,22 @@ public class BookingStatusSchedulerService {
                 return;
             }
             Status completedStatus = completedStatusOpt.get();
-            
+
             int updatedCount = 0;
-            
+
             for (Booking booking : confirmedBookings) {
                 try {
+                    if (booking == null) {
+                        continue;
+                    }
+
+                    if (booking.getSchedule() == null) {
+                        log.warn("Booking ID {} has no schedule, skipping", booking.getId());
+                        continue;
+                    }
+
                     LocalDate bookingDate = booking.getSchedule().getDate();
-                    
+
                     // Check if booking date is before today - definitely expired
                     if (bookingDate.isBefore(today)) {
                         updateBookingToCompleted(booking, completedStatus);
@@ -83,19 +92,37 @@ public class BookingStatusSchedulerService {
                                 booking.getId(), bookingDate);
                         continue;
                     }
-                    
+
                     // If booking date is today, check the time
                     if (bookingDate.isEqual(today)) {
                         // Get the latest (max) end time from all time slots
-                        Optional<Integer> maxEndTimeOpt = booking.getSchedule().getTimeSlots()
-                                .stream()
-                                .map(TimeSlot::getTimeEnd)
-                                .max(Integer::compareTo);
-                        
+                        Optional<Integer> maxEndTimeOpt = Optional.empty();
+                        if (booking.getSchedule().getTimeSlots() != null) {
+                            maxEndTimeOpt = booking.getSchedule().getTimeSlots()
+                                    .stream()
+                                    .map(TimeSlot::getTimeEnd)
+                                    .filter(java.util.Objects::nonNull)
+                                    .max(Integer::compareTo);
+                        }
+
                         if (maxEndTimeOpt.isPresent()) {
-                            Integer endHour = maxEndTimeOpt.get();
-                            LocalTime endTime = LocalTime.of(endHour, 0);
-                            
+                            int endHour = maxEndTimeOpt.get();
+
+                            // endHour is guaranteed non-null here because we filtered non-null values
+
+                            if (endHour < 0 || endHour > 24) {
+                                log.warn("Booking ID {} has invalid timeEnd value: {}. Expected 0-24. Skipping.", booking.getId(), endHour);
+                                continue;
+                            }
+
+                            LocalTime endTime;
+                            if (endHour == 24) {
+                                // 24 means end of day, use LocalTime.MAX to represent 23:59:59.999999999
+                                endTime = LocalTime.MAX;
+                            } else {
+                                endTime = LocalTime.of(endHour, 0);
+                            }
+
                             // If current time is after the end time, update to COMPLETED
                             if (currentTime.isAfter(endTime)) {
                                 updateBookingToCompleted(booking, completedStatus);
@@ -108,20 +135,20 @@ public class BookingStatusSchedulerService {
                         }
                     }
                     // If booking date is in the future, skip it
-                    
+
                 } catch (Exception e) {
                     log.error("Error processing booking ID {}: {}", booking.getId(), e.getMessage(), e);
                     // Continue with next booking even if one fails
                 }
             }
-            
+
             log.info("Scheduled task completed. Updated {} booking(s) to COMPLETED status", updatedCount);
-            
+
         } catch (Exception e) {
             log.error("Error in scheduled task updateExpiredBookings: {}", e.getMessage(), e);
         }
     }
-    
+
     /**
      * Helper method to update a booking to COMPLETED status
      */

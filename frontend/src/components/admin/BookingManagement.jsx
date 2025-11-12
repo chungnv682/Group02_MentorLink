@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
     Card, Row, Col, Table, Button, Badge, Form, Dropdown,
-    InputGroup, Modal, Nav, Tab, Alert, Spinner
+    InputGroup, Modal, Nav, Tab, Alert, Spinner, Pagination
 } from 'react-bootstrap';
 import {
     FaSearch, FaEye, FaCalendarAlt, FaClock,
@@ -17,7 +17,6 @@ import {
     completeBooking,
     bulkConfirmBookings,
     bulkCancelBookings,
-    getBookingStatistics,
     getAllSchedules
 } from '../../services/admin';
 
@@ -25,12 +24,6 @@ const BookingManagement = () => {
     // State for bookings
     const [bookings, setBookings] = useState([]);
     const [schedules, setSchedules] = useState([]);
-    const [statistics, setStatistics] = useState({
-        pending: 0,
-        confirmed: 0,
-        completed: 0,
-        cancelled: 0
-    });
     
     // UI State
     const [showModal, setShowModal] = useState(false);
@@ -41,13 +34,15 @@ const BookingManagement = () => {
     const [filterDate, setFilterDate] = useState('');
     
     // Pagination
-    const [currentPage, setCurrentPage] = useState(1);
-    const [totalPages, setTotalPages] = useState(1);
-    const [pageSize] = useState(10);
+    const [pagination, setPagination] = useState({
+        currentPage: 1,
+        pageSize: 10,
+        totalPages: 0,
+        totalElements: 0
+    });
     
     // Loading states
     const [loading, setLoading] = useState(false);
-    const [statsLoading, setStatsLoading] = useState(false);
     const [schedulesLoading, setSchedulesLoading] = useState(false);
     
     // Selection
@@ -71,13 +66,17 @@ const BookingManagement = () => {
                 status: filterStatus || null,
                 paymentStatus: filterPaymentStatus || null,
                 date: filterDate || null,
-                page: currentPage,
-                size: pageSize
+                page: pagination.currentPage,
+                size: pagination.pageSize
             });
             
             if (response.respCode === '0') {
                 setBookings(response.data.content || []);
-                setTotalPages(response.data.totalPages || 1);
+                setPagination(prev => ({
+                    ...prev,
+                    totalPages: response.data.totalPages || 0,
+                    totalElements: response.data.totalElements || 0
+                }));
             } else {
                 showToast('error', response.description || 'Không thể tải danh sách đặt lịch');
             }
@@ -86,21 +85,6 @@ const BookingManagement = () => {
             showToast('error', 'Có lỗi xảy ra khi tải danh sách đặt lịch');
         } finally {
             setLoading(false);
-        }
-    };
-
-    // Fetch statistics
-    const fetchStatistics = async () => {
-        setStatsLoading(true);
-        try {
-            const response = await getBookingStatistics();
-            if (response.respCode === '0') {
-                setStatistics(response.data);
-            }
-        } catch (error) {
-            console.error('Error fetching statistics:', error);
-        } finally {
-            setStatsLoading(false);
         }
     };
 
@@ -130,11 +114,10 @@ const BookingManagement = () => {
     useEffect(() => {
         const timer = setTimeout(() => {
             fetchBookings();
-            fetchStatistics();
         }, searchTerm ? 500 : 0); // Debounce search by 500ms
 
         return () => clearTimeout(timer);
-    }, [currentPage, searchTerm, filterStatus, filterPaymentStatus, filterDate]);
+    }, [pagination.currentPage, searchTerm, filterStatus, filterPaymentStatus, filterDate]);
 
     useEffect(() => {
         fetchSchedules();
@@ -162,7 +145,6 @@ const BookingManagement = () => {
             if (response.respCode === '0') {
                 showToast('success', 'Xác nhận đặt lịch thành công');
                 fetchBookings();
-                fetchStatistics();
             } else {
                 showToast('error', response.description || 'Không thể xác nhận đặt lịch');
             }
@@ -183,7 +165,6 @@ const BookingManagement = () => {
                 setBookingToCancel(null);
                 setCancelReason('');
                 fetchBookings();
-                fetchStatistics();
             } else {
                 showToast('error', response.description || 'Không thể hủy đặt lịch');
             }
@@ -199,7 +180,6 @@ const BookingManagement = () => {
             if (response.respCode === '0') {
                 showToast('success', 'Đánh dấu hoàn thành thành công');
                 fetchBookings();
-                fetchStatistics();
             } else {
                 showToast('error', response.description || 'Không thể hoàn thành đặt lịch');
             }
@@ -222,7 +202,6 @@ const BookingManagement = () => {
                 setSelectedBookingIds([]);
                 setSelectAll(false);
                 fetchBookings();
-                fetchStatistics();
             } else {
                 showToast('error', response.description || 'Không thể xác nhận hàng loạt');
             }
@@ -246,7 +225,6 @@ const BookingManagement = () => {
                 setSelectAll(false);
                 setCancelReason('');
                 fetchBookings();
-                fetchStatistics();
             } else {
                 showToast('error', response.description || 'Không thể hủy hàng loạt');
             }
@@ -366,63 +344,8 @@ const BookingManagement = () => {
             <div className="d-flex justify-content-between align-items-center mb-4">
                 <div>
                     <h4 className="mb-1">Quản lý đặt lịch & lịch hẹn</h4>
-                    <p className="text-muted mb-0">Quản lý các cuộc hẹn giữa mentor và khách hàng</p>
-                </div>
-                <div className="d-flex gap-2">
-                    <Button variant="outline-primary" size="sm">
-                        <FaCalendarAlt className="me-1" />
-                        Xem lịch
-                    </Button>
-                    <Button variant="primary" size="sm">
-                        <FaHistory className="me-1" />
-                        Báo cáo
-                    </Button>
                 </div>
             </div>
-
-            {/* Stats Cards - simple version */}
-            <Row className="mb-3 g-3">
-                <Col md={3}>
-                    <Card className="shadow-sm border-0">
-                        <Card.Body className="text-center">
-                            <h6 className="text-muted mb-1">Chờ xác nhận</h6>
-                            <h4 className="fw-semibold mb-0">
-                                {statsLoading ? <Spinner animation="border" size="sm" /> : (statistics.pending || 0)}
-                            </h4>
-                        </Card.Body>
-                    </Card>
-                </Col>
-                <Col md={3}>
-                    <Card className="shadow-sm border-0">
-                        <Card.Body className="text-center">
-                            <h6 className="text-muted mb-1">Đã xác nhận</h6>
-                            <h4 className="fw-semibold mb-0">
-                                {statsLoading ? <Spinner animation="border" size="sm" /> : (statistics.confirmed || 0)}
-                            </h4>
-                        </Card.Body>
-                    </Card>
-                </Col>
-                <Col md={3}>
-                    <Card className="shadow-sm border-0">
-                        <Card.Body className="text-center">
-                            <h6 className="text-muted mb-1">Hoàn thành</h6>
-                            <h4 className="fw-semibold mb-0">
-                                {statsLoading ? <Spinner animation="border" size="sm" /> : (statistics.completed || 0)}
-                            </h4>
-                        </Card.Body>
-                    </Card>
-                </Col>
-                <Col md={3}>
-                    <Card className="shadow-sm border-0">
-                        <Card.Body className="text-center">
-                            <h6 className="text-muted mb-1">Đã hủy</h6>
-                            <h4 className="fw-semibold mb-0">
-                                {statsLoading ? <Spinner animation="border" size="sm" /> : (statistics.cancelled || 0)}
-                            </h4>
-                        </Card.Body>
-                    </Card>
-                </Col>
-            </Row>
 
             <Tab.Container defaultActiveKey="bookings">
                 <Nav variant="tabs" className="mb-4">
@@ -435,14 +358,11 @@ const BookingManagement = () => {
                 </Nav>
 
                 <Tab.Content>
-                    {/* Bookings Management Tab */}
                     <Tab.Pane eventKey="bookings">
-                        {/* Filters */}
                         <Card className="mb-4">
                             <Card.Body>
                                 <Row className="align-items-end">
-                                    <Col md={4}>
-                                        <Form.Label>Tìm kiếm</Form.Label>
+                                    <Col md={5}>
                                         <InputGroup>
                                             <InputGroup.Text>
                                                 <FaSearch />
@@ -456,12 +376,11 @@ const BookingManagement = () => {
                                         </InputGroup>
                                     </Col>
                                     <Col md={2}>
-                                        <Form.Label>Trạng thái</Form.Label>
                                         <Form.Select
                                             value={filterStatus}
                                             onChange={(e) => {
                                                 setFilterStatus(e.target.value);
-                                                setCurrentPage(1);
+                                                setPagination(prev => ({ ...prev, currentPage: 1 }));
                                             }}
                                         >
                                             <option value="">Tất cả</option>
@@ -472,12 +391,11 @@ const BookingManagement = () => {
                                         </Form.Select>
                                     </Col>
                                     <Col md={2}>
-                                        <Form.Label>Thanh toán</Form.Label>
                                         <Form.Select
                                             value={filterPaymentStatus}
                                             onChange={(e) => {
                                                 setFilterPaymentStatus(e.target.value);
-                                                setCurrentPage(1);
+                                                setPagination(prev => ({ ...prev, currentPage: 1 }));
                                             }}
                                         >
                                             <option value="">Tất cả</option>
@@ -487,30 +405,14 @@ const BookingManagement = () => {
                                         </Form.Select>
                                     </Col>
                                     <Col md={2}>
-                                        <Form.Label>Ngày hẹn</Form.Label>
                                         <Form.Control
                                             type="date"
                                             value={filterDate}
                                             onChange={(e) => {
                                                 setFilterDate(e.target.value);
-                                                setCurrentPage(1);
+                                                setPagination(prev => ({ ...prev, currentPage: 1 }));
                                             }}
                                         />
-                                    </Col>
-                                    <Col md={2}>
-                                        <Button 
-                                            variant="outline-secondary" 
-                                            className="w-100"
-                                            onClick={() => {
-                                                setSearchTerm('');
-                                                setFilterStatus('');
-                                                setFilterPaymentStatus('');
-                                                setFilterDate('');
-                                                setCurrentPage(1);
-                                            }}
-                                        >
-                                            Xóa bộ lọc
-                                        </Button>
                                     </Col>
                                 </Row>
                             </Card.Body>
@@ -521,7 +423,7 @@ const BookingManagement = () => {
                             <Card.Header className="bg-light">
                                 <div className="d-flex justify-content-between align-items-center">
                                     <h6 className="mb-0">
-                                        Danh sách đặt lịch ({bookings.length})
+                                        Danh sách đặt lịch
                                         {selectedBookingIds.length > 0 && ` - Đã chọn: ${selectedBookingIds.length}`}
                                     </h6>
                                     <div className="d-flex gap-2">
@@ -531,14 +433,6 @@ const BookingManagement = () => {
                                             onClick={handleSelectAll}
                                         >
                                             {selectAll ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
-                                        </Button>
-                                        <Button 
-                                            variant="outline-success" 
-                                            size="sm"
-                                            onClick={handleBulkConfirm}
-                                            disabled={selectedBookingIds.length === 0}
-                                        >
-                                            Xác nhận đã chọn
                                         </Button>
                                     </div>
                                 </div>
@@ -566,13 +460,13 @@ const BookingManagement = () => {
                                                             onChange={handleSelectAll}
                                                         />
                                                     </th>
-                                                    <th width="15%">Mentor</th>
-                                                    <th width="15%">Khách hàng</th>
-                                                    <th width="15%">Thời gian</th>
-                                                    <th width="15%">Dịch vụ</th>
+                                                    <th width="%">Mentor</th>
+                                                    <th width="18%">Khách hàng</th>
+                                                    <th width="12%">Dịch vụ</th>
+                                                    <th width="12%">Thời gian</th>
                                                     <th width="10%">Trạng thái</th>
                                                     <th width="10%">Thanh toán</th>
-                                                    <th width="15%">Thao tác</th>
+                                                    <th width="10%">Thao tác</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -588,25 +482,22 @@ const BookingManagement = () => {
                                                         <td>
                                                             <div>
                                                                 <div className="fw-medium">{booking.mentorName || 'N/A'}</div>
-                                                                <small className="text-muted">ID: {booking.mentorId}</small>
                                                             </div>
                                                         </td>
                                                         <td>
                                                             <div>
                                                                 <div className="fw-medium">{booking.customerName || 'N/A'}</div>
-                                                                <small className="text-muted">{booking.customerEmail}</small>
+                                                            </div>
+                                                        </td>
+                                                        <td>
+                                                            <div>
+                                                                <div className="fw-medium">{booking.service || 'N/A'}</div>
                                                             </div>
                                                         </td>
                                                         <td>
                                                             <div>
                                                                 <div className="fw-medium">{formatDate(booking.date)}</div>
                                                                 <small className="text-muted">{booking.timeSlotText || booking.timeSlot}</small>
-                                                            </div>
-                                                        </td>
-                                                        <td>
-                                                            <div>
-                                                                <div className="fw-medium">{booking.service || 'N/A'}</div>
-                                                                <small className="text-muted">{formatCurrency(booking.amount)}</small>
                                                             </div>
                                                         </td>
                                                         <td>
@@ -620,7 +511,7 @@ const BookingManagement = () => {
                                                             </Badge>
                                                         </td>
                                                         <td>
-                                                            <Dropdown align="end">
+                                                            <Dropdown align="end" className="text-center">
                                                                 <Dropdown.Toggle variant="light" size="sm" className="no-caret p-1">
                                                                     <BsThreeDotsVertical />
                                                                 </Dropdown.Toggle>
@@ -645,36 +536,106 @@ const BookingManagement = () => {
                                                 ))}
                                             </tbody>
                                         </Table>
-                                        
-                                        {/* Pagination */}
-                                        {totalPages > 1 && (
-                                            <div className="d-flex justify-content-between align-items-center p-3 border-top">
-                                                <div>
-                                                    Trang {currentPage} / {totalPages}
-                                                </div>
-                                                <div className="d-flex gap-2">
-                                                    <Button
-                                                        variant="outline-primary"
-                                                        size="sm"
-                                                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                                                        disabled={currentPage === 1}
-                                                    >
-                                                        Trước
-                                                    </Button>
-                                                    <Button
-                                                        variant="outline-primary"
-                                                        size="sm"
-                                                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                                                        disabled={currentPage === totalPages}
-                                                    >
-                                                        Sau
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                        )}
                                     </>
                                 )}
                             </Card.Body>
+                            {!loading && bookings.length > 0 && (
+                                <Card.Footer className="bg-white border-top">
+                                    <div className="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                                        <div className="text-muted small">
+                                            Hiển thị{" "}
+                                            <strong>
+                                                {(pagination.currentPage - 1) * pagination.pageSize + 1}
+                                            </strong>{" "}
+                                            -{" "}
+                                            <strong>
+                                                {Math.min(
+                                                    pagination.currentPage * pagination.pageSize,
+                                                    pagination.totalElements
+                                                )}
+                                            </strong>{" "}
+                                            trong tổng số <strong>{pagination.totalElements}</strong> đặt lịch
+                                        </div>
+                                        <Pagination className="mb-0" size="sm">
+                                            <Pagination.Prev
+                                                onClick={() => setPagination(prev => ({ ...prev, currentPage: prev.currentPage - 1 }))}
+                                                disabled={pagination.currentPage === 1}
+                                            />
+
+                                            {(() => {
+                                                const items = [];
+                                                const total = pagination.totalPages;
+                                                const current = pagination.currentPage;
+                                                const maxVisible = 5;
+
+                                                if (total <= maxVisible) {
+                                                    for (let i = 1; i <= total; i++) {
+                                                        items.push(
+                                                            <Pagination.Item
+                                                                key={i}
+                                                                active={i === current}
+                                                                onClick={() => setPagination(prev => ({ ...prev, currentPage: i }))}
+                                                            >
+                                                                {i}
+                                                            </Pagination.Item>
+                                                        );
+                                                    }
+                                                } else {
+                                                    items.push(
+                                                        <Pagination.Item
+                                                            key={1}
+                                                            active={1 === current}
+                                                            onClick={() => setPagination(prev => ({ ...prev, currentPage: 1 }))}
+                                                        >
+                                                            1
+                                                        </Pagination.Item>
+                                                    );
+
+                                                    let startPage = Math.max(2, current - 1);
+                                                    let endPage = Math.min(total - 1, current + 1);
+
+                                                    if (startPage > 2) {
+                                                        items.push(<Pagination.Ellipsis key="ellipsis-start" disabled />);
+                                                        startPage = Math.max(startPage, current - 1);
+                                                    }
+
+                                                    for (let i = startPage; i <= endPage; i++) {
+                                                        items.push(
+                                                            <Pagination.Item
+                                                                key={i}
+                                                                active={i === current}
+                                                                onClick={() => setPagination(prev => ({ ...prev, currentPage: i }))}
+                                                            >
+                                                                {i}
+                                                            </Pagination.Item>
+                                                        );
+                                                    }
+
+                                                    if (endPage < total - 1) {
+                                                        items.push(<Pagination.Ellipsis key="ellipsis-end" disabled />);
+                                                    }
+                                                    items.push(
+                                                        <Pagination.Item
+                                                            key={total}
+                                                            active={total === current}
+                                                            onClick={() => setPagination(prev => ({ ...prev, currentPage: total }))}
+                                                        >
+                                                            {total}
+                                                        </Pagination.Item>
+                                                    );
+                                                }
+
+                                                return items;
+                                            })()}
+
+                                            <Pagination.Next
+                                                onClick={() => setPagination(prev => ({ ...prev, currentPage: prev.currentPage + 1 }))}
+                                                disabled={pagination.currentPage === pagination.totalPages}
+                                            />
+                                        </Pagination>
+                                    </div>
+                                </Card.Footer>
+                            )}
                         </Card>
                     </Tab.Pane>
 

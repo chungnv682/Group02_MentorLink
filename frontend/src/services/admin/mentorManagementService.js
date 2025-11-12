@@ -45,9 +45,58 @@ export const bulkRejectMentors = async (mentorIds) => {
     return instance.put(`${BASE_URL}/bulk-reject`, mentorIds);
 };
 
+// Delete a mentor
+export const deleteMentor = async (id) => {
+    return instance.delete(`${BASE_URL}/${id}`);
+};
+
 // Get mentor statistics (pending, approved, rejected, total)
 export const getMentorStatistics = async () => {
     return instance.get(`${BASE_URL}/statistics`);
+};
+
+// ========== Education Management ==========
+// Approve a specific education record
+export const approveEducation = async (educationId) => {
+    return instance.put(`/api/mentor/educations/admin/${educationId}/approve`);
+};
+
+// Reject a specific education record
+export const rejectEducation = async (educationId) => {
+    return instance.put(`/api/mentor/educations/admin/${educationId}/reject`);
+};
+
+// ========== Experience Management ==========
+// Approve a specific experience record
+export const approveExperience = async (experienceId) => {
+    return instance.put(`/api/mentor/experiences/admin/${experienceId}/approve`);
+};
+
+// Reject a specific experience record
+export const rejectExperience = async (experienceId) => {
+    return instance.put(`/api/mentor/experiences/admin/${experienceId}/reject`);
+};
+
+// ========== Certificate/Test Management ==========
+// Approve a specific certificate/test record
+export const approveCertificate = async (certificateId) => {
+    return instance.put(`/api/mentor/tests/admin/${certificateId}/approve`);
+};
+
+// Reject a specific certificate/test record
+export const rejectCertificate = async (certificateId) => {
+    return instance.put(`/api/mentor/tests/admin/${certificateId}/reject`);
+};
+
+// ========== Service Management ==========
+// Approve a specific service record
+export const approveService = async (serviceId) => {
+    return instance.put(`/api/mentor/services/admin/${serviceId}/approve`);
+};
+
+// Reject a specific service record
+export const rejectService = async (serviceId) => {
+    return instance.put(`/api/mentor/services/admin/${serviceId}/reject`);
 };
 
 export default {
@@ -57,5 +106,15 @@ export default {
     rejectMentor,
     bulkApproveMentors,
     bulkRejectMentors,
-    getMentorStatistics
+    deleteMentor,
+    getMentorStatistics,
+    // Individual item management
+    approveEducation,
+    rejectEducation,
+    approveExperience,
+    rejectExperience,
+    approveCertificate,
+    rejectCertificate,
+    approveService,
+    rejectService
 };

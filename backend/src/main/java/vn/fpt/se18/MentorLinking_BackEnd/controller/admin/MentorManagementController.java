@@ -63,6 +63,12 @@ public class MentorManagementController {
         return mentorService.bulkRejectMentors(mentorIds);
     }
 
+    @DeleteMapping("/{id}")
+    @Operation(summary = "Delete a mentor")
+    public BaseResponse<Void> deleteMentor(@PathVariable Long id) {
+        return mentorService.deleteMentor(id);
+    }
+
     @GetMapping("/statistics")
     public BaseResponse<MentorStatisticsResponse> getMentorStatistics() {
         return mentorService.getMentorStatistics();
@@ -90,5 +96,11 @@ public class MentorManagementController {
     @Operation(summary = "Get mentor's services")
     public BaseResponse<?> getMentorServices(@PathVariable Long id) {
         return mentorService.getMentorServices(id);
+    }
+
+    @GetMapping("/{id}/countries")
+    @Operation(summary = "Get mentor's countries")
+    public BaseResponse<?> getMentorCountries(@PathVariable Long id) {
+        return mentorService.getMentorCountries(id);
     }
 }

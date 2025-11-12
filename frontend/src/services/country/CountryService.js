@@ -67,6 +67,28 @@ class CountryService {
         }
     }
 
+    // Admin: Unapprove country (revert to pending)
+    static async unapproveCountry(countryId) {
+        try {
+            const response = await instance.put(`/api/countries/${countryId}/unapprove`);
+            return response;
+        } catch (error) {
+            console.error('Error unapproving country:', error);
+            throw error;
+        }
+    }
+
+    // Admin: Delete country
+    static async deleteCountry(countryId) {
+        try {
+            const response = await instance.delete(`/api/countries/${countryId}`);
+            return response;
+        } catch (error) {
+            console.error('Error deleting country:', error);
+            throw error;
+        }
+    }
+
     // Get countries by mentor
     static async getMentorCountries(mentorId) {
         try {
