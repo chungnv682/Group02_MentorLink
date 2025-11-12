@@ -10,6 +10,7 @@ import vn.fpt.se18.MentorLinking_BackEnd.entity.Status;
 import vn.fpt.se18.MentorLinking_BackEnd.entity.TimeSlot;
 import vn.fpt.se18.MentorLinking_BackEnd.repository.BookingRepository;
 import vn.fpt.se18.MentorLinking_BackEnd.repository.StatusRepository;
+import vn.fpt.se18.MentorLinking_BackEnd.repository.UserRepository;
 import vn.fpt.se18.MentorLinking_BackEnd.util.PaymentProcess;
 
 import java.time.LocalDate;
@@ -29,6 +30,7 @@ public class BookingStatusSchedulerService {
 
     private final BookingRepository bookingRepository;
     private final StatusRepository statusRepository;
+    private final UserRepository userRepository;
 
     /**
      * Run every 5 minutes to check and update booking status.
@@ -127,5 +129,19 @@ public class BookingStatusSchedulerService {
         booking.setStatus(completedStatus);
         booking.setUpdatedAt(LocalDateTime.now());
         bookingRepository.save(booking);
+        // Increment mentor's numberOfBooking when a booking is completed
+        try {
+            if (booking.getMentor() != null) {
+                var mentor = booking.getMentor();
+                Integer current = mentor.getNumberOfBooking();
+                mentor.setNumberOfBooking(current == null ? 1 : current + 1);
+                userRepository.save(mentor);
+                log.debug("Incremented numberOfBooking for mentor id {} to {}", mentor.getId(), mentor.getNumberOfBooking());
+            } else {
+                log.warn("Booking ID {} has no mentor assigned, cannot increment numberOfBooking", booking.getId());
+            }
+        } catch (Exception e) {
+            log.error("Failed to increment mentor's numberOfBooking for booking ID {}: {}", booking.getId(), e.getMessage(), e);
+        }
     }
 }

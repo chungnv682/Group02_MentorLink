@@ -262,7 +262,7 @@ const MentorTestManagement = () => {
 
             {/* Statistics Cards */}
             <Row className="mb-4">
-                <Col lg={3} md={6} className="mb-3">
+                <Col lg={4} md={6} className="mb-3">
                     <Card className="dashboard-card stat-card">
                         <Card.Body>
                             <div className="stat-icon primary">
@@ -273,7 +273,7 @@ const MentorTestManagement = () => {
                         </Card.Body>
                     </Card>
                 </Col>
-                <Col lg={3} md={6} className="mb-3">
+                <Col lg={4} md={6} className="mb-3">
                     <Card className="dashboard-card stat-card">
                         <Card.Body>
                             <div className="stat-icon success">
@@ -284,7 +284,7 @@ const MentorTestManagement = () => {
                         </Card.Body>
                     </Card>
                 </Col>
-                <Col lg={3} md={6} className="mb-3">
+                <Col lg={4} md={6} className="mb-3">
                     <Card className="dashboard-card stat-card">
                         <Card.Body>
                             <div className="stat-icon warning">
@@ -295,17 +295,7 @@ const MentorTestManagement = () => {
                         </Card.Body>
                     </Card>
                 </Col>
-                <Col lg={3} md={6} className="mb-3">
-                    <Card className="dashboard-card stat-card">
-                        <Card.Body>
-                            <div className="stat-icon info">
-                                <i className="bi bi-people"></i>
-                            </div>
-                            <div className="stat-value">--</div>
-                            <p className="stat-label">Lượt làm test</p>
-                        </Card.Body>
-                    </Card>
-                </Col>
+                
             </Row>
 
             {/* Status Filter Toolbar */}
