@@ -8,7 +8,8 @@ const PUBLIC_ENDPOINTS = [
   '/api/auth/register',
   '/api/auth/refresh-token',
   '/api/customer-policies/active',
-  '/api/mentor-policies/active'
+  '/api/mentor-policies/active',
+  '/api/public/mentor-ads/active',
 ];
 
 // Hàm kiểm tra endpoint có phải public không

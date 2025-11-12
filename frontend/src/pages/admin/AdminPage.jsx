@@ -13,6 +13,7 @@ import {
   FaShieldAlt,
   FaGlobeAmericas,
   FaFileAlt,
+  FaAd,
 } from "react-icons/fa";
 import {
   UserManagement,
@@ -29,6 +30,7 @@ import {
   CountryManagement,
   AdminSidebar,
   PolicyManagement,
+  MentorAdManagement,
 } from "../../components/admin";
 import {
   getAllUsers,
@@ -319,6 +321,13 @@ const AdminPage = () => {
       title: "Báo cáo & thống kê",
       badge: null,
       component: <Analytics stats={stats} mentors={mentors} />,
+    },
+    {
+      key: "mentor-ads",
+      icon: <FaAd />,
+      title: "Duyệt QC Mentor",
+      badge: null,
+      component: <MentorAdManagement />,
     },
     {
       key: "policies",

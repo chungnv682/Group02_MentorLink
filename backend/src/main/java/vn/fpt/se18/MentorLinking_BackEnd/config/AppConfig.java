@@ -49,11 +49,12 @@ public class AppConfig {
                                 "/admin/**",
                                 "/mentors", "/mentors/**",
                                 "/blogs", "/blogs/**",
-                                "/mentor-policies/**", "/policies/active", "/customer-policies/**", "/banners/**", "/blogs/**",
-                                "/mentor-countries/**", "/faqs/**", "/schedules/**",
+                                "/mentor-policies/**", "/policies/active", "/customer-policies/**", "/banners/**", "/public/mentor-ads/active", "/blogs/**",
+                                "/mentor-countries/**", "/faqs/**", "/schedules/**", "/public/mentor-ads/active",
                                 "/countries/**", "/api/countries/popular", "/api/countries/search")
                         .permitAll()
-                        .requestMatchers("/auth/**", "/profile/**", "/bookings/**", "/payments/**", "/comments/**",
+                        .requestMatchers("/auth/**", "/profile/**", "/bookings/**", "/payments/**", "/comments/**", "/mentor-ads/upload",
+                                "/mentor-ads/my-ads",
                                 "/ratings/**", "/chat/**", "/recommendations/**", "/chatbot/**", "/schedules/**", "/time-slots/**")
                         .permitAll()
                         .anyRequest().authenticated())

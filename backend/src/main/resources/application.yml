@@ -47,3 +47,9 @@ file:
   upload:
     path: uploads
     url: http://localhost:8080/api/files
+
+
+cloudinary:
+  cloud_name: dnbbicuel
+  api_key: 626892172476977
+  api_secret: oEkItAwYQAWWt-bnJWE0CGn3ey0

@@ -9,3 +9,4 @@ export { default as ServiceManagement } from './ServiceManagement';
 export { default as MentorTestManagement } from './MentorTestManagement';
 export { default as MentorEducationManagement } from './MentorEducationManagement';
 export { default as MentorExperienceManagement } from './MentorExperienceManagement';
+export { default as MyAdsManagement } from './MyAdsManagement';
