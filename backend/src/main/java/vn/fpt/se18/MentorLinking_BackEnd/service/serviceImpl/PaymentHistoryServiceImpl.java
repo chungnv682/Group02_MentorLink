@@ -1,4 +1,4 @@
-package vn.fpt.se18.MentorLinking_BackEnd.service.impl;
+package vn.fpt.se18.MentorLinking_BackEnd.service.serviceImpl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

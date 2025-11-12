@@ -17,7 +17,7 @@ public interface MentorRepository extends JpaRepository<User, Long> {
             "LEFT JOIN FETCH mc.country c " +
             "LEFT JOIN FETCH mc.status mcs " +
             "WHERE r.name = 'MENTOR' " +
-            "AND s.code = 'ACTIVE' " +
+            "AND s.code = 'APPROVED' " +
             "AND (u.isBlocked = false OR u.isBlocked IS NULL)" )
 //            " ORDER BY u.numberOfBooking ASC")
     Page<User> getAllMentorWithRelatedData(Pageable pageable);
@@ -33,7 +33,7 @@ public interface MentorRepository extends JpaRepository<User, Long> {
             "LEFT JOIN FETCH mc.country c " +
             "LEFT JOIN FETCH mc.status mcs " +
             "WHERE r.name = 'MENTOR' " +
-            "AND s.code = 'ACTIVE' " +
+            "AND s.code = 'APPROVED' " +
             "AND (u.isBlocked = false OR u.isBlocked IS NULL) " +
             "AND (LOWER(u.fullname) LIKE :keyword OR " +
             "LOWER(u.title) LIKE :keyword OR " +
@@ -51,7 +51,7 @@ public interface MentorRepository extends JpaRepository<User, Long> {
             "LEFT JOIN FETCH mc.country c " +
             "LEFT JOIN FETCH mc.status mcs " +
             "WHERE r.name = 'MENTOR' " +
-            "AND s.code = 'ACTIVE' " +
+            "AND s.code = 'APPROVED' " +
             "AND (u.isBlocked = false OR u.isBlocked IS NULL) " +
             "AND EXISTS (SELECT 1 FROM u.mentorCountries mc2 JOIN mc2.country c2 JOIN mc2.status mcs2 WHERE mcs2.code = 'APPROVED' AND LOWER(c2.name) = LOWER(:country))")
     Page<User> searchByCountry(String country, Pageable pageable);
@@ -67,7 +67,7 @@ public interface MentorRepository extends JpaRepository<User, Long> {
             "LEFT JOIN FETCH mc.country c " +
             "LEFT JOIN FETCH mc.status mcs " +
             "WHERE r.name = 'MENTOR' " +
-            "AND s.code = 'ACTIVE' " +
+            "AND s.code = 'APPROVED' " +
             "AND (u.isBlocked = false OR u.isBlocked IS NULL) " +
             "AND EXISTS (SELECT 1 FROM u.mentorCountries mc2 JOIN mc2.country c2 JOIN mc2.status mcs2 WHERE mcs2.code = 'APPROVED' AND LOWER(c2.name) = LOWER(:country)) " +
             "AND (LOWER(u.fullname) LIKE :keyword OR " +
@@ -87,7 +87,7 @@ public interface MentorRepository extends JpaRepository<User, Long> {
             "LEFT JOIN FETCH mc.country c " +
             "LEFT JOIN FETCH mc.status mcs " +
             "WHERE r.name = 'MENTOR' " +
-            "AND s.code = 'ACTIVE' " +
+            "AND s.code = 'APPROVED' " +
             "AND (u.isBlocked = false OR u.isBlocked IS NULL) " +
             "AND u.id = :id")
     User getMentorByIdWithRelatedData(@org.springframework.data.repository.query.Param("id") Long id);
