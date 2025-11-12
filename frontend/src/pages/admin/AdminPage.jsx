@@ -12,6 +12,7 @@ import {
   FaCog,
   FaShieldAlt,
   FaGlobeAmericas,
+  FaFileAlt,
 } from "react-icons/fa";
 import {
   UserManagement,
@@ -27,6 +28,7 @@ import {
   RolePermissions,
   CountryManagement,
   AdminSidebar,
+  PolicyManagement,
 } from "../../components/admin";
 import {
   getAllUsers,
@@ -253,7 +255,7 @@ const AdminPage = () => {
       key: "content",
       icon: <FaBlog />,
       title: "Quản lý nội dung",
-      badge:null,
+      badge: null,
       component: (
         <ContentManagement
           blogs={blogs}
@@ -317,6 +319,13 @@ const AdminPage = () => {
       title: "Báo cáo & thống kê",
       badge: null,
       component: <Analytics stats={stats} mentors={mentors} />,
+    },
+    {
+      key: "policies",
+      icon: <FaFileAlt />,
+      title: "Quản lý chính sách",
+      badge: null,
+      component: <PolicyManagement />,
     },
     {
       key: "roles",
