@@ -90,7 +90,32 @@ public class CountryController {
         return BaseResponse.<Void>builder()
                 .requestDateTime(LocalDateTime.now().toString())
                 .respCode("0")
-                .description("Country rejected successfully")
+                .description("Country rejected successfully. All associated MentorCountry records have been rejected.")
+                .build();
+    }
+
+    @PutMapping("/{countryId}/unapprove")
+    @Operation(summary = "Unapprove a country - revert to pending status (Admin only)")
+    public BaseResponse<CountryResponse> unapproveCountry(@PathVariable Long countryId) {
+        log.info("REST request to unapprove country with ID: {}", countryId);
+        CountryResponse data = countryService.unapproveCountry(countryId);
+        return BaseResponse.<CountryResponse>builder()
+                .requestDateTime(LocalDateTime.now().toString())
+                .respCode("0")
+                .description("Country reverted to pending status. Associated MentorCountry records updated.")
+                .data(data)
+                .build();
+    }
+
+    @DeleteMapping("/{countryId}")
+    @Operation(summary = "Delete a country (Admin only)")
+    public BaseResponse<Void> deleteCountry(@PathVariable Long countryId) {
+        log.info("REST request to delete country with ID: {}", countryId);
+        countryService.deleteCountry(countryId);
+        return BaseResponse.<Void>builder()
+                .requestDateTime(LocalDateTime.now().toString())
+                .respCode("0")
+                .description("Country deleted successfully. All associated MentorCountry records have been removed.")
                 .build();
     }
 

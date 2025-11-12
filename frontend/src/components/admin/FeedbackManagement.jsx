@@ -12,6 +12,7 @@ import {
   Modal,
   Alert,
   Spinner,
+  Pagination,
 } from "react-bootstrap";
 import {
   FaSearch,
@@ -32,7 +33,6 @@ import {
   rejectFeedback,
   deleteFeedback,
   bulkResolveFeedbacks,
-  getFeedbackStatistics,
 } from "../../services/admin/feedbackManagementService";
 import { useToast } from "../../contexts/ToastContext";
 
@@ -43,15 +43,9 @@ const FeedbackManagement = () => {
   const [filterStatus, setFilterStatus] = useState("all");
   const [feedbackReports, setFeedbackReports] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [selectedFeedbackIds, setSelectedFeedbackIds] = useState([]);
   const [responseText, setResponseText] = useState("");
-  const [stats, setStats] = useState({
-    pending: 0,
-    inProgress: 0,
-    resolved: 0,
-    highPriority: 0,
-    total: 0,
-  });
   const [pagination, setPagination] = useState({
     page: 1,
     size: 10,
@@ -66,11 +60,6 @@ const FeedbackManagement = () => {
     fetchFeedbacks();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterStatus, pagination.page]);
-
-  // Fetch statistics
-  useEffect(() => {
-    fetchStatistics();
-  }, []);
 
   const fetchFeedbacks = async () => {
     try {
@@ -109,18 +98,6 @@ const FeedbackManagement = () => {
     }
   };
 
-  const fetchStatistics = async () => {
-    try {
-      const response = await getFeedbackStatistics();
-
-      if (response.respCode === "0" || response.success) {
-        setStats(response.data);
-      }
-    } catch (error) {
-      console.error("Error fetching statistics:", error);
-    }
-  };
-
   const handleSearch = () => {
     setPagination((prev) => ({ ...prev, page: 1 }));
     fetchFeedbacks();
@@ -128,7 +105,7 @@ const FeedbackManagement = () => {
 
   const handleViewFeedback = async (feedback) => {
     try {
-      setLoading(true);
+      setDetailLoading(true);
       const response = await getFeedbackById(feedback.id);
 
       if (response.respCode === "0" || response.success) {
@@ -142,7 +119,7 @@ const FeedbackManagement = () => {
       console.error("Error fetching feedback details:", error);
       showToast("Không thể tải thông tin feedback", "error");
     } finally {
-      setLoading(false);
+      setDetailLoading(false);
     }
   };
 
@@ -162,7 +139,6 @@ const FeedbackManagement = () => {
       if (response.respCode === "0" || response.success) {
         showToast("Đã gửi phản hồi và đánh dấu đã giải quyết", "success");
         fetchFeedbacks();
-        fetchStatistics();
         setShowModal(false);
         setResponseText("");
       } else {
@@ -181,7 +157,6 @@ const FeedbackManagement = () => {
       if (response.respCode === "0" || response.success) {
         showToast("Đã đánh dấu đang xử lý", "success");
         fetchFeedbacks();
-        fetchStatistics();
         if (selectedFeedback && selectedFeedback.id === feedbackId) {
           setShowModal(false);
         }
@@ -204,7 +179,6 @@ const FeedbackManagement = () => {
       if (response.respCode === "0" || response.success) {
         showToast("Đã từ chối feedback", "success");
         fetchFeedbacks();
-        fetchStatistics();
         if (selectedFeedback && selectedFeedback.id === feedbackId) {
           setShowModal(false);
         }
@@ -229,7 +203,6 @@ const FeedbackManagement = () => {
       if (response.respCode === "0" || response.success) {
         showToast("Đã xóa feedback", "success");
         fetchFeedbacks();
-        fetchStatistics();
         if (selectedFeedback && selectedFeedback.id === feedbackId) {
           setShowModal(false);
         }
@@ -258,7 +231,6 @@ const FeedbackManagement = () => {
         );
         setSelectedFeedbackIds([]);
         fetchFeedbacks();
-        fetchStatistics();
       } else {
         showToast(response.description || "Không thể xử lý hàng loạt", "error");
       }
@@ -383,52 +355,14 @@ const FeedbackManagement = () => {
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h4 className="mb-1">Quản lý phản hồi & báo cáo</h4>
-          <p className="text-muted mb-0">
-            Xử lý feedback, báo cáo và khiếu nại từ người dùng
-          </p>
         </div>
       </div>
-      <Row className="mb-3 g-3">
-        <Col md={3}>
-          <Card className="shadow-sm border-0">
-            <Card.Body className="text-center">
-              <h6 className="text-muted mb-1">Chờ xử lý</h6>
-              <h4 className="fw-semibold mb-0">{stats.pending || 0}</h4>
-            </Card.Body>
-          </Card>
-        </Col>
-        <Col md={3}>
-          <Card className="shadow-sm border-0">
-            <Card.Body className="text-center">
-              <h6 className="text-muted mb-1">Đang xử lý</h6>
-              <h4 className="fw-semibold mb-0">{stats.inProgress || 0}</h4>
-            </Card.Body>
-          </Card>
-        </Col>
-        <Col md={3}>
-          <Card className="shadow-sm border-0">
-            <Card.Body className="text-center">
-              <h6 className="text-muted mb-1">Đã giải quyết</h6>
-              <h4 className="fw-semibold mb-0">{stats.resolved || 0}</h4>
-            </Card.Body>
-          </Card>
-        </Col>
-        <Col md={3}>
-          <Card className="shadow-sm border-0">
-            <Card.Body className="text-center">
-              <h6 className="text-muted mb-1">Ưu tiên cao</h6>
-              <h4 className="fw-semibold mb-0">{stats.highPriority || 0}</h4>
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
 
       {/* Filters */}
       <Card className="mb-4">
         <Card.Body>
           <Row className="align-items-end">
             <Col md={6}>
-              <Form.Label>Tìm kiếm</Form.Label>
               <InputGroup>
                 <InputGroup.Text>
                   <FaSearch />
@@ -441,8 +375,7 @@ const FeedbackManagement = () => {
                 />
               </InputGroup>
             </Col>
-            <Col md={4}>
-              <Form.Label>Trạng thái</Form.Label>
+            <Col md={3}>
               <Form.Select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
@@ -453,16 +386,6 @@ const FeedbackManagement = () => {
                 <option value="RESOLVED">Đã giải quyết</option>
                 <option value="REJECTED">Từ chối</option>
               </Form.Select>
-            </Col>
-            <Col md={2}>
-              <Button
-                variant="outline-secondary"
-                className="w-100"
-                onClick={handleSearch}
-                disabled={loading}
-              >
-                {loading ? <Spinner animation="border" size="sm" /> : "Lọc"}
-              </Button>
             </Col>
           </Row>
         </Card.Body>
@@ -525,7 +448,7 @@ const FeedbackManagement = () => {
                     />
                   </th>
                   <th width="25%">Người gửi</th>
-                  <th width="50%">Nội dung</th>
+                  <th width="40%">Nội dung</th>
                   <th width="10%">Trạng thái</th>
                   <th width="10%">Thao tác</th>
                 </tr>
@@ -597,38 +520,100 @@ const FeedbackManagement = () => {
             </Table>
           )}
         </Card.Body>
-        {!loading && pagination.totalPages > 1 && (
-          <Card.Footer>
-            <div className="d-flex justify-content-between align-items-center">
-              <div className="text-muted">
-                Hiển thị {feedbackReports.length} / {pagination.totalElements}{" "}
-                kết quả
+        {!loading && feedbackReports.length > 0 && (
+          <Card.Footer className="bg-white border-top">
+            <div className="d-flex justify-content-between align-items-center flex-wrap gap-3">
+              <div className="text-muted small">
+                Hiển thị{" "}
+                <strong>
+                  {(pagination.page - 1) * pagination.size + 1}
+                </strong>{" "}
+                -{" "}
+                <strong>
+                  {Math.min(
+                    pagination.page * pagination.size,
+                    pagination.totalElements
+                  )}
+                </strong>{" "}
+                trong tổng số <strong>{pagination.totalElements}</strong> phản hồi
               </div>
-              <div className="d-flex gap-2">
-                <Button
-                  variant="outline-secondary"
-                  size="sm"
-                  disabled={pagination.page <= 1}
-                  onClick={() =>
-                    setPagination((prev) => ({ ...prev, page: prev.page - 1 }))
+              <Pagination className="mb-0" size="sm">
+                <Pagination.Prev
+                  onClick={() => setPagination((prev) => ({ ...prev, page: prev.page - 1 }))}
+                  disabled={pagination.page === 1}
+                />
+
+                {(() => {
+                  const items = [];
+                  const total = pagination.totalPages;
+                  const current = pagination.page;
+                  const maxVisible = 5;
+
+                  if (total <= maxVisible) {
+                    for (let i = 1; i <= total; i++) {
+                      items.push(
+                        <Pagination.Item
+                          key={i}
+                          active={i === current}
+                          onClick={() => setPagination((prev) => ({ ...prev, page: i }))}
+                        >
+                          {i}
+                        </Pagination.Item>
+                      );
+                    }
+                  } else {
+                    items.push(
+                      <Pagination.Item
+                        key={1}
+                        active={1 === current}
+                        onClick={() => setPagination((prev) => ({ ...prev, page: 1 }))}
+                      >
+                        1
+                      </Pagination.Item>
+                    );
+
+                    let startPage = Math.max(2, current - 1);
+                    let endPage = Math.min(total - 1, current + 1);
+
+                    if (startPage > 2) {
+                      items.push(<Pagination.Ellipsis key="ellipsis-start" disabled />);
+                      startPage = Math.max(startPage, current - 1);
+                    }
+
+                    for (let i = startPage; i <= endPage; i++) {
+                      items.push(
+                        <Pagination.Item
+                          key={i}
+                          active={i === current}
+                          onClick={() => setPagination((prev) => ({ ...prev, page: i }))}
+                        >
+                          {i}
+                        </Pagination.Item>
+                      );
+                    }
+
+                    if (endPage < total - 1) {
+                      items.push(<Pagination.Ellipsis key="ellipsis-end" disabled />);
+                    }
+                    items.push(
+                      <Pagination.Item
+                        key={total}
+                        active={total === current}
+                        onClick={() => setPagination((prev) => ({ ...prev, page: total }))}
+                      >
+                        {total}
+                      </Pagination.Item>
+                    );
                   }
-                >
-                  Trước
-                </Button>
-                <span className="align-self-center">
-                  Trang {pagination.page} / {pagination.totalPages}
-                </span>
-                <Button
-                  variant="outline-secondary"
-                  size="sm"
-                  disabled={pagination.page >= pagination.totalPages}
-                  onClick={() =>
-                    setPagination((prev) => ({ ...prev, page: prev.page + 1 }))
-                  }
-                >
-                  Sau
-                </Button>
-              </div>
+
+                  return items;
+                })()}
+
+                <Pagination.Next
+                  onClick={() => setPagination((prev) => ({ ...prev, page: prev.page + 1 }))}
+                  disabled={pagination.page === pagination.totalPages}
+                />
+              </Pagination>
             </div>
           </Card.Footer>
         )}
@@ -647,32 +632,8 @@ const FeedbackManagement = () => {
                   <p>
                     <strong>Người gửi:</strong> {selectedFeedback.reporterName}
                   </p>
-                  <p>
-                    <strong>Email:</strong> {selectedFeedback.reporterEmail}
-                  </p>
-                  <p>
-                    <strong>Ngày gửi:</strong> {selectedFeedback.createdAt}
-                  </p>
                 </Col>
                 <Col md={6}>
-                  <p>
-                    <strong>Loại:</strong>
-                    <Badge
-                      bg={getTypeBadgeVariant(selectedFeedback.type)}
-                      className="ms-2"
-                    >
-                      {getTypeText(selectedFeedback.type)}
-                    </Badge>
-                  </p>
-                  <p>
-                    <strong>Mức độ:</strong>
-                    <Badge
-                      bg={getPriorityBadgeVariant(selectedFeedback.priority)}
-                      className="ms-2"
-                    >
-                      {selectedFeedback.priority}
-                    </Badge>
-                  </p>
                   <p>
                     <strong>Trạng thái:</strong>
                     <Badge
