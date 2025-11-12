@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
     Card, Row, Col, Table, Button, Badge, Form, Dropdown,
-    InputGroup, Modal, Alert, Image, Spinner
+    InputGroup, Modal, Alert, Image, Spinner, Pagination
 } from 'react-bootstrap';
 import {
     FaSearch, FaEye, FaEdit, FaTrash, FaPlus,
@@ -18,8 +18,7 @@ import {
     publishBanner,
     unpublishBanner,
     updateBannerStatus,
-    bulkDeleteBanners,
-    getBannerStatistics
+    bulkDeleteBanners
 } from '../../services/admin';
 
 const BannerManagement = () => {
@@ -27,16 +26,6 @@ const BannerManagement = () => {
     
     // State management
     const [banners, setBanners] = useState([]);
-    const [statistics, setStatistics] = useState({
-        totalBanners: 0,
-        activeBanners: 0,
-        inactiveBanners: 0,
-        pendingBanners: 0,
-        expiredBanners: 0,
-        totalViews: 0,
-        totalClicks: 0,
-        averageCTR: 0
-    });
     
     const [showModal, setShowModal] = useState(false);
     const [selectedBanner, setSelectedBanner] = useState(null);
@@ -46,14 +35,15 @@ const BannerManagement = () => {
     const [filterPublished, setFilterPublished] = useState(null);
     
     // Pagination
-    const [currentPage, setCurrentPage] = useState(1);
-    const [pageSize] = useState(10);
-    const [totalPages, setTotalPages] = useState(1);
-    const [totalElements, setTotalElements] = useState(0);
+    const [pagination, setPagination] = useState({
+        currentPage: 1,
+        pageSize: 10,
+        totalPages: 0,
+        totalElements: 0
+    });
     
     // Loading states
     const [loading, setLoading] = useState(false);
-    const [loadingStatistics, setLoadingStatistics] = useState(false);
     
     // Selection state
     const [selectedBannerIds, setSelectedBannerIds] = useState([]);
@@ -68,14 +58,17 @@ const BannerManagement = () => {
                 keySearch: searchTerm || null,
                 status: filterStatus || null,
                 isPublished: filterPublished,
-                page: currentPage,
-                size: pageSize
+                page: pagination.currentPage,
+                size: pagination.pageSize
             });
             
             if (response.respCode === '0') {
                 setBanners(response.data.content || []);
-                setTotalPages(response.data.totalPages || 1);
-                setTotalElements(response.data.totalElements || 0);
+                setPagination(prev => ({
+                    ...prev,
+                    totalPages: response.data.totalPages || 0,
+                    totalElements: response.data.totalElements || 0
+                }));
             } else {
                 showToast('error', response.description || 'Không thể tải danh sách banner');
             }
@@ -87,33 +80,14 @@ const BannerManagement = () => {
         }
     };
 
-    // Fetch statistics
-    const fetchStatistics = async () => {
-        setLoadingStatistics(true);
-        try {
-            const response = await getBannerStatistics();
-            if (response.respCode === '0') {
-                setStatistics(response.data);
-            }
-        } catch (error) {
-            console.error('Error fetching statistics:', error);
-        } finally {
-            setLoadingStatistics(false);
-        }
-    };
-
     // useEffect hooks
-    useEffect(() => {
-        fetchStatistics();
-    }, []);
-
     useEffect(() => {
         const timer = setTimeout(() => {
             fetchBanners();
         }, 500);
 
         return () => clearTimeout(timer);
-    }, [searchTerm, filterStatus, filterPublished, currentPage]);
+    }, [searchTerm, filterStatus, filterPublished, pagination.currentPage]);
 
     // Mock data removed - using API data
     const oldBanners = [
@@ -230,7 +204,6 @@ const BannerManagement = () => {
             if (response.respCode === '0') {
                 showToast('success', 'Xuất bản banner thành công');
                 fetchBanners();
-                fetchStatistics();
                 setShowModal(false);
             } else {
                 showToast('error', response.description);
@@ -246,7 +219,6 @@ const BannerManagement = () => {
             if (response.respCode === '0') {
                 showToast('success', 'Hủy xuất bản banner thành công');
                 fetchBanners();
-                fetchStatistics();
                 setShowModal(false);
             } else {
                 showToast('error', response.description);
@@ -264,7 +236,6 @@ const BannerManagement = () => {
             if (response.respCode === '0') {
                 showToast('success', 'Xóa banner thành công');
                 fetchBanners();
-                fetchStatistics();
                 setShowModal(false);
             } else {
                 showToast('error', response.description);
@@ -289,7 +260,6 @@ const BannerManagement = () => {
                 setSelectedBannerIds([]);
                 setSelectAll(false);
                 fetchBanners();
-                fetchStatistics();
             } else {
                 showToast('error', response.description);
             }
@@ -334,7 +304,7 @@ const BannerManagement = () => {
         setSearchTerm('');
         setFilterStatus('');
         setFilterPublished(null);
-        setCurrentPage(1);
+        setPagination(prev => ({ ...prev, currentPage: 1 }));
     };
 
     const formatDate = (dateString) => {
@@ -353,7 +323,6 @@ const BannerManagement = () => {
             <div className="d-flex justify-content-between align-items-center mb-4">
                 <div>
                     <h4 className="mb-1">Quản lý Banner & Quảng cáo</h4>
-                    <p className="text-muted mb-0">Quản lý banner hiển thị trên trang chủ và các trang khác</p>
                 </div>
                 <div className="d-flex gap-2">
                     <Button variant="outline-primary" size="sm">
@@ -367,56 +336,11 @@ const BannerManagement = () => {
                 </div>
             </div>
 
-            {/* Stats Cards - simple version */}
-            <Row className="mb-3 g-3">
-                <Col md={3}>
-                    <Card className="shadow-sm border-0">
-                        <Card.Body className="text-center">
-                            <h6 className="text-muted mb-1">Tổng banner</h6>
-                            <h4 className="fw-semibold mb-0">
-                                {loadingStatistics ? <Spinner animation="border" size="sm" /> : statistics.totalBanners}
-                            </h4>
-                        </Card.Body>
-                    </Card>
-                </Col>
-                <Col md={3}>
-                    <Card className="shadow-sm border-0">
-                        <Card.Body className="text-center">
-                            <h6 className="text-muted mb-1">Đang hoạt động</h6>
-                            <h4 className="fw-semibold mb-0">
-                                {loadingStatistics ? <Spinner animation="border" size="sm" /> : statistics.activeBanners}
-                            </h4>
-                        </Card.Body>
-                    </Card>
-                </Col>
-                <Col md={3}>
-                    <Card className="shadow-sm border-0">
-                        <Card.Body className="text-center">
-                            <h6 className="text-muted mb-1">Lượt xem</h6>
-                            <h4 className="fw-semibold mb-0">
-                                {loadingStatistics ? <Spinner animation="border" size="sm" /> : (statistics.totalViews || 0).toLocaleString()}
-                            </h4>
-                        </Card.Body>
-                    </Card>
-                </Col>
-                <Col md={3}>
-                    <Card className="shadow-sm border-0">
-                        <Card.Body className="text-center">
-                            <h6 className="text-muted mb-1">CTR trung bình</h6>
-                            <h4 className="fw-semibold mb-0">
-                                {loadingStatistics ? <Spinner animation="border" size="sm" /> : `${(statistics.averageCTR || 0).toFixed(2)}%`}
-                            </h4>
-                        </Card.Body>
-                    </Card>
-                </Col>
-            </Row>
-
             {/* Filters */}
             <Card className="mb-4">
                 <Card.Body>
                     <Row className="align-items-end">
                         <Col md={6}>
-                            <Form.Label>Tìm kiếm</Form.Label>
                             <InputGroup>
                                 <InputGroup.Text>
                                     <FaSearch />
@@ -430,7 +354,6 @@ const BannerManagement = () => {
                             </InputGroup>
                         </Col>
                         <Col md={3}>
-                            <Form.Label>Trạng thái</Form.Label>
                             <Form.Select
                                 value={filterStatus}
                                 onChange={(e) => setFilterStatus(e.target.value)}
@@ -443,7 +366,6 @@ const BannerManagement = () => {
                             </Form.Select>
                         </Col>
                         <Col md={2}>
-                            <Form.Label>Xuất bản</Form.Label>
                             <Form.Select
                                 value={filterPublished === null ? '' : filterPublished}
                                 onChange={(e) => setFilterPublished(e.target.value === '' ? null : e.target.value === 'true')}
@@ -453,62 +375,16 @@ const BannerManagement = () => {
                                 <option value="false">Chưa xuất bản</option>
                             </Form.Select>
                         </Col>
-                        <Col md={1}>
-                            <Button 
-                                variant="outline-secondary" 
-                                className="w-100"
-                                onClick={handleResetFilters}
-                                title="Đặt lại bộ lọc"
-                            >
-                                <FaUndo />
-                            </Button>
-                        </Col>
                     </Row>
                 </Card.Body>
             </Card>
-
-            {/* Banner Preview Cards */}
-            <Row className="mb-4">
-                {banners.slice(0, 2).map((banner) => (
-                    <Col md={6} key={`preview-${banner.id}`}>
-                        <Card className="mb-3">
-                            <div className="position-relative">
-                                <Image
-                                    src={banner.imageUrl}
-                                    alt={banner.title}
-                                    className="w-100"
-                                    style={{ height: '200px', objectFit: 'cover' }}
-                                />
-                                <div className="position-absolute top-0 end-0 m-2">
-                                    <Badge bg={getStatusBadgeVariant(banner.status)}>
-                                        {getStatusText(banner.status)}
-                                    </Badge>
-                                </div>
-                                <div className="position-absolute bottom-0 start-0 m-2">
-                                    <Badge bg="dark" className="bg-opacity-75">
-                                        Vị trí: {banner.position}
-                                    </Badge>
-                                </div>
-                            </div>
-                            <Card.Body>
-                                <h6 className="card-title">{banner.title}</h6>
-                                <div className="d-flex justify-content-between text-muted small">
-                                    <span>👁 {banner.viewCount.toLocaleString()}</span>
-                                    <span>🖱 {banner.clickCount.toLocaleString()}</span>
-                                    <span>{formatDate(banner.startDate)} - {formatDate(banner.endDate)}</span>
-                                </div>
-                            </Card.Body>
-                        </Card>
-                    </Col>
-                ))}
-            </Row>
 
             {/* Banners Table */}
             <Card>
                 <Card.Header className="bg-light">
                     <div className="d-flex justify-content-between align-items-center">
                         <h6 className="mb-0">
-                            Danh sách banner ({totalElements})
+                            Danh sách banner ({pagination.totalElements})
                             {loading && <Spinner animation="border" size="sm" className="ms-2" />}
                         </h6>
                         <div className="d-flex gap-2">
@@ -552,7 +428,6 @@ const BannerManagement = () => {
                                 <th width="10%">Vị trí</th>
                                 <th width="12%">Trạng thái</th>
                                 <th width="15%">Thời gian</th>
-                                <th width="13%">Hiệu suất</th>
                                 <th width="10%">Thao tác</th>
                             </tr>
                         </thead>
@@ -577,14 +452,11 @@ const BannerManagement = () => {
                                     <td>
                                         <div>
                                             <div className="fw-medium">{banner.title}</div>
-                                            <small className="text-muted">
-                                                Tạo bởi: {banner.createdBy}
-                                            </small>
                                         </div>
                                     </td>
                                     <td>
                                         <Badge bg="info" className="fs-6">
-                                            #{banner.position}
+                                            {banner.position}
                                         </Badge>
                                     </td>
                                     <td>
@@ -607,19 +479,6 @@ const BannerManagement = () => {
                                             </small>
                                             <small className="text-muted d-block">
                                                 <strong>Kết thúc:</strong> {formatDate(banner.endDate)}
-                                            </small>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div>
-                                            <small className="text-info d-block">
-                                                👁 {banner.viewCount.toLocaleString()}
-                                            </small>
-                                            <small className="text-success d-block">
-                                                🖱 {banner.clickCount.toLocaleString()}
-                                            </small>
-                                            <small className="text-warning d-block">
-                                                CTR: {banner.viewCount > 0 ? ((banner.clickCount / banner.viewCount) * 100).toFixed(1) : 0}%
                                             </small>
                                         </div>
                                     </td>
@@ -654,29 +513,45 @@ const BannerManagement = () => {
             {!loading && banners.length > 0 && (
                 <div className="d-flex justify-content-between align-items-center mt-3">
                     <div className="text-muted">
-                        Hiển thị {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, totalElements)} trong tổng số {totalElements} banner
+                        Hiển thị {((pagination.currentPage - 1) * pagination.pageSize) + 1} - {Math.min(pagination.currentPage * pagination.pageSize, pagination.totalElements)} trong tổng số {pagination.totalElements} banner
                     </div>
-                    <div className="d-flex gap-2">
-                        <Button
-                            variant="outline-primary"
-                            size="sm"
-                            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                            disabled={currentPage === 1}
-                        >
-                            Trang trước
-                        </Button>
-                        <div className="d-flex align-items-center">
-                            <span className="text-muted">Trang {currentPage} / {totalPages}</span>
-                        </div>
-                        <Button
-                            variant="outline-primary"
-                            size="sm"
-                            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                            disabled={currentPage === totalPages}
-                        >
-                            Trang sau
-                        </Button>
-                    </div>
+                    <Pagination className="mb-0">
+                        <Pagination.Prev
+                            disabled={pagination.currentPage === 1}
+                            onClick={() => setPagination(prev => ({ ...prev, currentPage: prev.currentPage - 1 }))}
+                        />
+                        {pagination.currentPage > 2 && (
+                            <>
+                                <Pagination.Item onClick={() => setPagination(prev => ({ ...prev, currentPage: 1 }))}>
+                                    1
+                                </Pagination.Item>
+                                {pagination.currentPage > 3 && <Pagination.Ellipsis disabled />}
+                            </>
+                        )}
+                        {pagination.currentPage > 1 && (
+                            <Pagination.Item onClick={() => setPagination(prev => ({ ...prev, currentPage: prev.currentPage - 1 }))}>
+                                {pagination.currentPage - 1}
+                            </Pagination.Item>
+                        )}
+                        <Pagination.Item active>{pagination.currentPage}</Pagination.Item>
+                        {pagination.currentPage < pagination.totalPages && (
+                            <Pagination.Item onClick={() => setPagination(prev => ({ ...prev, currentPage: prev.currentPage + 1 }))}>
+                                {pagination.currentPage + 1}
+                            </Pagination.Item>
+                        )}
+                        {pagination.currentPage < pagination.totalPages - 1 && (
+                            <>
+                                {pagination.currentPage < pagination.totalPages - 2 && <Pagination.Ellipsis disabled />}
+                                <Pagination.Item onClick={() => setPagination(prev => ({ ...prev, currentPage: pagination.totalPages }))}>
+                                    {pagination.totalPages}
+                                </Pagination.Item>
+                            </>
+                        )}
+                        <Pagination.Next
+                            disabled={pagination.currentPage === pagination.totalPages}
+                            onClick={() => setPagination(prev => ({ ...prev, currentPage: prev.currentPage + 1 }))}
+                        />
+                    </Pagination>
                 </div>
             )}
 

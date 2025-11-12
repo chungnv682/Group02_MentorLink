@@ -23,6 +23,12 @@ public interface CountryService {
     // Admin: Reject country suggestion
     void rejectCountry(Long countryId, String reason);
     
+    // Admin: Unapprove country (revert to pending)
+    CountryResponse unapproveCountry(Long countryId);
+    
+    // Admin: Delete country
+    void deleteCountry(Long countryId);
+    
     // Search countries
     List<CountryResponse> searchCountries(String keyword);
     

@@ -158,39 +158,6 @@ const RolePermissions = () => {
                 </div>
             </div>
 
-            {/* Stats Cards */}
-            <Row className="mb-4">
-                {roles.map((role) => (
-                    <Col md={3} key={role.id}>
-                        <Card className={`stats-card border-start border-4 ${role.code === 'ADMIN' ? 'border-danger' :
-                                role.code === 'MODERATOR' ? 'border-warning' :
-                                    role.code === 'MENTOR' ? 'border-success' : 'border-primary'
-                            }`}>
-                            <Card.Body>
-                                <div className="d-flex justify-content-between">
-                                    <div>
-                                        <h6 className="text-muted mb-1">{role.name}</h6>
-                                        <h3 className={`mb-0 ${role.code === 'ADMIN' ? 'text-danger' :
-                                                role.code === 'MODERATOR' ? 'text-warning' :
-                                                    role.code === 'MENTOR' ? 'text-success' : 'text-primary'
-                                            }`}>
-                                            {role.userCount}
-                                        </h3>
-                                        <small className="text-muted">{role.permissions.length} quyền</small>
-                                    </div>
-                                    <div className={`stats-icon ${role.code === 'ADMIN' ? 'bg-danger' :
-                                            role.code === 'MODERATOR' ? 'bg-warning' :
-                                                role.code === 'MENTOR' ? 'bg-success' : 'bg-primary'
-                                        }`}>
-                                        {role.code === 'ADMIN' ? <FaUserShield /> : <FaUsers />}
-                                    </div>
-                                </div>
-                            </Card.Body>
-                        </Card>
-                    </Col>
-                ))}
-            </Row>
-
             {/* Roles Table */}
             <Card>
                 <Card.Header className="bg-light">

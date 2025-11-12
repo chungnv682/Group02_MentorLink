@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
     Card, Row, Col, Table, Button, Badge, Form, Dropdown,
-    InputGroup, Modal, Alert, Spinner
+    InputGroup, Modal, Alert, Spinner, Pagination
 } from 'react-bootstrap';
 import {
     FaSearch, FaEye, FaTrash, FaCheck, FaTimes,
@@ -16,25 +16,12 @@ import {
     unpublishReview,
     deleteReview,
     bulkPublishReviews,
-    bulkDeleteReviews,
-    getReviewStatistics
+    bulkDeleteReviews
 } from '../../services/admin';
 
 const ReviewManagement = () => {
     // State for reviews
     const [reviews, setReviews] = useState([]);
-    const [statistics, setStatistics] = useState({
-        totalReviews: 0,
-        publishedReviews: 0,
-        pendingReviews: 0,
-        reportedReviews: 0,
-        averageRating: 0,
-        fiveStarCount: 0,
-        fourStarCount: 0,
-        threeStarCount: 0,
-        twoStarCount: 0,
-        oneStarCount: 0
-    });
     
     // UI State
     const [showModal, setShowModal] = useState(false);
@@ -44,14 +31,15 @@ const ReviewManagement = () => {
     const [filterStatus, setFilterStatus] = useState('');
     
     // Pagination
-    const [currentPage, setCurrentPage] = useState(1);
-    const [totalPages, setTotalPages] = useState(1);
-    const [totalElements, setTotalElements] = useState(0);
-    const [pageSize] = useState(10);
+    const [pagination, setPagination] = useState({
+        currentPage: 1,
+        pageSize: 10,
+        totalPages: 0,
+        totalElements: 0
+    });
     
     // Loading states
     const [loading, setLoading] = useState(false);
-    const [loadingStatistics, setLoadingStatistics] = useState(false);
     
     // Selection for bulk operations
     const [selectedReviewIds, setSelectedReviewIds] = useState([]);
@@ -68,14 +56,17 @@ const ReviewManagement = () => {
                 keySearch: searchTerm || null,
                 rating: filterRating,
                 status: filterStatus || null,
-                page: currentPage,
-                size: pageSize
+                page: pagination.currentPage,
+                size: pagination.pageSize
             });
             
             if (response.respCode === '0') {
                 setReviews(response.data.content || []);
-                setTotalPages(response.data.totalPages || 1);
-                setTotalElements(response.data.totalElements || 0);
+                setPagination(prev => ({
+                    ...prev,
+                    totalPages: response.data.totalPages || 0,
+                    totalElements: response.data.totalElements || 0
+                }));
             } else {
                 showToast('error', response.description || 'Không thể tải danh sách đánh giá');
             }
@@ -87,30 +78,14 @@ const ReviewManagement = () => {
         }
     };
 
-    // Fetch statistics
-    const fetchStatistics = async () => {
-        setLoadingStatistics(true);
-        try {
-            const response = await getReviewStatistics();
-            if (response.respCode === '0') {
-                setStatistics(response.data);
-            }
-        } catch (error) {
-            console.error('Error fetching statistics:', error);
-        } finally {
-            setLoadingStatistics(false);
-        }
-    };
-
     // Load data on mount and when filters change
     useEffect(() => {
         const timer = setTimeout(() => {
             fetchReviews();
-            fetchStatistics();
         }, searchTerm ? 500 : 0);
 
         return () => clearTimeout(timer);
-    }, [currentPage, searchTerm, filterRating, filterStatus]);
+    }, [pagination.currentPage, searchTerm, filterRating, filterStatus]);
 
     // Indeterminate state for header checkbox
     useEffect(() => {
@@ -144,7 +119,6 @@ const ReviewManagement = () => {
             if (response.respCode === '0') {
                 showToast('success', 'Xuất bản đánh giá thành công');
                 fetchReviews();
-                fetchStatistics();
             } else {
                 showToast('error', response.description || 'Không thể xuất bản đánh giá');
             }
@@ -160,7 +134,6 @@ const ReviewManagement = () => {
             if (response.respCode === '0') {
                 showToast('success', 'Ẩn đánh giá thành công');
                 fetchReviews();
-                fetchStatistics();
             } else {
                 showToast('error', response.description || 'Không thể ẩn đánh giá');
             }
@@ -178,7 +151,6 @@ const ReviewManagement = () => {
             if (response.respCode === '0') {
                 showToast('success', 'Xóa đánh giá thành công');
                 fetchReviews();
-                fetchStatistics();
                 setShowModal(false);
             } else {
                 showToast('error', response.description || 'Không thể xóa đánh giá');
@@ -202,7 +174,6 @@ const ReviewManagement = () => {
                 setSelectedReviewIds([]);
                 setSelectAll(false);
                 fetchReviews();
-                fetchStatistics();
             } else {
                 showToast('error', response.description || 'Không thể xuất bản đánh giá');
             }
@@ -227,7 +198,6 @@ const ReviewManagement = () => {
                 setSelectedReviewIds([]);
                 setSelectAll(false);
                 fetchReviews();
-                fetchStatistics();
             } else {
                 showToast('error', response.description || 'Không thể xóa đánh giá');
             }
@@ -255,10 +225,6 @@ const ReviewManagement = () => {
         } else {
             setSelectedReviewIds([...selectedReviewIds, reviewId]);
         }
-    };
-
-    const handlePageChange = (page) => {
-        setCurrentPage(page);
     };
 
     // Helper functions
@@ -294,126 +260,14 @@ const ReviewManagement = () => {
             <div className="d-flex justify-content-between align-items-center mb-4">
                 <div>
                     <h4 className="mb-1">Quản lý đánh giá & review</h4>
-                    <p className="text-muted mb-0">Quản lý và kiểm duyệt đánh giá từ khách hàng</p>
-                </div>
-                <div className="d-flex gap-2">
-                    <Button 
-                        variant="outline-success" 
-                        size="sm"
-                        onClick={handleBulkPublish}
-                        disabled={selectedReviewIds.length === 0}
-                    >
-                        <FaCheck className="me-1" />
-                        Duyệt đã chọn ({selectedReviewIds.length})
-                    </Button>
-                    <Button 
-                        variant="outline-danger" 
-                        size="sm"
-                        onClick={handleBulkDelete}
-                        disabled={selectedReviewIds.length === 0}
-                    >
-                        <FaTrash className="me-1" />
-                        Xóa đã chọn ({selectedReviewIds.length})
-                    </Button>
                 </div>
             </div>
-
-            {/* Stats Cards - simple version */}
-            <Row className="mb-3 g-3">
-                <Col md={3}>
-                    <Card className="shadow-sm border-0">
-                        <Card.Body className="text-center">
-                            <h6 className="text-muted mb-1">Tổng đánh giá</h6>
-                            <h4 className="fw-semibold mb-0">
-                                {loadingStatistics ? <Spinner animation="border" size="sm" /> : (statistics.totalReviews || 0)}
-                            </h4>
-                        </Card.Body>
-                    </Card>
-                </Col>
-                <Col md={3}>
-                    <Card className="shadow-sm border-0">
-                        <Card.Body className="text-center">
-                            <h6 className="text-muted mb-1">Đã xuất bản</h6>
-                            <h4 className="fw-semibold mb-0">
-                                {loadingStatistics ? <Spinner animation="border" size="sm" /> : (statistics.publishedReviews || 0)}
-                            </h4>
-                        </Card.Body>
-                    </Card>
-                </Col>
-                <Col md={3}>
-                    <Card className="shadow-sm border-0">
-                        <Card.Body className="text-center">
-                            <h6 className="text-muted mb-1">Chờ duyệt</h6>
-                            <h4 className="fw-semibold mb-0">
-                                {loadingStatistics ? <Spinner animation="border" size="sm" /> : (statistics.pendingReviews || 0)}
-                            </h4>
-                        </Card.Body>
-                    </Card>
-                </Col>
-                <Col md={3}>
-                    <Card className="shadow-sm border-0">
-                        <Card.Body className="text-center">
-                            <h6 className="text-muted mb-1">Bị báo cáo</h6>
-                            <h4 className="fw-semibold mb-0">
-                                {loadingStatistics ? <Spinner animation="border" size="sm" /> : (statistics.reportedReviews || 0)}
-                            </h4>
-                        </Card.Body>
-                    </Card>
-                </Col>
-            </Row>
-
-            {/* Average Rating Card */}
-            <Card className="mb-4">
-                <Card.Body>
-                    <Row className="align-items-center">
-                        <Col md={3}>
-                            <div className="text-center">
-                                <h2 className="mb-0">{(statistics.averageRating || 0).toFixed(1)}</h2>
-                                <div className="mb-2">
-                                    {getRatingStars(Math.round(statistics.averageRating || 0))}
-                                </div>
-                                <p className="text-muted mb-0">Điểm trung bình</p>
-                            </div>
-                        </Col>
-                        <Col md={9}>
-                            {[5, 4, 3, 2, 1].map(rating => {
-                                const countField = rating === 5 ? 'fiveStarCount' :
-                                                   rating === 4 ? 'fourStarCount' :
-                                                   rating === 3 ? 'threeStarCount' :
-                                                   rating === 2 ? 'twoStarCount' : 'oneStarCount';
-                                const count = statistics[countField] || 0;
-                                const percentage = statistics.totalReviews > 0 ? (count / statistics.totalReviews) * 100 : 0;
-
-                                return (
-                                    <Row key={rating} className="align-items-center mb-2">
-                                        <Col xs={2}>
-                                            <span>{rating} <FaStar className="text-warning" /></span>
-                                        </Col>
-                                        <Col xs={8}>
-                                            <div className="progress" style={{ height: '8px' }}>
-                                                <div
-                                                    className="progress-bar"
-                                                    style={{ width: `${percentage}%` }}
-                                                ></div>
-                                            </div>
-                                        </Col>
-                                        <Col xs={2}>
-                                            <span className="text-muted">{count}</span>
-                                        </Col>
-                                    </Row>
-                                );
-                            })}
-                        </Col>
-                    </Row>
-                </Card.Body>
-            </Card>
 
             {/* Filters */}
             <Card className="mb-4">
                 <Card.Body>
                     <Row className="align-items-end">
                         <Col md={4}>
-                            <Form.Label>Tìm kiếm</Form.Label>
                             <InputGroup>
                                 <InputGroup.Text>
                                     <FaSearch />
@@ -427,12 +281,11 @@ const ReviewManagement = () => {
                             </InputGroup>
                         </Col>
                         <Col md={3}>
-                            <Form.Label>Số sao</Form.Label>
                             <Form.Select
                                 value={filterRating || ''}
                                 onChange={(e) => {
                                     setFilterRating(e.target.value ? parseInt(e.target.value) : null);
-                                    setCurrentPage(1);
+                                    setPagination(prev => ({ ...prev, currentPage: 1 }));
                                 }}
                             >
                                 <option value="">Tất cả đánh giá</option>
@@ -444,12 +297,11 @@ const ReviewManagement = () => {
                             </Form.Select>
                         </Col>
                         <Col md={3}>
-                            <Form.Label>Trạng thái</Form.Label>
                             <Form.Select
                                 value={filterStatus}
                                 onChange={(e) => {
                                     setFilterStatus(e.target.value);
-                                    setCurrentPage(1);
+                                    setPagination(prev => ({ ...prev, currentPage: 1 }));
                                 }}
                             >
                                 <option value="">Tất cả trạng thái</option>
@@ -457,20 +309,6 @@ const ReviewManagement = () => {
                                 <option value="pending">Chờ duyệt</option>
                                 <option value="reported">Bị báo cáo</option>
                             </Form.Select>
-                        </Col>
-                        <Col md={2}>
-                            <Button 
-                                variant="outline-secondary" 
-                                className="w-100"
-                                onClick={() => {
-                                    setSearchTerm('');
-                                    setFilterRating(null);
-                                    setFilterStatus('');
-                                    setCurrentPage(1);
-                                }}
-                            >
-                                Xóa
-                            </Button>
                         </Col>
                     </Row>
                 </Card.Body>
@@ -480,9 +318,9 @@ const ReviewManagement = () => {
             <Card>
                 <Card.Header className="bg-light">
                     <div className="d-flex justify-content-between align-items-center">
-                        <h6 className="mb-0">Danh sách đánh giá ({totalElements})</h6>
+                        <h6 className="mb-0">Danh sách đánh giá ({pagination.totalElements})</h6>
                         <div className="d-flex gap-2">
-                            <span className="text-muted">Trang {currentPage}/{totalPages}</span>
+                            <span className="text-muted">Trang {pagination.currentPage}/{pagination.totalPages}</span>
                         </div>
                     </div>
                 </Card.Header>
@@ -530,15 +368,11 @@ const ReviewManagement = () => {
                                         <td>
                                             <div>
                                                 <div className="fw-medium">{review.customerName}</div>
-                                                <small className="text-muted">{review.customerEmail}</small>
-                                                <br />
-                                                <small className="text-muted">{formatDateTime(review.createdAt)}</small>
                                             </div>
                                         </td>
                                     <td>
                                         <div>
                                             <div className="fw-medium">{review.mentorName}</div>
-                                            <small className="text-muted">{review.service}</small>
                                         </div>
                                     </td>
                                     <td>
@@ -571,7 +405,7 @@ const ReviewManagement = () => {
                                         )}
                                     </td>
                                         <td>
-                                            <Dropdown align="end">
+                                            <Dropdown align="end" className="text-end">
                                                 <Dropdown.Toggle variant="light" size="sm" className="no-caret p-1">
                                                     <BsThreeDotsVertical />
                                                 </Dropdown.Toggle>
@@ -606,29 +440,45 @@ const ReviewManagement = () => {
                     <Card.Footer className="bg-light">
                         <div className="d-flex justify-content-between align-items-center">
                             <div className="text-muted">
-                                Hiển thị {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, totalElements)} trong số {totalElements} đánh giá
+                                Hiển thị {((pagination.currentPage - 1) * pagination.pageSize) + 1} - {Math.min(pagination.currentPage * pagination.pageSize, pagination.totalElements)} trong tổng số {pagination.totalElements} đánh giá
                             </div>
-                            <div className="d-flex gap-2">
-                                <Button
-                                    variant="outline-secondary"
-                                    size="sm"
-                                    disabled={currentPage === 1}
-                                    onClick={() => handlePageChange(currentPage - 1)}
-                                >
-                                    Trước
-                                </Button>
-                                <Button variant="light" size="sm" disabled>
-                                    Trang {currentPage}/{totalPages}
-                                </Button>
-                                <Button
-                                    variant="outline-secondary"
-                                    size="sm"
-                                    disabled={currentPage === totalPages}
-                                    onClick={() => handlePageChange(currentPage + 1)}
-                                >
-                                    Sau
-                                </Button>
-                            </div>
+                            <Pagination className="mb-0">
+                                <Pagination.Prev
+                                    disabled={pagination.currentPage === 1}
+                                    onClick={() => setPagination(prev => ({ ...prev, currentPage: prev.currentPage - 1 }))}
+                                />
+                                {pagination.currentPage > 2 && (
+                                    <>
+                                        <Pagination.Item onClick={() => setPagination(prev => ({ ...prev, currentPage: 1 }))}>
+                                            1
+                                        </Pagination.Item>
+                                        {pagination.currentPage > 3 && <Pagination.Ellipsis disabled />}
+                                    </>
+                                )}
+                                {pagination.currentPage > 1 && (
+                                    <Pagination.Item onClick={() => setPagination(prev => ({ ...prev, currentPage: prev.currentPage - 1 }))}>
+                                        {pagination.currentPage - 1}
+                                    </Pagination.Item>
+                                )}
+                                <Pagination.Item active>{pagination.currentPage}</Pagination.Item>
+                                {pagination.currentPage < pagination.totalPages && (
+                                    <Pagination.Item onClick={() => setPagination(prev => ({ ...prev, currentPage: prev.currentPage + 1 }))}>
+                                        {pagination.currentPage + 1}
+                                    </Pagination.Item>
+                                )}
+                                {pagination.currentPage < pagination.totalPages - 1 && (
+                                    <>
+                                        {pagination.currentPage < pagination.totalPages - 2 && <Pagination.Ellipsis disabled />}
+                                        <Pagination.Item onClick={() => setPagination(prev => ({ ...prev, currentPage: pagination.totalPages }))}>
+                                            {pagination.totalPages}
+                                        </Pagination.Item>
+                                    </>
+                                )}
+                                <Pagination.Next
+                                    disabled={pagination.currentPage === pagination.totalPages}
+                                    onClick={() => setPagination(prev => ({ ...prev, currentPage: prev.currentPage + 1 }))}
+                                />
+                            </Pagination>
                         </div>
                     </Card.Footer>
                 )}

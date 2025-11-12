@@ -60,9 +60,21 @@ export const getMentorServices = async (mentorId) => {
     }
 };
 
+// Get mentor's countries
+export const getMentorCountries = async (mentorId) => {
+    try {
+        const response = await instance.get(`${BASE_URL}/${mentorId}/countries`);
+        return response;
+    } catch (error) {
+        console.warn(`Admin countries endpoint not implemented: ${BASE_URL}/${mentorId}/countries`);
+        return { respCode: "0", success: true, data: [] };
+    }
+};
+
 export default {
     getMentorEducation,
     getMentorExperience,
     getMentorCertificates,
-    getMentorServices
+    getMentorServices,
+    getMentorCountries
 };

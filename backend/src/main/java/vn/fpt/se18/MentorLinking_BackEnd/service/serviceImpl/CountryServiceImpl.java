@@ -33,6 +33,7 @@ public class CountryServiceImpl implements CountryService {
     private final CountryRepository countryRepository;
     private final StatusRepository statusRepository;
     private final UserRepository userRepository;
+    private final vn.fpt.se18.MentorLinking_BackEnd.repository.MentorCountryRepository mentorCountryRepository;
 
     @Override
     public List<CountryResponse> getApprovedCountries() {
@@ -97,7 +98,7 @@ public class CountryServiceImpl implements CountryService {
         Status approvedStatus = statusRepository.findByCode("APPROVED")
                 .orElseThrow(() -> new AppException(ErrorCode.STATUS_NOT_FOUND));
         
-        // Update country
+        // 1. Update country
         country.setStatus(approvedStatus);
         if (request.getFlagUrl() != null) {
             country.setFlagUrl(request.getFlagUrl());
@@ -108,6 +109,23 @@ public class CountryServiceImpl implements CountryService {
         
         Country updatedCountry = countryRepository.save(country);
         log.info("Country approved: {}", updatedCountry.getName());
+        
+        // 2. Auto-approve all PENDING MentorCountry records associated with this country
+        List<vn.fpt.se18.MentorLinking_BackEnd.entity.MentorCountry> mentorCountries = 
+                mentorCountryRepository.findByCountryId(countryId);
+        
+        if (!mentorCountries.isEmpty()) {
+            // Only approve PENDING ones, keep others unchanged
+            List<vn.fpt.se18.MentorLinking_BackEnd.entity.MentorCountry> pendingMentorCountries = 
+                    mentorCountries.stream()
+                            .filter(mc -> "PENDING".equals(mc.getStatus().getCode()))
+                            .collect(java.util.stream.Collectors.toList());
+            
+            pendingMentorCountries.forEach(mc -> mc.setStatus(approvedStatus));
+            mentorCountryRepository.saveAll(pendingMentorCountries);
+            log.info("Auto-approved {} PENDING MentorCountry records for country: {}", 
+                    pendingMentorCountries.size(), updatedCountry.getName());
+        }
         
         return toCountryResponse(updatedCountry);
     }
@@ -124,10 +142,81 @@ public class CountryServiceImpl implements CountryService {
         Status rejectedStatus = statusRepository.findByCode("REJECTED")
                 .orElseThrow(() -> new AppException(ErrorCode.STATUS_NOT_FOUND));
         
+        // 1. Reject the country
         country.setStatus(rejectedStatus);
         countryRepository.save(country);
-        
         log.info("Country rejected: {}", country.getName());
+        
+        // 2. Auto-reject all MentorCountry records associated with this country
+        List<vn.fpt.se18.MentorLinking_BackEnd.entity.MentorCountry> mentorCountries = 
+                mentorCountryRepository.findByCountryId(countryId);
+        
+        if (!mentorCountries.isEmpty()) {
+            mentorCountries.forEach(mc -> mc.setStatus(rejectedStatus));
+            mentorCountryRepository.saveAll(mentorCountries);
+            log.info("Rejected {} MentorCountry records for country: {}", 
+                    mentorCountries.size(), country.getName());
+        }
+    }
+
+    @Override
+    @Transactional
+    public CountryResponse unapproveCountry(Long countryId) {
+        log.info("Unapproving country with ID: {}", countryId);
+        
+        Country country = countryRepository.findById(countryId)
+                .orElseThrow(() -> new AppException(ErrorCode.COUNTRY_NOT_FOUND));
+        
+        // Get PENDING status
+        Status pendingStatus = statusRepository.findByCode("PENDING")
+                .orElseThrow(() -> new AppException(ErrorCode.STATUS_NOT_FOUND));
+        
+        // 1. Set country back to pending
+        country.setStatus(pendingStatus);
+        Country updatedCountry = countryRepository.save(country);
+        log.info("Country unapproved: {}", updatedCountry.getName());
+        
+        // 2. Set all APPROVED MentorCountry records back to PENDING
+        List<vn.fpt.se18.MentorLinking_BackEnd.entity.MentorCountry> mentorCountries = 
+                mentorCountryRepository.findByCountryId(countryId);
+        
+        if (!mentorCountries.isEmpty()) {
+            List<vn.fpt.se18.MentorLinking_BackEnd.entity.MentorCountry> approvedMentorCountries = 
+                    mentorCountries.stream()
+                            .filter(mc -> "APPROVED".equals(mc.getStatus().getCode()))
+                            .collect(java.util.stream.Collectors.toList());
+            
+            approvedMentorCountries.forEach(mc -> mc.setStatus(pendingStatus));
+            mentorCountryRepository.saveAll(approvedMentorCountries);
+            log.info("Set {} APPROVED MentorCountry records back to PENDING for country: {}", 
+                    approvedMentorCountries.size(), updatedCountry.getName());
+        }
+        
+        return toCountryResponse(updatedCountry);
+    }
+
+    @Override
+    @Transactional
+    public void deleteCountry(Long countryId) {
+        log.info("Deleting country with ID: {}", countryId);
+        
+        Country country = countryRepository.findById(countryId)
+                .orElseThrow(() -> new AppException(ErrorCode.COUNTRY_NOT_FOUND));
+        
+        // Check if there are any mentor countries associated
+        List<vn.fpt.se18.MentorLinking_BackEnd.entity.MentorCountry> mentorCountries = 
+                mentorCountryRepository.findByCountryId(countryId);
+        
+        if (!mentorCountries.isEmpty()) {
+            // Delete all mentor country associations first
+            mentorCountryRepository.deleteAll(mentorCountries);
+            log.info("Deleted {} MentorCountry records for country: {}", 
+                    mentorCountries.size(), country.getName());
+        }
+        
+        // Delete the country
+        countryRepository.delete(country);
+        log.info("Country deleted: {}", country.getName());
     }
 
     @Override

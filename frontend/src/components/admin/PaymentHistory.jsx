@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
     Card, Row, Col, Table, Button, Badge, Form, Dropdown,
-    InputGroup, Modal, Alert, Spinner
+    InputGroup, Modal, Alert, Spinner, Pagination
 } from 'react-bootstrap';
 import {
     FaSearch, FaEye, FaDownload, FaMoneyBillWave,
@@ -14,19 +14,11 @@ import {
     getPaymentById,
     markPaymentAsCompleted,
     markPaymentAsFailed,
-    processRefund,
-    getPaymentStatistics
+    processRefund
 } from '../../services/admin';
 
 const PaymentHistory = () => {
-    // State for payments
     const [paymentHistory, setPaymentHistory] = useState([]);
-    const [statistics, setStatistics] = useState({
-        totalRevenue: 0,
-        totalCommission: 0,
-        totalRefunded: 0,
-        pending: 0
-    });
     
     // UI State
     const [showModal, setShowModal] = useState(false);
@@ -37,14 +29,15 @@ const PaymentHistory = () => {
     const [dateRange, setDateRange] = useState({ from: '', to: '' });
     
     // Pagination
-    const [currentPage, setCurrentPage] = useState(1);
-    const [totalPages, setTotalPages] = useState(1);
-    const [totalElements, setTotalElements] = useState(0);
-    const [pageSize] = useState(10);
+    const [pagination, setPagination] = useState({
+        currentPage: 1,
+        pageSize: 10,
+        totalPages: 0,
+        totalElements: 0
+    });
     
     // Loading states
     const [loading, setLoading] = useState(false);
-    const [loadingStatistics, setLoadingStatistics] = useState(false);
     
     // Action modals
     const [showActionModal, setShowActionModal] = useState(false);
@@ -64,14 +57,17 @@ const PaymentHistory = () => {
                 paymentMethod: filterMethod || null,
                 dateFrom: dateRange.from || null,
                 dateTo: dateRange.to || null,
-                page: currentPage,
-                size: pageSize
+                page: pagination.currentPage,
+                size: pagination.pageSize
             });
             
             if (response.respCode === '0') {
                 setPaymentHistory(response.data.content || []);
-                setTotalPages(response.data.totalPages || 1);
-                setTotalElements(response.data.totalElements || 0);
+                setPagination(prev => ({
+                    ...prev,
+                    totalPages: response.data.totalPages || 0,
+                    totalElements: response.data.totalElements || 0
+                }));
             } else {
                 showToast('error', response.description || 'Không thể tải danh sách thanh toán');
             }
@@ -83,30 +79,14 @@ const PaymentHistory = () => {
         }
     };
 
-    // Fetch statistics
-    const fetchStatistics = async () => {
-        setLoadingStatistics(true);
-        try {
-            const response = await getPaymentStatistics();
-            if (response.respCode === '0') {
-                setStatistics(response.data);
-            }
-        } catch (error) {
-            console.error('Error fetching statistics:', error);
-        } finally {
-            setLoadingStatistics(false);
-        }
-    };
-
     // Load data on mount and when filters change
     useEffect(() => {
         const timer = setTimeout(() => {
             fetchPayments();
-            fetchStatistics();
         }, searchTerm ? 500 : 0);
 
         return () => clearTimeout(timer);
-    }, [currentPage, searchTerm, filterStatus, filterMethod, dateRange]);
+    }, [pagination.currentPage, searchTerm, filterStatus, filterMethod, dateRange]);
 
     // Handlers
     const handleViewPaymentById = async (paymentId) => {
@@ -130,7 +110,6 @@ const PaymentHistory = () => {
             if (response.respCode === '0') {
                 showToast('success', 'Đánh dấu thanh toán thành công');
                 fetchPayments();
-                fetchStatistics();
             } else {
                 showToast('error', response.description || 'Không thể đánh dấu thanh toán');
             }
@@ -164,7 +143,6 @@ const PaymentHistory = () => {
                 setActionReason('');
                 setActionType('');
                 fetchPayments();
-                fetchStatistics();
             } else {
                 showToast('error', response.description || 'Không thể thực hiện thao tác');
             }
@@ -216,80 +194,19 @@ const PaymentHistory = () => {
         return new Date(dateTime).toLocaleString('vi-VN');
     };
 
-    const handlePageChange = (page) => {
-        setCurrentPage(page);
-    };
-
     return (
         <div className="payment-history">
-            {/* Header */}
             <div className="d-flex justify-content-between align-items-center mb-4">
                 <div>
                     <h4 className="mb-1">Quản lý lịch sử thanh toán/giao dịch</h4>
-                    <p className="text-muted mb-0">Theo dõi và quản lý tất cả giao dịch thanh toán</p>
-                </div>
-                <div className="d-flex gap-2">
-                    <Button variant="outline-success" size="sm">
-                        <FaDownload className="me-1" />
-                        Xuất báo cáo
-                    </Button>
-                    <Button variant="primary" size="sm">
-                        <FaHistory className="me-1" />
-                        Lịch sử chi tiết
-                    </Button>
                 </div>
             </div>
-
-            {/* Stats Cards - simple version */}
-            <Row className="mb-3 g-3">
-                <Col md={3}>
-                    <Card className="shadow-sm border-0">
-                        <Card.Body className="text-center">
-                            <h6 className="text-muted mb-1">Tổng doanh thu</h6>
-                            <h4 className="fw-semibold mb-0">
-                                {loadingStatistics ? <Spinner animation="border" size="sm" /> : formatCurrency(statistics.totalRevenue || 0)}
-                            </h4>
-                        </Card.Body>
-                    </Card>
-                </Col>
-                <Col md={3}>
-                    <Card className="shadow-sm border-0">
-                        <Card.Body className="text-center">
-                            <h6 className="text-muted mb-1">Hoa hồng</h6>
-                            <h4 className="fw-semibold mb-0">
-                                {loadingStatistics ? <Spinner animation="border" size="sm" /> : formatCurrency(statistics.totalCommission || 0)}
-                            </h4>
-                        </Card.Body>
-                    </Card>
-                </Col>
-                <Col md={3}>
-                    <Card className="shadow-sm border-0">
-                        <Card.Body className="text-center">
-                            <h6 className="text-muted mb-1">Chờ xử lý</h6>
-                            <h4 className="fw-semibold mb-0">
-                                {loadingStatistics ? <Spinner animation="border" size="sm" /> : (statistics.pendingCount || 0)}
-                            </h4>
-                        </Card.Body>
-                    </Card>
-                </Col>
-                <Col md={3}>
-                    <Card className="shadow-sm border-0">
-                        <Card.Body className="text-center">
-                            <h6 className="text-muted mb-1">Đã hoàn tiền</h6>
-                            <h4 className="fw-semibold mb-0">
-                                {loadingStatistics ? <Spinner animation="border" size="sm" /> : formatCurrency(statistics.totalRefunded || 0)}
-                            </h4>
-                        </Card.Body>
-                    </Card>
-                </Col>
-            </Row>
 
             {/* Filters */}
             <Card className="mb-4">
                 <Card.Body>
                     <Row className="align-items-end">
-                        <Col md={3}>
-                            <Form.Label>Tìm kiếm</Form.Label>
+                        <Col md={4}>
                             <InputGroup>
                                 <InputGroup.Text>
                                     <FaSearch />
@@ -303,12 +220,11 @@ const PaymentHistory = () => {
                             </InputGroup>
                         </Col>
                         <Col md={2}>
-                            <Form.Label>Trạng thái</Form.Label>
                             <Form.Select
                                 value={filterStatus}
                                 onChange={(e) => {
                                     setFilterStatus(e.target.value);
-                                    setCurrentPage(1);
+                                    setPagination(prev => ({ ...prev, currentPage: 1 }));
                                 }}
                             >
                                 <option value="">Tất cả</option>
@@ -319,12 +235,11 @@ const PaymentHistory = () => {
                             </Form.Select>
                         </Col>
                         <Col md={2}>
-                            <Form.Label>Phương thức</Form.Label>
                             <Form.Select
                                 value={filterMethod}
                                 onChange={(e) => {
                                     setFilterMethod(e.target.value);
-                                    setCurrentPage(1);
+                                    setPagination(prev => ({ ...prev, currentPage: 1 }));
                                 }}
                             >
                                 <option value="">Tất cả</option>
@@ -335,41 +250,24 @@ const PaymentHistory = () => {
                             </Form.Select>
                         </Col>
                         <Col md={2}>
-                            <Form.Label>Từ ngày</Form.Label>
                             <Form.Control
                                 type="date"
                                 value={dateRange.from}
                                 onChange={(e) => {
                                     setDateRange({ ...dateRange, from: e.target.value });
-                                    setCurrentPage(1);
+                                    setPagination(prev => ({ ...prev, currentPage: 1 }));
                                 }}
                             />
                         </Col>
                         <Col md={2}>
-                            <Form.Label>Đến ngày</Form.Label>
                             <Form.Control
                                 type="date"
                                 value={dateRange.to}
                                 onChange={(e) => {
                                     setDateRange({ ...dateRange, to: e.target.value });
-                                    setCurrentPage(1);
+                                    setPagination(prev => ({ ...prev, currentPage: 1 }));
                                 }}
                             />
-                        </Col>
-                        <Col md={1}>
-                            <Button 
-                                variant="outline-secondary" 
-                                className="w-100"
-                                onClick={() => {
-                                    setSearchTerm('');
-                                    setFilterStatus('');
-                                    setFilterMethod('');
-                                    setDateRange({ from: '', to: '' });
-                                    setCurrentPage(1);
-                                }}
-                            >
-                                Xóa
-                            </Button>
                         </Col>
                     </Row>
                 </Card.Body>
@@ -379,10 +277,7 @@ const PaymentHistory = () => {
             <Card>
                 <Card.Header className="bg-light">
                     <div className="d-flex justify-content-between align-items-center">
-                        <h6 className="mb-0">Lịch sử giao dịch ({totalElements})</h6>
-                        <div className="d-flex gap-2">
-                            <span className="text-muted">Trang {currentPage}/{totalPages}</span>
-                        </div>
+                        <h6 className="mb-0">Lịch sử giao dịch ({pagination.totalElements})</h6>
                     </div>
                 </Card.Header>
                 <Card.Body className="p-0">
@@ -400,12 +295,12 @@ const PaymentHistory = () => {
                         <Table responsive hover className="mb-0">
                             <thead className="bg-light">
                                 <tr>
-                                    <th width="15%">Mã giao dịch</th>
-                                    <th width="15%">Booking</th>
-                                    <th width="15%">Người dùng</th>
+                                    <th width="12%">Mã giao dịch</th>
+                                    <th width="18%">Người dùng</th>
                                     <th width="12%">Số tiền</th>
                                     <th width="10%">Phương thức</th>
                                     <th width="10%">Trạng thái</th>
+                                    <th width="10%">Booking</th>
                                     <th width="13%">Thời gian</th>
                                     <th width="10%">Thao tác</th>
                                 </tr>
@@ -416,29 +311,16 @@ const PaymentHistory = () => {
                                         <td>
                                             <div>
                                                 <div className="fw-medium">{payment.transactionCode}</div>
-                                                <small className="text-muted">ID: {payment.id}</small>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div>
-                                                <div className="fw-medium">#{payment.bookingId}</div>
-                                                <small className="text-muted">{payment.scheduleName || 'N/A'}</small>
                                             </div>
                                         </td>
                                         <td>
                                             <div>
                                                 <div className="fw-medium">{payment.customerName}</div>
-                                                <small className="text-muted">với {payment.mentorName}</small>
                                             </div>
                                         </td>
                                         <td>
                                             <div>
                                                 <div className="fw-medium">{formatCurrency(payment.amount)}</div>
-                                                {payment.commission > 0 && (
-                                                    <small className="text-success">
-                                                        HH: {formatCurrency(payment.commission)}
-                                                    </small>
-                                                )}
                                             </div>
                                         </td>
                                         <td>
@@ -452,12 +334,17 @@ const PaymentHistory = () => {
                                             </Badge>
                                         </td>
                                         <td>
+                                            <div>
+                                                <div className="fw-medium">{payment.bookingId}</div>
+                                            </div>
+                                        </td>
+                                        <td>
                                             <span className="text-muted">
                                                 {formatDateTime(payment.createdAt)}
                                             </span>
                                         </td>
                                         <td>
-                                            <Dropdown align="end">
+                                            <Dropdown align="end" className="text-center">
                                                 <Dropdown.Toggle variant="light" size="sm" className="no-caret p-1">
                                                     <BsThreeDotsVertical />
                                                 </Dropdown.Toggle>
@@ -493,29 +380,45 @@ const PaymentHistory = () => {
                     <Card.Footer className="bg-light">
                         <div className="d-flex justify-content-between align-items-center">
                             <div className="text-muted">
-                                Hiển thị {((currentPage - 1) * 10) + 1} - {Math.min(currentPage * 10, totalElements)} trong số {totalElements} giao dịch
+                                Hiển thị {((pagination.currentPage - 1) * pagination.pageSize) + 1} - {Math.min(pagination.currentPage * pagination.pageSize, pagination.totalElements)} trong tổng số {pagination.totalElements} giao dịch
                             </div>
-                            <div className="d-flex gap-2">
-                                <Button
-                                    variant="outline-secondary"
-                                    size="sm"
-                                    disabled={currentPage === 1}
-                                    onClick={() => handlePageChange(currentPage - 1)}
-                                >
-                                    Trước
-                                </Button>
-                                <Button variant="light" size="sm" disabled>
-                                    Trang {currentPage}/{totalPages}
-                                </Button>
-                                <Button
-                                    variant="outline-secondary"
-                                    size="sm"
-                                    disabled={currentPage === totalPages}
-                                    onClick={() => handlePageChange(currentPage + 1)}
-                                >
-                                    Sau
-                                </Button>
-                            </div>
+                            <Pagination className="mb-0">
+                                <Pagination.Prev
+                                    disabled={pagination.currentPage === 1}
+                                    onClick={() => setPagination(prev => ({ ...prev, currentPage: prev.currentPage - 1 }))}
+                                />
+                                {pagination.currentPage > 2 && (
+                                    <>
+                                        <Pagination.Item onClick={() => setPagination(prev => ({ ...prev, currentPage: 1 }))}>
+                                            1
+                                        </Pagination.Item>
+                                        {pagination.currentPage > 3 && <Pagination.Ellipsis disabled />}
+                                    </>
+                                )}
+                                {pagination.currentPage > 1 && (
+                                    <Pagination.Item onClick={() => setPagination(prev => ({ ...prev, currentPage: prev.currentPage - 1 }))}>
+                                        {pagination.currentPage - 1}
+                                    </Pagination.Item>
+                                )}
+                                <Pagination.Item active>{pagination.currentPage}</Pagination.Item>
+                                {pagination.currentPage < pagination.totalPages && (
+                                    <Pagination.Item onClick={() => setPagination(prev => ({ ...prev, currentPage: prev.currentPage + 1 }))}>
+                                        {pagination.currentPage + 1}
+                                    </Pagination.Item>
+                                )}
+                                {pagination.currentPage < pagination.totalPages - 1 && (
+                                    <>
+                                        {pagination.currentPage < pagination.totalPages - 2 && <Pagination.Ellipsis disabled />}
+                                        <Pagination.Item onClick={() => setPagination(prev => ({ ...prev, currentPage: pagination.totalPages }))}>
+                                            {pagination.totalPages}
+                                        </Pagination.Item>
+                                    </>
+                                )}
+                                <Pagination.Next
+                                    disabled={pagination.currentPage === pagination.totalPages}
+                                    onClick={() => setPagination(prev => ({ ...prev, currentPage: prev.currentPage + 1 }))}
+                                />
+                            </Pagination>
                         </div>
                     </Card.Footer>
                 )}

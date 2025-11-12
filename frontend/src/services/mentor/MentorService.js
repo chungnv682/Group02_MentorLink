@@ -32,7 +32,7 @@ class MentorService {
     // Get mentor by ID
     static async getMentorById(id) {
         try {
-            const response = await instance.get(`/api/mentors/${id}`);
+            const response = await instance.get(`/mentors/${id}`);
             return response;
         } catch (error) {
             console.error('Error fetching mentor detail:', error);

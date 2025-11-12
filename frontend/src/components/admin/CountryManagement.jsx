@@ -42,15 +42,24 @@ const CountryManagement = () => {
     const [showDetailModal, setShowDetailModal] = useState(false);
     const [selectedCountry, setSelectedCountry] = useState(null);
     const [showApprovalModal, setShowApprovalModal] = useState(false);
+    const [showEditModal, setShowEditModal] = useState(false);
     const [approvalData, setApprovalData] = useState({
+        flagUrl: '',
+        description: ''
+    });
+    const [editData, setEditData] = useState({
         flagUrl: '',
         description: ''
     });
     
     // Pagination and Tab states
     const [activeTab, setActiveTab] = useState('approved'); // 'pending' or 'approved'
-    const [currentPage, setCurrentPage] = useState(1);
-    const [itemsPerPage] = useState(10);
+    const [pagination, setPagination] = useState({
+        currentPage: 1,
+        pageSize: 10,
+        totalPages: 0,
+        totalElements: 0
+    });
 
     useEffect(() => {
         fetchData();
@@ -145,6 +154,26 @@ const CountryManagement = () => {
         }
     };
 
+    const handleEdit = (country) => {
+        setSelectedCountry(country);
+        setEditData({
+            flagUrl: country.flagUrl || '',
+            description: country.description || ''
+        });
+        setShowEditModal(true);
+    };
+
+    const submitEdit = async () => {
+        try {
+            await CountryService.approveCountry(selectedCountry.id, editData);
+            alert('Cập nhật thành công!');
+            await fetchData();
+            setShowEditModal(false);
+        } catch (err) {
+            alert('Có lỗi xảy ra khi cập nhật. Vui lòng thử lại.');
+        }
+    };
+
     // Filter and pagination logic
     const filteredData = useMemo(() => {
         const dataToFilter = activeTab === 'pending' ? pendingCountries : countries;
@@ -160,87 +189,33 @@ const CountryManagement = () => {
         });
     }, [activeTab, pendingCountries, countries, searchTerm]);
 
-    const totalPages = Math.ceil(filteredData.length / itemsPerPage);
-    
     const paginatedData = useMemo(() => {
-        const startIndex = (currentPage - 1) * itemsPerPage;
-        const endIndex = startIndex + itemsPerPage;
-        return filteredData.slice(startIndex, endIndex);
-    }, [filteredData, currentPage, itemsPerPage]);
+        const startIndex = (pagination.currentPage - 1) * pagination.pageSize;
+        const endIndex = startIndex + pagination.pageSize;
+        const data = filteredData.slice(startIndex, endIndex);
+        
+        // Update pagination info
+        const totalPages = Math.ceil(filteredData.length / pagination.pageSize);
+        setPagination(prev => ({
+            ...prev,
+            totalPages: totalPages,
+            totalElements: filteredData.length
+        }));
+        
+        return data;
+    }, [filteredData, pagination.currentPage, pagination.pageSize]);
 
     // Reset to first page when changing tabs or search term
     useEffect(() => {
-        setCurrentPage(1);
+        setPagination(prev => ({ ...prev, currentPage: 1 }));
     }, [activeTab, searchTerm]);
 
     const handlePageChange = (pageNumber) => {
-        setCurrentPage(pageNumber);
+        if (pageNumber < 1 || pageNumber > pagination.totalPages) return;
+        setPagination(prev => ({ ...prev, currentPage: pageNumber }));
     };
 
-    const renderPagination = () => {
-        if (totalPages <= 1) return null;
 
-        const items = [];
-        const maxVisiblePages = 5;
-        let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-        let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-
-        if (endPage - startPage < maxVisiblePages - 1) {
-            startPage = Math.max(1, endPage - maxVisiblePages + 1);
-        }
-
-        items.push(
-            <Pagination.First 
-                key="first" 
-                onClick={() => handlePageChange(1)} 
-                disabled={currentPage === 1} 
-            />
-        );
-        items.push(
-            <Pagination.Prev 
-                key="prev" 
-                onClick={() => handlePageChange(currentPage - 1)} 
-                disabled={currentPage === 1} 
-            />
-        );
-
-        if (startPage > 1) {
-            items.push(<Pagination.Ellipsis key="start-ellipsis" disabled />);
-        }
-
-        for (let page = startPage; page <= endPage; page++) {
-            items.push(
-                <Pagination.Item
-                    key={page}
-                    active={page === currentPage}
-                    onClick={() => handlePageChange(page)}
-                >
-                    {page}
-                </Pagination.Item>
-            );
-        }
-
-        if (endPage < totalPages) {
-            items.push(<Pagination.Ellipsis key="end-ellipsis" disabled />);
-        }
-
-        items.push(
-            <Pagination.Next 
-                key="next" 
-                onClick={() => handlePageChange(currentPage + 1)} 
-                disabled={currentPage === totalPages} 
-            />
-        );
-        items.push(
-            <Pagination.Last 
-                key="last" 
-                onClick={() => handlePageChange(totalPages)} 
-                disabled={currentPage === totalPages} 
-            />
-        );
-
-        return <Pagination className="justify-content-center mb-0">{items}</Pagination>;
-    };
 
     if (loading) {
         return (
@@ -273,20 +248,8 @@ const CountryManagement = () => {
                     <div className="d-flex justify-content-between align-items-center">
                         <div>
                             <h2 className="mb-0">
-                                <FaGlobeAmericas className="me-2 text-primary" />
                                 Quản lý các nước du học
                             </h2>
-                            <p className="text-muted mb-0">
-                                Quản lý danh sách các nước và duyệt đề xuất từ mentor
-                            </p>
-                        </div>
-                        <div className="d-flex gap-2">
-                            <Badge bg="success" className="fs-6">
-                                {countries.length} nước đã duyệt
-                            </Badge>
-                            <Badge bg="warning" className="fs-6">
-                                {pendingCountries.length} đề xuất chờ duyệt
-                            </Badge>
                         </div>
                     </div>
                 </Col>
@@ -315,11 +278,6 @@ const CountryManagement = () => {
                         )}
                     </InputGroup>
                 </Col>
-                <Col md={6} className="text-end">
-                    <small className="text-muted">
-                        Hiển thị {paginatedData.length} / {filteredData.length} kết quả
-                    </small>
-                </Col>
             </Row>
 
             {/* Main Table Card */}
@@ -328,25 +286,17 @@ const CountryManagement = () => {
                     <Nav variant="tabs" activeKey={activeTab} onSelect={(k) => setActiveTab(k)}>
                         <Nav.Item>
                             <Nav.Link eventKey="approved">
-                                <FaFlag className="me-2" />
                                 Đã duyệt
-                                <Badge bg="success" className="ms-2">
-                                    {countries.length}
-                                </Badge>
                             </Nav.Link>
                         </Nav.Item>
                         <Nav.Item>
                             <Nav.Link eventKey="pending">
-                                <FaExclamationTriangle className="me-2" />
                                 Chờ duyệt
-                                <Badge bg="warning" className="ms-2">
-                                    {pendingCountries.length}
-                                </Badge>
                             </Nav.Link>
                         </Nav.Item>
                     </Nav>
                 </Card.Header>
-                <Card.Body className="p-0">
+                <Card.Body className="p-0" style={{ overflow: 'visible' }}>
                     {paginatedData.length === 0 ? (
                         <div className="text-center py-5">
                             <FaSearch size={48} className="text-muted mb-3" />
@@ -359,18 +309,15 @@ const CountryManagement = () => {
                         </div>
                     ) : (
                         <>
-                            <Table responsive hover className="mb-0">
+                            <Table responsive hover className="mb-0" style={{ overflow: 'visible' }}>
                                 <thead className="table-light">
                                     <tr>
                                         <th>Tên nước</th>
                                         {activeTab === 'approved' && <th>Mã nước</th>}
                                         {activeTab === 'pending' && <th>Người đề xuất</th>}
                                         {activeTab === 'pending' && <th>Ngày đề xuất</th>}
-                                        {activeTab === 'approved' && <th>Số mentor</th>}
-                                        {activeTab === 'approved' && <th>Ngày thêm</th>}
                                         <th>Mô tả</th>
-                                        <th>Trạng thái</th>
-                                        <th className="text-center">Thao tác</th>
+                                        <th className="text-center" style={{ width: '80px' }}>Thao tác</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -404,17 +351,12 @@ const CountryManagement = () => {
                                                         {country.description?.length > 50 && '...'}
                                                     </small>
                                                 </td>
-                                                <td>
-                                                    <Badge bg="warning" text="dark">
-                                                        Chờ duyệt
-                                                    </Badge>
-                                                </td>
                                                 <td className="text-center">
                                                     <Dropdown align="end">
                                                         <Dropdown.Toggle 
                                                             variant="light" 
                                                             size="sm" 
-                                                            className="no-caret p-1"
+                                                            className="no-caret"
                                                         >
                                                             <BsThreeDotsVertical />
                                                         </Dropdown.Toggle>
@@ -432,7 +374,7 @@ const CountryManagement = () => {
                                                                 Duyệt
                                                             </Dropdown.Item>
                                                             <Dropdown.Item 
-                                                                className="text-danger" 
+                                                                className="text-danger"
                                                                 onClick={() => handleReject(country)}
                                                             >
                                                                 <FaTimes className="me-2" />
@@ -471,30 +413,17 @@ const CountryManagement = () => {
                                                     <Badge bg="secondary">{country.code}</Badge>
                                                 </td>
                                                 <td>
-                                                    <Badge bg="primary">
-                                                        {country.mentorCount || 0} mentor(s)
-                                                    </Badge>
-                                                </td>
-                                                <td>
-                                                    <small>
-                                                        {new Date(country.createdAt).toLocaleDateString('vi-VN')}
-                                                    </small>
-                                                </td>
-                                                <td>
                                                     <small className="text-muted">
                                                         {country.description?.substring(0, 50)}
                                                         {country.description?.length > 50 && '...'}
                                                     </small>
-                                                </td>
-                                                <td>
-                                                    <Badge bg="success">Đã duyệt</Badge>
                                                 </td>
                                                 <td className="text-center">
                                                     <Dropdown align="end">
                                                         <Dropdown.Toggle 
                                                             variant="light" 
                                                             size="sm" 
-                                                            className="no-caret p-1"
+                                                            className="no-caret"
                                                         >
                                                             <BsThreeDotsVertical />
                                                         </Dropdown.Toggle>
@@ -505,6 +434,13 @@ const CountryManagement = () => {
                                                             </Dropdown.Item>
                                                             <Dropdown.Divider />
                                                             <Dropdown.Item 
+                                                                className="text-primary"
+                                                                onClick={() => handleEdit(country)}
+                                                            >
+                                                                <FaEdit className="me-2" />
+                                                                Chỉnh sửa
+                                                            </Dropdown.Item>
+                                                            <Dropdown.Item 
                                                                 className="text-warning"
                                                                 onClick={() => handleUnapprove(country)}
                                                             >
@@ -512,7 +448,7 @@ const CountryManagement = () => {
                                                                 Chuyển về chờ duyệt
                                                             </Dropdown.Item>
                                                             <Dropdown.Item 
-                                                                className="text-danger" 
+                                                                className="text-danger"
                                                                 onClick={() => handleDelete(country)}
                                                             >
                                                                 <FaTrash className="me-2" />
@@ -529,16 +465,101 @@ const CountryManagement = () => {
                         </>
                     )}
                 </Card.Body>
-                {paginatedData.length > 0 && (
-                    <Card.Footer className="bg-white">
-                        <div className="d-flex justify-content-between align-items-center">
-                            <small className="text-muted">
-                                Trang {currentPage} / {totalPages}
-                            </small>
-                            {renderPagination()}
-                            <small className="text-muted">
-                                {itemsPerPage} mục/trang
-                            </small>
+                {!loading && paginatedData.length > 0 && (
+                    <Card.Footer className="bg-white border-top">
+                        <div className="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                            <div className="text-muted small">
+                                Hiển thị{" "}
+                                <strong>
+                                    {(pagination.currentPage - 1) * pagination.pageSize + 1}
+                                </strong>{" "}
+                                -{" "}
+                                <strong>
+                                    {Math.min(
+                                        pagination.currentPage * pagination.pageSize,
+                                        pagination.totalElements
+                                    )}
+                                </strong>{" "}
+                                trong tổng số <strong>{pagination.totalElements}</strong>{" "}
+                                {activeTab === 'pending' ? 'đề xuất' : 'quốc gia'}
+                            </div>
+                            <Pagination className="mb-0" size="sm">
+                                <Pagination.Prev
+                                    onClick={() => handlePageChange(pagination.currentPage - 1)}
+                                    disabled={pagination.currentPage === 1}
+                                />
+
+                                {(() => {
+                                    const items = [];
+                                    const total = pagination.totalPages;
+                                    const current = pagination.currentPage;
+                                    const maxVisible = 5;
+
+                                    if (total <= maxVisible) {
+                                        for (let i = 1; i <= total; i++) {
+                                            items.push(
+                                                <Pagination.Item
+                                                    key={i}
+                                                    active={i === current}
+                                                    onClick={() => handlePageChange(i)}
+                                                >
+                                                    {i}
+                                                </Pagination.Item>
+                                            );
+                                        }
+                                    } else {
+                                        items.push(
+                                            <Pagination.Item
+                                                key={1}
+                                                active={1 === current}
+                                                onClick={() => handlePageChange(1)}
+                                            >
+                                                1
+                                            </Pagination.Item>
+                                        );
+
+                                        let startPage = Math.max(2, current - 1);
+                                        let endPage = Math.min(total - 1, current + 1);
+
+                                        if (startPage > 2) {
+                                            items.push(<Pagination.Ellipsis key="ellipsis-start" disabled />);
+                                            startPage = Math.max(startPage, current - 1);
+                                        }
+
+                                        for (let i = startPage; i <= endPage; i++) {
+                                            items.push(
+                                                <Pagination.Item
+                                                    key={i}
+                                                    active={i === current}
+                                                    onClick={() => handlePageChange(i)}
+                                                >
+                                                    {i}
+                                                </Pagination.Item>
+                                            );
+                                        }
+
+                                        if (endPage < total - 1) {
+                                            items.push(<Pagination.Ellipsis key="ellipsis-end" disabled />);
+                                        }
+                                        items.push(
+                                            <Pagination.Item
+                                                key={total}
+                                                active={total === current}
+                                                onClick={() => handlePageChange(total)}
+                                            >
+                                                {total}
+                                            </Pagination.Item>
+                                        );
+                                    }
+
+                                    return items;
+                                })()}
+
+                                <Pagination.Next
+                                    onClick={() => handlePageChange(pagination.currentPage + 1)}
+                                    disabled={pagination.currentPage === pagination.totalPages}
+                                />
+                            </Pagination>
                         </div>
                     </Card.Footer>
                 )}
@@ -628,6 +649,76 @@ const CountryManagement = () => {
                     </Button>
                     <Button variant="success" onClick={submitApproval}>
                         <FaCheck className="me-1" /> Duyệt
+                    </Button>
+                </Modal.Footer>
+            </Modal>
+
+            {/* Edit Modal */}
+            <Modal show={showEditModal} onHide={() => setShowEditModal(false)}>
+                <Modal.Header closeButton>
+                    <Modal.Title>Chỉnh sửa thông tin nước</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    {selectedCountry && (
+                        <Form>
+                            <Alert variant="primary">
+                                Chỉnh sửa nước: <strong>{selectedCountry.name}</strong> ({selectedCountry.code})
+                            </Alert>
+                            <Form.Group className="mb-3">
+                                <Form.Label>URL cờ quốc gia</Form.Label>
+                                <Form.Control
+                                    type="url"
+                                    placeholder="https://example.com/flag.png"
+                                    value={editData.flagUrl}
+                                    onChange={(e) => setEditData({
+                                        ...editData,
+                                        flagUrl: e.target.value
+                                    })}
+                                />
+                                {editData.flagUrl && (
+                                    <div className="mt-2">
+                                        <small className="text-muted">Xem trước:</small>
+                                        <div className="mt-1">
+                                            <img
+                                                src={editData.flagUrl}
+                                                alt="Flag preview"
+                                                style={{
+                                                    width: '60px',
+                                                    height: '40px',
+                                                    objectFit: 'cover',
+                                                    borderRadius: '4px',
+                                                    border: '1px solid #ddd'
+                                                }}
+                                                onError={(e) => {
+                                                    e.target.style.display = 'none';
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                            </Form.Group>
+                            <Form.Group className="mb-3">
+                                <Form.Label>Mô tả</Form.Label>
+                                <Form.Control
+                                    as="textarea"
+                                    rows={4}
+                                    placeholder="Mô tả về nước này..."
+                                    value={editData.description}
+                                    onChange={(e) => setEditData({
+                                        ...editData,
+                                        description: e.target.value
+                                    })}
+                                />
+                            </Form.Group>
+                        </Form>
+                    )}
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="secondary" onClick={() => setShowEditModal(false)}>
+                        Hủy
+                    </Button>
+                    <Button variant="primary" onClick={submitEdit}>
+                        <FaCheck className="me-1" /> Lưu thay đổi
                     </Button>
                 </Modal.Footer>
             </Modal>
